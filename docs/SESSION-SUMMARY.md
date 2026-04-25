@@ -32,7 +32,7 @@ Public app:
 Details:
 
 - Route: `/details/?id=<apartmentId>`
-- Top **app-summary-card**: status progression `←` / `→` (first 11 `STATUS_NAV` values), `status` `<select>`, **Reject** (quiet, same row); meta row includes **View listing** when URL set; no Shortlist/Listing in the title row. Auto-save on status change. Tabs: Scorecard, Unit Setup, **Peter**, **Kerv** (scoring, one tab per partner), Tour, Application, Activity Log (`assets/js/details.js`). Scoring: `detail-vote-list` table (zebra, bordered, 1px partner top), `detail-vote-line` two-column grid (aligned `0..5`); unselected/selected score hex in `app.css` (`--kerv-hex-faint` / `--kerv-hex-selected`, peter analogs)
+- Top **app-summary-card**: status progression `←` / `→` (first 11 `STATUS_NAV` values), `status` `<select>`, **Reject** (quiet, same row); meta row includes **View listing** when URL set; no Shortlist/Listing in the title row. Auto-save on status change. Tabs: Scorecard, Unit Setup, **Peter**, **Kerv** (scoring, one tab per partner), Tour, Application, Activity Log (`assets/js/details.js`). Scoring: `detail-vote-list` table (zebra, bordered, 1px partner top), `detail-vote-line` two-column grid (aligned **N/A** + `0..5`); unselected/selected score hex in `app.css` (`--kerv-hex-faint` / `--kerv-hex-selected`, peter analogs)
 
 Admin:
 
@@ -148,14 +148,14 @@ Scoring is partner-based:
 - `kerv`
 - `peter`
 
-Each criterion can be scored `0..5`.
+Each criterion: integer `0..5` or **N/A** (stored as `NULL`; **not** in weighted sum—only lines with a numeric score use weight). Missing row and `NULL` behave the same for averages (skipped).
 
-**Scoring UI:** only on `/details` → **Peter** or **Kerv** tab: table-style list, optional **?** for definition, SVG `0..5` aligned columns; not on admin **Saved apartments** list. **Avg** / Kerv / Peter % on Scorecard, public cards, admin row metrics (`scores.combined` = mean of Kerv & Peter % when both exist; each partner % = weighted criteria ×20 from `lib/apartmentRepository` `calculateScores`).
+**Scoring UI:** only on `/details` → **Peter** or **Kerv** tab: table-style list, optional **?** for definition, SVG **N/A** + `0..5` aligned columns; not on admin **Saved apartments** list. **Avg** / Kerv / Peter % on Scorecard, public cards, admin row metrics (`scores.combined` = mean of Kerv & Peter % when both exist; each partner % = `Σ(score×w)/Σw × 20` over **scored** criteria only in `lib/apartmentRepository` `calculateScores`).
 
-The rating API validates:
+The rating API (`POST /api/ratings`):
 
-- `partnerKey` must be `kerv` or `peter`
-- `score` must be integer `0..5`
+- `apartmentId`, `criterionId`, `partnerKey` (`kerv` / `peter`) required; **`score` key required**
+- `score`: `null` = N/A, else integer `0..5`
 
 ## Database
 
@@ -165,7 +165,7 @@ Tables use the `nyp_` prefix:
 - `nyp_apartment_images`
 - `nyp_criteria`
 - `nyp_neighborhoods`
-- `nyp_ratings`
+- `nyp_ratings` (`score` nullable: N/A = `NULL`)
 - `nyp_visits`
 - `nyp_applications`
 
@@ -218,7 +218,8 @@ APP_NAME=nyhome
 ## Docs Updated
 
 - `README.md` (shortlist + details + admin + scoring location)
-- `CHANGELOG.md` (summary/details/admin UI, `apartmentStatus`, save/error behavior)
+- `CHANGELOG.md` (summary/details/admin UI, `apartmentStatus`, save/error behavior, N/A ratings)
+- `CLAUDE.md` (scoring, ratings API, `nyp_ratings` nullable)
 - `docs/SESSION-SUMMARY.md` (this file)
 - `docs/IMPORT-SCRAPING.md`
 - `PLAN.md`
@@ -230,7 +231,7 @@ APP_NAME=nyhome
 - Verified local Netlify Dev server
 - Verified `/api/apartments`
 - Smoke-tested apartment save/delete
-- Smoke-tested rating validation
+- Smoke-tested rating validation (incl. `null` for N/A)
 - Ran JS syntax checks
 - Read lints on changed files
 

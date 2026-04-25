@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 npm run dev        # Start local dev server at http://localhost:8889 (requires Netlify CLI)
-npm run migrate    # Initialize or reset PlanetScale schema (tables, default criteria, neighborhoods)
+npm run migrate    # Schema + seeds: criteria, neighborhoods; alters (e.g. nullable `nyp_ratings.score`, legacy 0→NULL)
 npm run split-badges  # Split status badge sprite sheet into individual PNGs
 ```
 
@@ -40,12 +40,12 @@ Data is fetched on load, cached to `localStorage`, and re-fetched after mutation
 - **`lib/http.js`** — Response helpers (`json()`, body parsing, money conversion cents↔dollars)
 - **`netlify/functions/apartments.js`** — GET list, POST create, PUT update, DELETE
 - **`netlify/functions/criteria.js`** — POST new, PUT update fields or reorder via `orderedIds`
-- **`netlify/functions/ratings.js`** — POST partner vote (0–5 per criterion)
+- **`netlify/functions/ratings.js`** — `POST` partner vote: `score` key required; integer `0–5` or `null` (N/A)
 - **`netlify/functions/visits.js`** / **`applications.js`** — Tour and broker tracking
 
 ### Database
 
-All tables prefixed `nyp_`. Money stored as integer cents. Key tables: `nyp_apartments`, `nyp_criteria`, `nyp_ratings` (one row per apartment × partner × criterion, unique constraint), `nyp_visits`, `nyp_applications`, `nyp_neighborhoods` (autocomplete seed data).
+All tables prefixed `nyp_`. Money stored as integer cents. Key tables: `nyp_apartments`, `nyp_criteria`, `nyp_ratings` (one row per apartment × partner × criterion, unique; `score` nullable — `NULL` = N/A), `nyp_visits`, `nyp_applications`, `nyp_neighborhoods` (autocomplete seed data).
 
 ### Status Progression
 
@@ -59,7 +59,7 @@ Each status has a corresponding PNG badge in `assets/img/` and a neon-border CSS
 
 ### Scoring
 
-Each partner votes 0–5 on each active criterion. Criteria have weights. Final score is a weighted average across both partners. The paste helper in the admin form parses raw StreetEasy listing text to auto-fill apartment fields.
+Each partner can vote **0–5** or **N/A** on each active criterion. **N/A** is stored as `NULL` and is **omitted** from that partner’s weighted average (only criteria with a numeric score contribute weight). Criteria have weights. Per-partner % = `(Σ score×weight / Σ included weights) × 20` (0–100 scale). **Avg** = mean of Kerv and Peter when both are non-null. The paste helper in the admin form parses raw StreetEasy listing text to auto-fill apartment fields. Run `npm run migrate` to apply `score` nullable + convert legacy `0` → `NULL` (one-time per DB).
 
 ### No Auth
 

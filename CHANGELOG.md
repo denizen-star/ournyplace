@@ -3,11 +3,16 @@
 ## Unreleased
 
 ### Added
+- **N/A ratings:** per-criterion **N/A** in `/details` (and admin rating HTML if used); stores `NULL` in `nyp_ratings`; excluded from weighted partner % (only scored lines use weight). `npm run migrate`: `score` column nullable, `UPDATE` legacy `0` → `NULL`.
 - Favicon: `assets/img/favicon1.png` in `<head>` on `/`, `/admin`, and `/details`; PWA `manifest.json` `icons` entry; `sw.js` precaches the file.
 
 ### Changed
+- **`POST /api/ratings`:** body must include `score` (`null` for N/A, else integer `0–5`). `lib/apartmentRepository` `calculateScores` uses **included** criterion weight only when `score` is numeric.
+- **Scoring UI:** `0..5` + N/A hex row; labels flex-centered in button; `?v=` on HTML + `sw.js` `CACHE_VERSION` **41** (bump in lockstep).
 - **`index.html`:** on `localhost` / `127.0.0.1` / `::1`, unregisters all service workers (no `sw.js` in local dev). Production still registers `sw.js`.
-- **`sw.js`:** `CACHE_VERSION` 18 (favicon in app shell list).
+
+### Fixed
+- N/A and **0** could both look selected (`Number(null) === 0`); active state uses `rating != null` for numeric chips.
 
 ## 1.1.0 - 2026-04-25
 

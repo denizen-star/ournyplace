@@ -24,7 +24,7 @@ There is intentionally no auth while this is local-only. Add a password gate bef
 ## What It Does
 
 - Public shortlist at `/`: responsive card grid (no photo strip—text, facts, scores), **KPI** strip + **Avg** / Kerv / Peter row on each card, **Details** / **Listing**, `status` **artwork** + collapsible filter; cards get **glass + status-colored** border/glow (`listing-status-*`). Photo URLs optional in admin.
-- Details at `/details/?id=…` (via **Details** on a card or admin row): Hunter-style top summary (status progression + meta) and tabbed content: Scorecard, Unit Setup, **Peter** and **Kerv** (scoring), Tour, Application, Activity Log. Status edits auto-save; each scoring tab has SVG `0..5` buttons per criterion (definition behind **?** when present).
+- Details at `/details/?id=…` (via **Details** on a card or admin row): Hunter-style top summary (status progression + meta) and tabbed content: Scorecard, Unit Setup, **Peter** and **Kerv** (scoring), Tour, Application, Activity Log. Status edits auto-save; each scoring tab has **N/A** + SVG `0..5` per criterion (definition behind **?** when present).
 - Admin at `/admin`: summary-style top tabs (`Apartment Setup`, `Criteria`, `Next Actions`). **Criteria:** add row + **click-to-edit** list, drag reorder (order = voting tab order); `PUT /api/criteria` for update + reorder. `Saved Apartments` = compact rows (status, metrics, Edit / Details / Delete)—no per-row voting/tour/app (use **Details**).
 - Manual apartment entry with sections: Location, Financials, The Unit, Amenities, Listing Notes.
 - Apartment title is automatic: `Address #Apt`, e.g. `260 Gold Street #1117`.
@@ -109,11 +109,11 @@ Unmapped lines are preserved under `Other:` in Notes.
 ## Scoring
 
 - Criteria live in `nyp_criteria`.
-- Ratings live in `nyp_ratings`.
+- Ratings live in `nyp_ratings` (`score` nullable: **N/A** = `NULL`).
 - Voters: `kerv`, `peter`.
-- Scores are integers `0..5`.
-- **Where to vote:** `/details` → **Peter** or **Kerv** (one partner per tab). Criterion **table** (flushed rows, aligned `0..5` columns); **?** opens the definition. Unselected: pale hex + dim numeral; selected: **dark** fill + **white** numeral. Shortlist and admin saved list do not embed voting (admin form may still have criteria voting in the apartment **expand**).
-- Scorecard tab shows **Avg** / Kerv / Peter % (`Avg` = mean of the two partners when both exist; each partner % from weighted criteria in `calculateScores`); public `/` cards show the same three in one row.
+- **0..5** or **N/A** per line. Averages use only rows with a numeric score (skips N/A and unset).
+- **Where to vote:** `/details` → **Peter** or **Kerv** (one partner per tab). Criterion **table** (flushed rows, **N/A** + aligned `0..5`); **?** opens the definition. Unselected: pale hex + dim label; selected: **dark** fill + **white** text. Shortlist and **Saved apartments** table are summary-only; full voting is on **Details**.
+- Scorecard tab shows **Avg** / Kerv / Peter % (`Avg` = mean of the two partners when both exist; each partner % from `calculateScores` over scored criteria only); public `/` cards show the same three in one row.
 
 ## Local-Only Security
 
