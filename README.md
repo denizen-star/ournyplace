@@ -23,10 +23,10 @@ There is intentionally no auth while this is local-only. Add a password gate bef
 
 ## What It Does
 
-- Public shortlist at `/`: responsive card grid (no photo strip—text, facts, scores), **KPI** strip + **Avg** / Kerv / Peter row on each card, **Details** / **Listing**, `status` **artwork** + collapsible filter; cards get **glass + status-colored** border/glow (`listing-status-*`). Photo URLs optional in admin.
-- Details at `/details/?id=…` (via **Details** on a card or admin row): Hunter-style top summary (status progression + meta) and tabbed content: Scorecard, Unit Setup, **Peter** and **Kerv** (scoring), Tour, Application, Activity Log. Status edits auto-save; each scoring tab has **N/A** + SVG `0..5` per criterion (definition behind **?** when present).
+- Public shortlist at `/`: responsive card grid (no photo strip—text, facts, scores), **KPI** strip + **Avg** / Kerv / Peter row on each card, **Details** / **Listing**, `status` **artwork** + collapsible filter; cards get **glass + status-colored** border/glow (`listing-status-*`). Listing images: up to 3, paste/drop in **Admin** or on **`/details` → Images** (not on shortlist cards).
+- Details at `/details/?id=…` (via **Details** on a card or admin row): Hunter-style top summary (status + meta) and tabs: **Scorecard**, **Images** (edit/save 3 photos + per-criterion table + gallery), **Unit Setup**, **Peter** and **Kerv** (scoring), Tour, Application, Activity Log. Status edits auto-save; scoring tabs: **N/A** + SVG `0..5` per criterion (definition behind **?** when present).
 - Admin at `/admin`: summary-style top tabs (`Apartment Setup`, `Criteria`, `Next Actions`). **Criteria:** add row + **click-to-edit** list, drag reorder (order = voting tab order); `PUT /api/criteria` for update + reorder. `Saved Apartments` = compact rows (status, metrics, Edit / Details / Delete)—no per-row voting/tour/app (use **Details**).
-- Manual apartment entry with sections: Location, Financials, The Unit, Amenities, Listing Notes.
+- Manual apartment entry with sections: Location, Financials, The Unit, Amenities, Listing Notes, **Listing photos** (3 paste/drop slots, same encoding as on `/details` Images).
 - Apartment title is automatic: `Address #Apt`, e.g. `260 Gold Street #1117`.
 
 ## Listing status

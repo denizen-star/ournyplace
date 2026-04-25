@@ -24,7 +24,7 @@ Public app:
 - Responsive **card grid** (`body.shortlist`): KPI strip (glass + neon border per tile, neutral fill), fourth tile **top avg score**
 - Summary + per-card row = **Avg** / Kerv / Peter %; label **Avg** (not “Combined”) in UI
 - Listing cards: glass panel + **`listing-status-<status>`** border/glow from normalized `status`
-- Cards omit photo gallery line; image URLs still in admin
+- Cards omit photo gallery; up to 3 **listing photos** in Admin + `/details` **Images** (paste/drop, `vibeImages.js` → `nyp_apartment_images`)
 - `Details` / `Listing` on each card (Listing disabled when no URL)
 - `status` art: `/assets/img/<status>.png` on card + filter strip (no text pill on shortlist)
 - Optional tagline under page `h1`
@@ -32,7 +32,7 @@ Public app:
 Details:
 
 - Route: `/details/?id=<apartmentId>`
-- Top **app-summary-card**: status progression `←` / `→` (first 11 `STATUS_NAV` values), `status` `<select>`, **Reject** (quiet, same row); meta row includes **View listing** when URL set; no Shortlist/Listing in the title row. Auto-save on status change. Tabs: Scorecard, Unit Setup, **Peter**, **Kerv** (scoring, one tab per partner), Tour, Application, Activity Log (`assets/js/details.js`). Scoring: `detail-vote-list` table (zebra, bordered, 1px partner top), `detail-vote-line` two-column grid (aligned **N/A** + `0..5`); unselected/selected score hex in `app.css` (`--kerv-hex-faint` / `--kerv-hex-selected`, peter analogs)
+- Top **app-summary-card**: status progression `←` / `→` (first 11 `STATUS_NAV` values), `status` `<select>`, **Reject** (quiet, same row); meta row includes **View listing** when URL set; no inline photo strip. Auto-save on status change. Tabs: **Scorecard** (incl. photo strip when present), **Images** (3 paste/drop slots + **Save photos**, per-criterion score table, preview column; `vibeImages.js`), Unit Setup, **Peter**, **Kerv** (scoring, one tab per partner; same gallery column as Images), Tour, Application, Activity Log (`assets/js/details.js`). Scoring: `detail-vote-list` table (zebra, bordered, 1px partner top), `detail-vote-line` two-column grid (aligned **N/A** + `0..5`); unselected/selected score hex in `app.css` (`--kerv-hex-faint` / `--kerv-hex-selected`, peter analogs)
 
 Admin:
 
@@ -48,6 +48,7 @@ Admin:
   - The Unit
   - Amenities
   - Listing Notes
+  - **Listing photos** (3 `vibe-slot` paste/drop, `vibeImages.js`); submit with main **Save apartment**
 
 ## Apartment Form Behavior
 

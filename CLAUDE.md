@@ -29,6 +29,7 @@ Environment: copy `.env.example` to `.env.local` and set `DATABASE_URL` (PlanetS
 - **`app.js`** — Shortlist rendering and filtering
 - **`admin.js`** — Admin form logic (apartments, criteria, drag-reorder)
 - **`details.js`** — Details page tabs, status transitions, per-partner scoring UI
+- **`vibeImages.js`** — Client-side image resize + JPEG compress for listing photos (used by `admin.js` and `details.js` Images tab)
 - **`apartmentStatus.js`** — Shared status enum and CSS class mapping (used by both client and `lib/`)
 
 Data is fetched on load, cached to `localStorage`, and re-fetched after mutations. UI re-renders optimistically on success; failures show toast feedback.
@@ -56,6 +57,10 @@ applying → applied → approved → lease_review → signed
 ```
 
 Each status has a corresponding PNG badge in `assets/img/` and a neon-border CSS class (`listing-status-*`). Favicon: `/assets/img/favicon1.png` in each page’s `<head>` and in `manifest.json` for PWA install icons. Service worker (`sw.js`) caches shell assets (HTML, CSS, JS, `manifest.json`, status badge images, favicon); cache-bust by bumping `?v=` query params in HTML and the version string in `sw.js` in lockstep. Local dev: `index.html` unregisters all service workers when `location.hostname` is `localhost`, `127.0.0.1`, or `::1`, so `npm run dev` is not held back by a stale worker.
+
+### Listing photos (vibe)
+
+Up to **3** images per apartment in `nyp_apartment_images` (`image_url` is text: `https://` or, after paste/drop, `data:image/jpeg;base64,...` from `vibeImages.js`). **Admin** (Apartment Setup) and **`/details` Images tab** use three click/paste/drop slots; **Save photos** on details sends a full apartment `PUT` with `imageUrls[]`. Thumbnail previews on Scorecard, Images, and partner tabs (not on the top summary card).
 
 ### Scoring
 
