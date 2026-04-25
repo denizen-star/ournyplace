@@ -1,0 +1,57 @@
+const { getApartmentPayload, saveApartment, deleteApartment } = require('../../lib/apartmentRepository');
+const { normalizeStatus } = require('../../lib/apartmentStatus');
+const { json, parseBody, toCents, numberOrNull, stringOrNull } = require('../../lib/http');
+
+exports.handler = async (event) => {
+  try {
+    if (event.httpMethod === 'GET') {
+      return json(200, await getApartmentPayload());
+    }
+
+    const body = parseBody(event);
+    if (!body) return json(400, { error: 'Invalid request body' });
+
+    if (event.httpMethod === 'POST' || event.httpMethod === 'PUT') {
+      const address = stringOrNull(body.address);
+      if (!address) return json(400, { error: 'address is required' });
+
+      const id = await saveApartment({
+        id: numberOrNull(body.id),
+        address,
+        aptNumber: stringOrNull(body.aptNumber),
+        neighborhood: stringOrNull(body.neighborhood),
+        rentCents: toCents(body.rent),
+        netEffectiveCents: toCents(body.netEffective),
+        brokerFeeCents: toCents(body.brokerFee),
+        depositCents: toCents(body.deposit),
+        amenitiesFeesCents: toCents(body.amenitiesFees),
+        totalMoveInCents: toCents(body.totalMoveIn),
+        bedrooms: numberOrNull(body.bedrooms),
+        bathrooms: numberOrNull(body.bathrooms),
+        squareFeet: numberOrNull(body.squareFeet),
+        unitFeatures: Array.isArray(body.unitFeatures) ? body.unitFeatures.map(stringOrNull).filter(Boolean) : [],
+        amenities: Array.isArray(body.amenities) ? body.amenities.map(stringOrNull).filter(Boolean) : [],
+        moveInDate: stringOrNull(body.moveInDate),
+        listingUrl: stringOrNull(body.listingUrl),
+        sourceUrl: stringOrNull(body.sourceUrl),
+        importStatus: stringOrNull(body.importStatus) || 'manual',
+        status: normalizeStatus(stringOrNull(body.status)),
+        notes: stringOrNull(body.notes),
+        imageUrls: Array.isArray(body.imageUrls) ? body.imageUrls.map(stringOrNull).filter(Boolean) : [],
+      });
+      return json(200, { success: true, id });
+    }
+
+    if (event.httpMethod === 'DELETE') {
+      const id = numberOrNull(body.id);
+      if (!id) return json(400, { error: 'id is required' });
+      await deleteApartment(id);
+      return json(200, { success: true });
+    }
+
+    return json(405, { error: 'Method not allowed' });
+  } catch (err) {
+    console.error('[apartments] Error:', err.message);
+    return json(500, { error: 'Something went wrong' });
+  }
+};

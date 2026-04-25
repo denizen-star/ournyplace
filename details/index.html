@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1f2937">
+  <title>Apartment details | nyhome</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/assets/css/app.css?v=7">
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <p class="eyebrow">nyhome</p>
+      <h1>Apartment details</h1>
+    </div>
+    <a class="link-button" href="/">Back to shortlist</a>
+  </header>
+
+  <main class="page-shell">
+    <section id="detail-root" aria-live="polite">
+      <div class="empty-state">Loading apartment details...</div>
+    </section>
+  </main>
+
+  <script src="/assets/js/apartmentStatus.js?v=7"></script>
+  <script src="/assets/js/api.js?v=7"></script>
+  <script src="/assets/js/details.js?v=7"></script>
+</body>
+</html>
