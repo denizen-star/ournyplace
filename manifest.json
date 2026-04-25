@@ -7,5 +7,12 @@
   "orientation": "portrait",
   "theme_color": "#172033",
   "background_color": "#f7f2ea",
-  "icons": []
+  "icons": [
+    {
+      "src": "/assets/img/favicon1.png",
+      "sizes": "399x334",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
 }

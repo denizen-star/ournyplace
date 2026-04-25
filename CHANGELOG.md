@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Added
+- Favicon: `assets/img/favicon1.png` in `<head>` on `/`, `/admin`, and `/details`; PWA `manifest.json` `icons` entry; `sw.js` precaches the file.
+
+### Changed
+- **`index.html`:** on `localhost` / `127.0.0.1` / `::1`, unregisters all service workers (no `sw.js` in local dev). Production still registers `sw.js`.
+- **`sw.js`:** `CACHE_VERSION` 18 (favicon in app shell list).
+
 ## 1.1.0 - 2026-04-25
 
 ### Added

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#172033">
   <title>nyhome</title>
+  <link rel="icon" href="/assets/img/favicon1.png" type="image/png">
   <link rel="manifest" href="/manifest.json">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -33,9 +34,18 @@
   <script src="/assets/js/api.js?v=23"></script>
   <script src="/assets/js/app.js?v=24"></script>
   <script>
-    if ('serviceWorker' in navigator) {
+    (function () {
+      var h = location.hostname;
+      var isLocalDev = h === 'localhost' || h === '127.0.0.1' || h === '::1';
+      if (!('serviceWorker' in navigator)) return;
+      if (isLocalDev) {
+        navigator.serviceWorker.getRegistrations().then(function (regs) {
+          regs.forEach(function (r) { r.unregister(); });
+        });
+        return;
+      }
       navigator.serviceWorker.register('/sw.js').catch(function () {});
-    }
+    })();
   </script>
 </body>
 </html>

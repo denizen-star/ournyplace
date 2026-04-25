@@ -55,7 +55,7 @@ applying → applied → approved → lease_review → signed
 (terminal: rejected, archived)
 ```
 
-Each status has a corresponding PNG badge in `assets/img/` and a neon-border CSS class (`listing-status-*`). Service worker (`sw.js`) caches shell assets; cache-bust by bumping `?v=` query params in HTML and the version string in `sw.js` in lockstep.
+Each status has a corresponding PNG badge in `assets/img/` and a neon-border CSS class (`listing-status-*`). Favicon: `/assets/img/favicon1.png` in each page’s `<head>` and in `manifest.json` for PWA install icons. Service worker (`sw.js`) caches shell assets (HTML, CSS, JS, `manifest.json`, status badge images, favicon); cache-bust by bumping `?v=` query params in HTML and the version string in `sw.js` in lockstep. Local dev: `index.html` unregisters all service workers when `location.hostname` is `localhost`, `127.0.0.1`, or `::1`, so `npm run dev` is not held back by a stale worker.
 
 ### Scoring
 
