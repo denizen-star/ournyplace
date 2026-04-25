@@ -284,8 +284,9 @@
       });
       NyhomeAPI.reorderCriteria(ids).then(function () {
         state.criteria.sort(function (a, b) {
-          return ids.indexOf(a.id) - ids.indexOf(b.id);
+          return ids.indexOf(Number(a.id)) - ids.indexOf(Number(b.id));
         });
+        renderApartments();
       }).catch(function (err) {
         console.error('[nyhome-admin] reorder criteria', err);
         load();
