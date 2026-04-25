@@ -10,6 +10,7 @@
 
   function boot() {
     bindTabs();
+    bindApartmentSearch();
     bindForms();
     bindSelectorChips();
     bindNotesParser();
@@ -25,6 +26,7 @@
       state.criteria = data.criteria || [];
       state.neighborhoods = data.neighborhoods || [];
       renderApartments();
+      renderSearchSuggestions();
       renderCriteria();
       renderNeighborhoodOptions();
       renderNextActions();
@@ -37,12 +39,150 @@
     Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (button) {
       button.addEventListener('click', function () {
         var tab = button.getAttribute('data-tab');
+        var apartmentsPanel = document.getElementById('tab-apartments');
+        var leavingApartments = apartmentsPanel && apartmentsPanel.classList.contains('active');
+        if (leavingApartments && tab !== 'apartments') {
+          clearAdminApartmentSearch();
+        }
         document.querySelectorAll('.tab').forEach(function (el) { el.classList.remove('active'); });
         document.querySelectorAll('.tab-panel').forEach(function (el) { el.classList.remove('active'); });
         button.classList.add('active');
         document.getElementById('tab-' + tab).classList.add('active');
       });
     });
+  }
+
+  function syncSearchClearVisibility() {
+    var input = document.getElementById('admin-apartment-search');
+    var clear = document.getElementById('admin-apartment-search-clear');
+    if (!input || !clear) return;
+    var has = String(input.value || '').trim().length > 0;
+    clear.hidden = !has;
+    clear.setAttribute('aria-hidden', has ? 'false' : 'true');
+  }
+
+  var SEARCH_SUGGEST_LIMIT = 12;
+  var searchSuggestBlurTimeout = null;
+
+  function setSearchListboxExpanded(isOpen) {
+    var el = document.getElementById('admin-apartment-search');
+    if (el) {
+      el.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    }
+  }
+
+  function hideSearchSuggestions() {
+    var box = document.getElementById('admin-apartment-search-suggestions');
+    if (box) {
+      box.hidden = true;
+      box.innerHTML = '';
+    }
+    setSearchListboxExpanded(false);
+  }
+
+  function renderSearchSuggestions() {
+    var box = document.getElementById('admin-apartment-search-suggestions');
+    if (!box) return;
+    var q = getAdminApartmentSearchQuery();
+    if (!q) {
+      hideSearchSuggestions();
+      return;
+    }
+    if (!state.apartments.length) {
+      hideSearchSuggestions();
+      return;
+    }
+    var matches = state.apartments.filter(function (a) {
+      return apartmentSearchHaystack(a).indexOf(q) !== -1;
+    });
+    var list = matches.slice(0, SEARCH_SUGGEST_LIMIT);
+    if (list.length) {
+      box.innerHTML = list.map(function (a) {
+        var sub = [a.neighborhood, a.address].filter(Boolean).join(' · ');
+        return '<button type="button" class="admin-header-search-suggestion" role="option" data-apartment-id="' + String(escapeAttr(String(a.id))) + '">' +
+          '<span class="admin-header-search-suggestion-title">' + escapeHtml(a.title) + '</span>' +
+          (sub ? '<span class="admin-header-search-suggestion-sub">' + escapeHtml(sub) + '</span>' : '') +
+          '</button>';
+      }).join('');
+    } else {
+      box.innerHTML = '<div class="admin-header-search-suggestions-empty" role="status">No names match your search</div>';
+    }
+    box.hidden = false;
+    setSearchListboxExpanded(true);
+  }
+
+  function clearAdminApartmentSearch() {
+    var input = document.getElementById('admin-apartment-search');
+    if (input) input.value = '';
+    syncSearchClearVisibility();
+    hideSearchSuggestions();
+    renderApartments();
+  }
+
+  function bindApartmentSearch() {
+    var input = document.getElementById('admin-apartment-search');
+    var clear = document.getElementById('admin-apartment-search-clear');
+    var box = document.getElementById('admin-apartment-search-suggestions');
+    if (!input) return;
+    if (box) {
+      box.addEventListener('mousedown', function (e) {
+        var btn = e.target.closest('.admin-header-search-suggestion');
+        if (!btn) return;
+        e.preventDefault();
+        var id = Number(btn.getAttribute('data-apartment-id'));
+        var a = state.apartments.find(function (x) { return x.id === id; });
+        if (!a) return;
+        input.value = a.title;
+        syncSearchClearVisibility();
+        renderApartments();
+        hideSearchSuggestions();
+        input.focus();
+      });
+    }
+    function clearBlurTimer() {
+      if (searchSuggestBlurTimeout) {
+        clearTimeout(searchSuggestBlurTimeout);
+        searchSuggestBlurTimeout = null;
+      }
+    }
+    function scheduleHideSuggestions() {
+      clearBlurTimer();
+      searchSuggestBlurTimeout = setTimeout(hideSearchSuggestions, 200);
+    }
+    input.addEventListener('input', function () {
+      clearBlurTimer();
+      syncSearchClearVisibility();
+      renderApartments();
+      renderSearchSuggestions();
+    });
+    input.addEventListener('focus', function () {
+      clearBlurTimer();
+      renderSearchSuggestions();
+    });
+    input.addEventListener('blur', function (e) {
+      var t = e.relatedTarget;
+      if (box && t && box.contains(t)) {
+        return;
+      }
+      clearBlurTimer();
+      scheduleHideSuggestions();
+    });
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        hideSearchSuggestions();
+      }
+    });
+    if (clear) {
+      clear.addEventListener('click', function () {
+        input.value = '';
+        syncSearchClearVisibility();
+        renderApartments();
+        hideSearchSuggestions();
+        input.focus();
+      });
+    }
+    syncSearchClearVisibility();
+    hideSearchSuggestions();
   }
 
   function bindForms() {
@@ -315,6 +455,58 @@
       .replace(/\b\w/g, function (ch) { return ch.toUpperCase(); });
   }
 
+  var LISTING_CHIP_LABELS = {
+    dishwasher: 'Dishwasher',
+    'washer-dryer': 'W/D',
+    storage: 'Storage',
+    views: 'Views',
+    doorman: 'Doorman',
+    highrise: 'Highrise',
+    'new-construction': 'New construction',
+    walkup: 'Walkup',
+    pool: 'Pool',
+    sauna: 'Sauna',
+    'laundry-room': 'Laundry room',
+    suites: 'Suites',
+  };
+
+  function formatListingChipLabel(slug) {
+    if (Object.prototype.hasOwnProperty.call(LISTING_CHIP_LABELS, slug)) {
+      return LISTING_CHIP_LABELS[slug];
+    }
+    return String(slug)
+      .replace(/-/g, ' ')
+      .replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+  }
+
+  function apartmentSearchHaystack(apartment) {
+    var parts = [
+      apartment.title,
+      apartment.neighborhood,
+      apartment.address,
+      apartment.apt_number,
+      formatStatusLabel(apartment.status),
+    ];
+    (apartment.unit_features || []).forEach(function (slug) {
+      if (!slug) return;
+      parts.push(slug, formatListingChipLabel(slug));
+    });
+    (apartment.amenities || []).forEach(function (slug) {
+      if (!slug) return;
+      parts.push(slug, formatListingChipLabel(slug));
+    });
+    return parts
+      .filter(function (p) { return p != null && String(p).trim() !== ''; })
+      .map(function (p) { return String(p).toLowerCase(); })
+      .join(' ');
+  }
+
+  function getAdminApartmentSearchQuery() {
+    var el = document.getElementById('admin-apartment-search');
+    if (!el) return '';
+    return String(el.value || '').trim().toLowerCase();
+  }
+
   function statusOptions(current) {
     var values = NyhomeStatus.STATUS_ORDER.slice();
     if (values.indexOf(current) < 0) values.push(current);
@@ -569,8 +761,18 @@
       listEl.innerHTML = '<div class="empty-state">No apartments yet.</div>';
       return;
     }
+    var q = getAdminApartmentSearchQuery();
+    var items = !q
+      ? state.apartments
+      : state.apartments.filter(function (a) {
+        return apartmentSearchHaystack(a).indexOf(q) !== -1;
+      });
+    if (!items.length) {
+      listEl.innerHTML = '<div class="empty-state">No listings match your search.</div>';
+      return;
+    }
     listEl.innerHTML = '';
-    state.apartments.forEach(function (apartment) {
+    items.forEach(function (apartment) {
       listEl.appendChild(renderAdminApartment(apartment));
     });
   }
@@ -640,6 +842,11 @@
       return NyhomeAPI.deleteApartment(apartment.id).then(load).catch(function (err) {
         console.error('[nyhome-admin] delete apartment', err);
       });
+    });
+
+    card.addEventListener('click', function (event) {
+      if (event.target.closest('a, button, select, label, input, textarea')) return;
+      window.location.href = '/details/?id=' + encodeURIComponent(apartment.id);
     });
 
     return card;

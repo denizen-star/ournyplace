@@ -2,16 +2,109 @@
   var listEl = document.getElementById('apartment-list');
   var summaryEl = document.getElementById('summary-grid');
   var filterEl = document.getElementById('status-filter');
+  var sortRootEl = document.getElementById('shortlist-sort');
 
+  var SORT_STORAGE_KEY = 'nyhomeShortlistSort';
+  var VALID_SORTS = { workflow: 1, avg: 1, peter: 1, kerv: 1, updated: 1 };
   var activeFilters = new Set();
   var allApartments = [];
+  var sortMode = 'workflow';
 
   document.addEventListener('DOMContentLoaded', boot);
 
   function boot() {
+    initShortlistSort();
     NyhomeAPI.getApartments().then(render).catch(function () {
       listEl.innerHTML = '<div class="empty-state">Could not load apartments yet.</div>';
     });
+  }
+
+  function initShortlistSort() {
+    if (!sortRootEl) return;
+    var saved;
+    try {
+      saved = localStorage.getItem(SORT_STORAGE_KEY);
+    } catch (e) {
+      saved = null;
+    }
+    if (saved && VALID_SORTS[saved]) {
+      sortMode = saved;
+    }
+    syncShortlistSortUi();
+
+    sortRootEl.querySelectorAll('[data-shortlist-sort]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var mode = btn.getAttribute('data-shortlist-sort');
+        if (mode === sortMode || !VALID_SORTS[mode]) return;
+        sortMode = mode;
+        try {
+          localStorage.setItem(SORT_STORAGE_KEY, sortMode);
+        } catch (e) {}
+        syncShortlistSortUi();
+        if (allApartments.length) applyFilters();
+      });
+    });
+  }
+
+  function syncShortlistSortUi() {
+    if (!sortRootEl) return;
+    sortRootEl.querySelectorAll('[data-shortlist-sort]').forEach(function (btn) {
+      var mode = btn.getAttribute('data-shortlist-sort');
+      var on = mode === sortMode;
+      btn.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+  }
+
+  function updatedAtMs(apt) {
+    if (!apt || !apt.updated_at) return 0;
+    var t = Date.parse(apt.updated_at);
+    return isNaN(t) ? 0 : t;
+  }
+
+  function compareWorkflowDesc(a, b) {
+    var sa = NyhomeStatus.normalizeStatus(a.status);
+    var sb = NyhomeStatus.normalizeStatus(b.status);
+    var ia = NyhomeStatus.STATUS_ORDER.indexOf(sa);
+    var ib = NyhomeStatus.STATUS_ORDER.indexOf(sb);
+    if (ia < 0) ia = 0;
+    if (ib < 0) ib = 0;
+    if (ia !== ib) return ib - ia;
+    return updatedAtMs(b) - updatedAtMs(a);
+  }
+
+  function compareLastUpdated(a, b) {
+    return updatedAtMs(b) - updatedAtMs(a);
+  }
+
+  function scoreNumber(apt, key) {
+    var s = apt && apt.scores;
+    if (!s) return null;
+    var v = s[key];
+    if (v == null) return null;
+    var n = Number(v);
+    return isNaN(n) ? null : n;
+  }
+
+  function compareScoreDesc(key) {
+    return function (a, b) {
+      var na = scoreNumber(a, key);
+      var nb = scoreNumber(b, key);
+      if (na != null && nb != null) {
+        if (nb !== na) return nb - na;
+      } else if (na != null && nb == null) return -1;
+      else if (na == null && nb != null) return 1;
+      return updatedAtMs(b) - updatedAtMs(a);
+    };
+  }
+
+  function sortForDisplay(list) {
+    var cmp;
+    if (sortMode === 'updated') cmp = compareLastUpdated;
+    else if (sortMode === 'avg') cmp = compareScoreDesc('combined');
+    else if (sortMode === 'peter') cmp = compareScoreDesc('peter');
+    else if (sortMode === 'kerv') cmp = compareScoreDesc('kerv');
+    else cmp = compareWorkflowDesc;
+    return list.slice().sort(cmp);
   }
 
   function render(data) {
@@ -125,7 +218,7 @@
       listEl.innerHTML = '<div class="empty-state">No apartments match the selected filters.</div>';
       return;
     }
-    visible.forEach(function (apartment) {
+    sortForDisplay(visible).forEach(function (apartment) {
       listEl.appendChild(renderApartmentCard(apartment));
     });
   }
@@ -204,7 +297,8 @@
 
   function actionLink(label, href, external) {
     if (!href) {
-      return '<span class="link-button action-disabled" aria-disabled="true">' + escapeHtml(label) + '</span>';
+      var noListing = label === 'Listing' ? ' link-button--no-listing' : '';
+      return '<span class="link-button action-disabled' + noListing + '" aria-disabled="true">' + escapeHtml(label) + '</span>';
     }
 
     return '<a class="link-button" href="' + escapeAttr(href) + '"' +

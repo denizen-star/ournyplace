@@ -65,7 +65,7 @@
   function renderSummaryHeader(apartment) {
     var status = NyhomeStatus.normalizeStatus(apartment.status || 'new');
     return '<section class="app-summary-card">' +
-      '<img class="summary-status-badge" src="/assets/img/' + escapeAttr(status) + '.png" alt="" aria-hidden="true" width="80" height="80">' +
+      '<img class="summary-status-badge" src="/assets/img/' + escapeAttr(status) + '.png" alt="" aria-hidden="true" width="100" height="100">' +
       '<div class="summary-status-row">' +
         statusProgressionControls(apartment.status || 'new') +
       '</div>' +
@@ -102,6 +102,7 @@
       tabs.map(function (tab) {
         return '<button type="button" class="summary-tab' + (activeTab === tab[0] ? ' active' : '') + '" data-tab-target="' + tab[0] + '">' + tab[1] + '</button>';
       }).join('') +
+      '<button type="button" class="status-reject-quiet summary-tabs-reject" data-status-reject aria-label="Mark rejected">Reject</button>' +
     '</div>';
   }
 
@@ -386,7 +387,6 @@
         '<button type="button" class="status-arrow-link" data-status-prev aria-label="Previous status">←</button>' +
         statusSelect(safe) +
         '<button type="button" class="status-arrow-link" data-status-next aria-label="Next status">→</button>' +
-        '<button type="button" class="status-reject-quiet" data-status-reject aria-label="Mark rejected">Reject</button>' +
       '</div>'
     );
   }
@@ -542,7 +542,9 @@
   }
 
   function linkMetaItem(url) {
-    if (!url) return metaItem('link', 'Listing unavailable');
+    if (!url) {
+      return '<div class="meta-item meta-item--no-listing" role="status">' + iconSvg('link') + '<span>Listing unavailable</span></div>';
+    }
     return '<div class="meta-item">' + iconSvg('link') + '<a href="' + escapeAttr(url) + '" target="_blank" rel="noreferrer">View Listing</a></div>';
   }
 

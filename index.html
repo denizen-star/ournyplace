@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="/assets/css/app.css?v=23">
+  <link rel="stylesheet" href="/assets/css/app.css?v=33">
 </head>
 <body class="shortlist">
   <header class="app-header">
@@ -18,6 +18,16 @@
       <p class="eyebrow">nyhome</p>
       <h1>Apartment shortlist</h1>
       <p class="shortlist-tagline">Scores, status, and next steps at a glance.</p>
+      <div class="shortlist-sort" id="shortlist-sort" role="group" aria-label="Sort apartment cards">
+        <span class="shortlist-sort-label" id="shortlist-sort-label">Sort by</span>
+        <div class="shortlist-sort-segment" role="radiogroup" aria-labelledby="shortlist-sort-label">
+          <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="workflow" aria-checked="true">Workflow</button>
+          <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="avg" aria-checked="false">Avg</button>
+          <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="peter" aria-checked="false">Peter</button>
+          <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="kerv" aria-checked="false">Kerv</button>
+          <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="updated" aria-checked="false">Last updated</button>
+        </div>
+      </div>
     </div>
     <a class="link-button" href="/admin">Manage</a>
   </header>
@@ -30,9 +40,9 @@
     </section>
   </main>
 
-  <script src="/assets/js/apartmentStatus.js?v=23"></script>
-  <script src="/assets/js/api.js?v=23"></script>
-  <script src="/assets/js/app.js?v=24"></script>
+  <script src="/assets/js/apartmentStatus.js?v=33"></script>
+  <script src="/assets/js/api.js?v=33"></script>
+  <script src="/assets/js/app.js?v=33"></script>
   <script>
     (function () {
       var h = location.hostname;
