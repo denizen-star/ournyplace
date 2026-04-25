@@ -5,6 +5,8 @@
   var criteriaListEl = document.getElementById('criteria-list');
   var nextActionsEl = document.getElementById('next-actions');
   var criteriaDragId = null;
+  var vibeSlots = ['', '', ''];
+  var vibeActiveSlot = 0;
 
   document.addEventListener('DOMContentLoaded', boot);
 
@@ -14,6 +16,7 @@
     bindForms();
     bindSelectorChips();
     bindNotesParser();
+    initVibeSlots();
     syncStatusControls(value('status') || 'new');
     bindStatusControls();
     bindCriteriaList();
@@ -563,7 +566,7 @@
       status: NyhomeStatus.normalizeStatus(value('status') || 'new'),
       listingUrl: value('listing-url'),
       notes: value('notes'),
-      imageUrls: value('image-urls').split('\n').map(function (line) { return line.trim(); }).filter(Boolean),
+      imageUrls: getVibeImageUrls(),
     };
   }
 
@@ -588,7 +591,7 @@
     setValue('status', apartment.status || 'new');
     setValue('listing-url', apartment.listing_url || '');
     setValue('notes', apartment.notes || '');
-    setValue('image-urls', (apartment.images || []).map(function (img) { return img.image_url; }).join('\n'));
+    setVibeSlotsFromUrls((apartment.images || []).map(function (img) { return img.image_url; }).filter(Boolean));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -601,6 +604,123 @@
     setValue('bathrooms', 1);
     setSelectedValues('unit-features', []);
     setSelectedValues('amenities', []);
+    setVibeSlotsFromUrls([]);
+  }
+
+  function getVibeImageUrls() {
+    return vibeSlots.filter(function (u) { return u && String(u).trim(); });
+  }
+
+  function setVibeSlotsFromUrls(urls) {
+    var list = (urls || []).slice(0, 3);
+    for (var i = 0; i < 3; i++) {
+      vibeSlots[i] = list[i] ? String(list[i]) : '';
+    }
+    for (var j = 0; j < 3; j++) {
+      updateVibeSlotUI(j);
+    }
+  }
+
+  function firstEmptyVibeIndex() {
+    for (var i = 0; i < 3; i++) {
+      if (!vibeSlots[i]) return i;
+    }
+    return -1;
+  }
+
+  function assignVibeSlot(index, dataUrl) {
+    if (index < 0 || index > 2) return;
+    vibeSlots[index] = dataUrl;
+    updateVibeSlotUI(index);
+  }
+
+  function updateVibeSlotUI(index) {
+    var root = document.getElementById('vibe-photo-slots');
+    if (!root) return;
+    var slot = root.querySelector('.vibe-slot[data-vibe-slot="' + index + '"]');
+    if (!slot) return;
+    var surface = slot.querySelector('.vibe-slot-surface');
+    var clearBtn = slot.querySelector('[data-vibe-clear]');
+    var u = vibeSlots[index];
+    if (u) {
+      surface.innerHTML = '<img class="vibe-slot-img" src="' + escapeAttr(u) + '" alt="Preview">';
+      if (clearBtn) clearBtn.hidden = false;
+    } else {
+      surface.innerHTML = '<span class="vibe-slot-placeholder">Click, paste, drop</span>';
+      if (clearBtn) clearBtn.hidden = true;
+    }
+  }
+
+  function initVibeSlots() {
+    setVibeSlotsFromUrls([]);
+    bindVibePhotoSlots();
+  }
+
+  function bindVibePhotoSlots() {
+    var root = document.getElementById('vibe-photo-slots');
+    if (!root || !window.NyhomeVibeImages) {
+      if (!window.NyhomeVibeImages) {
+        console.warn('[nyhome-admin] vibeImages.js not loaded; photo slots disabled');
+      }
+      return;
+    }
+
+    function compressAndSet(file, slotIndex) {
+      window.NyhomeVibeImages.fileToCompressedDataUrl(file).then(function (dataUrl) {
+        var idx = slotIndex;
+        if (idx < 0 || idx > 2) idx = 0;
+        assignVibeSlot(idx, dataUrl);
+      }).catch(function (err) {
+        console.error('[nyhome-admin] image compress', err);
+      });
+    }
+
+    root.addEventListener('click', function (e) {
+      var c = e.target.closest && e.target.closest('[data-vibe-clear]');
+      if (c) {
+        e.preventDefault();
+        e.stopPropagation();
+        var clearSlot = c.closest('.vibe-slot');
+        if (clearSlot) {
+          var cidx = Number(clearSlot.getAttribute('data-vibe-slot'));
+          assignVibeSlot(cidx, '');
+        }
+        return;
+      }
+      var s = e.target.closest && e.target.closest('.vibe-slot-surface');
+      if (s) {
+        var parent = s.closest('.vibe-slot');
+        if (parent) {
+          vibeActiveSlot = Number(parent.getAttribute('data-vibe-slot')) || 0;
+        }
+        try {
+          s.focus();
+        } catch (err) { /* empty */ }
+      }
+    });
+
+    root.addEventListener('paste', function (e) {
+      var f = window.NyhomeVibeImages.clipboardImageFileFromEvent(e);
+      if (!f) return;
+      e.preventDefault();
+      e.stopPropagation();
+      var empty = firstEmptyVibeIndex();
+      var idx = empty === -1 ? vibeActiveSlot : empty;
+      compressAndSet(f, idx);
+    });
+
+    root.addEventListener('dragover', function (e) {
+      e.preventDefault();
+    });
+    root.addEventListener('drop', function (e) {
+      e.preventDefault();
+      var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (!file || !file.type || file.type.indexOf('image') !== 0) return;
+      var slot = e.target.closest && e.target.closest('.vibe-slot');
+      var idx = slot ? Number(slot.getAttribute('data-vibe-slot')) : vibeActiveSlot;
+      if (Number.isNaN(idx)) idx = 0;
+      compressAndSet(file, idx);
+    });
   }
 
   function bindSelectorChips() {

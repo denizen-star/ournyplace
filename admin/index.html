@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="/assets/css/app.css?v=33">
+  <link rel="stylesheet" href="/assets/css/app.css?v=38">
 </head>
 <body>
   <header class="app-header app-header--admin">
@@ -106,9 +106,26 @@
 
           <section class="form-section form-section-wide">
             <h2>Listing Notes</h2>
-            <div class="form-grid">
-              <label>Photo URLs<textarea id="image-urls" rows="3" placeholder="One image URL per line"></textarea></label>
-              <label>Notes<textarea id="notes" rows="6" placeholder="Paste listing text here. Address, rent, sqft, beds, and baths will auto-fill when detected."></textarea></label>
+            <div class="form-grid form-grid--notes">
+              <label class="span-2">Notes<textarea id="notes" rows="6" placeholder="Paste listing text here. Address, rent, sqft, beds, and baths will auto-fill when detected."></textarea></label>
+            </div>
+          </section>
+          <section class="form-section form-section-wide">
+            <h2>Listing photos</h2>
+            <p class="form-hint muted">Up to 3. Click a box, then paste a screenshot or drop an image. Stored in the database as compressed JPEGs (resized to screen quality).</p>
+            <div id="vibe-photo-slots" class="vibe-photo-slots" role="group" aria-label="Apartment photos">
+              <div class="vibe-slot" data-vibe-slot="0">
+                <div class="vibe-slot-surface" tabindex="0" role="button" aria-label="Photo 1, paste or drop"></div>
+                <button type="button" class="vibe-slot-clear" data-vibe-clear aria-label="Remove photo 1" hidden>×</button>
+              </div>
+              <div class="vibe-slot" data-vibe-slot="1">
+                <div class="vibe-slot-surface" tabindex="0" role="button" aria-label="Photo 2, paste or drop"></div>
+                <button type="button" class="vibe-slot-clear" data-vibe-clear aria-label="Remove photo 2" hidden>×</button>
+              </div>
+              <div class="vibe-slot" data-vibe-slot="2">
+                <div class="vibe-slot-surface" tabindex="0" role="button" aria-label="Photo 3, paste or drop"></div>
+                <button type="button" class="vibe-slot-clear" data-vibe-clear aria-label="Remove photo 3" hidden>×</button>
+              </div>
             </div>
           </section>
         </div>
@@ -156,8 +173,9 @@
     </section>
   </main>
 
-  <script src="/assets/js/apartmentStatus.js?v=33"></script>
-  <script src="/assets/js/api.js?v=33"></script>
-  <script src="/assets/js/admin.js?v=33"></script>
+  <script src="/assets/js/apartmentStatus.js?v=38"></script>
+  <script src="/assets/js/api.js?v=38"></script>
+  <script src="/assets/js/vibeImages.js?v=38"></script>
+  <script src="/assets/js/admin.js?v=38"></script>
 </body>
 </html>

@@ -2536,20 +2536,37 @@ textarea {
   pointer-events: none;
 }
 
-/* Apartment details page only (#detail-root): centered summary; status art top-left */
+/* Apartment details page only (#detail-root): centered summary; status art + vibe thumbs top-left */
 #detail-root .app-summary-card {
   padding: 24px;
   padding-left: max(24px, calc(100px + 36px));
   text-align: center;
 }
 
-#detail-root .summary-status-badge {
-  width: 100px;
-  height: 100px;
+#detail-root .summary-hero-badges {
+  position: absolute;
   top: 16px;
   left: 16px;
-  right: auto;
-  transform: none;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  justify-content: flex-start;
+  z-index: 1;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+#detail-root .summary-hero-badges .summary-hero-badges-left {
+  pointer-events: auto;
+  flex-shrink: 0;
+}
+
+#detail-root .summary-hero-badges .summary-status-badge {
+  position: static;
+  width: 100px;
+  height: 100px;
+  flex-shrink: 0;
 }
 
 #detail-root .summary-status-row {
@@ -2614,6 +2631,207 @@ textarea {
 
 #detail-root .app-meta > .score-box .muted {
   font-size: 0.78rem;
+}
+
+/* Listing vibe photos: rounded tiles, 1px dark border (header + details tab) */
+.vibe-thumb-frame {
+  border: 1pt solid #4b5563;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f3f4f6;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.vibe-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  vertical-align: top;
+}
+
+.vibe-thumb--header {
+  width: 80px;
+  height: 80px;
+}
+
+.vibe-thumb--tab {
+  width: 100%;
+  max-width: 300px;
+  height: 300px;
+  margin: 0;
+}
+
+.vibe-thumb--scorecard {
+  width: min(100%, 400px);
+  max-width: 400px;
+  aspect-ratio: 1;
+  height: auto;
+  margin: 0;
+  align-self: flex-start;
+}
+
+.scorecard-vibe-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.detail-images-editor {
+  margin-bottom: 1.25rem;
+}
+
+#detail-root .detail-images-editor .section-header {
+  margin-bottom: 6px;
+}
+
+.detail-images-tab-layout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 20px 24px;
+}
+
+.detail-images-tab-layout .detail-voting-table-wrap,
+.detail-images-tab-layout--partner .detail-vote-content,
+.detail-images-tab-layout--partner > .empty-state {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.detail-images-gallery {
+  flex: 0 0 300px;
+  width: 300px;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detail-images-gallery--empty {
+  flex-basis: auto;
+  min-height: 120px;
+  justify-content: center;
+}
+
+.detail-voting-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.detail-voting-score-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.detail-voting-score-table th,
+.detail-voting-score-table td {
+  border-bottom: 1px solid #e5e7eb;
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.detail-voting-score-table thead th {
+  background: #f9fafb;
+  font-weight: 600;
+}
+
+/* Admin: paste/drop photo slots (compressed JPEG) */
+.vibe-photo-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.vibe-slot {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  flex-shrink: 0;
+}
+
+.vibe-slot-surface {
+  width: 100%;
+  height: 100%;
+  border: 1pt solid #4b5563;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.vibe-slot-surface:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.vibe-slot-placeholder {
+  font-size: 0.7rem;
+  color: #6b7280;
+  text-align: center;
+  padding: 8px;
+  line-height: 1.3;
+  pointer-events: none;
+}
+
+.vibe-slot-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.vibe-slot-clear {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  line-height: 1;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 1rem;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.vibe-slot-clear:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.form-grid--notes {
+  width: 100%;
+}
+
+@media (max-width: 600px) {
+  #detail-root .summary-hero-badges {
+    position: static;
+    left: auto;
+    right: auto;
+    justify-content: center;
+    width: 100%;
+    max-width: none;
+    margin-bottom: 6px;
+    padding: 0 2px;
+    flex-wrap: wrap;
+  }
+
+  .detail-images-gallery {
+    flex: 1 1 100%;
+    width: 100%;
+  }
 }
 
 @media (max-width: 440px) {

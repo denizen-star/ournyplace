@@ -1,6 +1,6 @@
 (function () {
   var rootEl = document.getElementById('detail-root');
-  var state = { apartment: null, criteria: [] };
+  var state = { apartment: null, criteria: [], detailVibeSlots: ['', '', ''], detailVibeActiveSlot: 0 };
 
   document.addEventListener('DOMContentLoaded', boot);
 
@@ -41,11 +41,13 @@
 
   function render(activeTab) {
     var apartment = state.apartment;
+    syncDetailVibeSlotsFromApartment(apartment);
     rootEl.innerHTML =
       renderSummaryHeader(apartment) +
       '<div class="summary-tabs-container">' +
         renderTabs(activeTab) +
         renderScorecardTab(apartment, activeTab) +
+        renderImagesTab(apartment, activeTab) +
         renderUnitSetupTab(apartment, activeTab) +
         renderPartnerTab(apartment, 'peter', activeTab) +
         renderPartnerTab(apartment, 'kerv', activeTab) +
@@ -60,12 +62,21 @@
     bindDefinitionToggles();
     bindVisitForm();
     bindApplicationForm();
+    for (var vi = 0; vi < 3; vi++) {
+      updateDetailVibeSlotUI(vi);
+    }
+    bindDetailVibePhotoSlots();
+    bindDetailVibeSave();
   }
 
   function renderSummaryHeader(apartment) {
     var status = NyhomeStatus.normalizeStatus(apartment.status || 'new');
     return '<section class="app-summary-card">' +
-      '<img class="summary-status-badge" src="/assets/img/' + escapeAttr(status) + '.png" alt="" aria-hidden="true" width="100" height="100">' +
+      '<div class="summary-hero-badges">' +
+        '<div class="summary-hero-badges-left">' +
+        '<img class="summary-status-badge" src="/assets/img/' + escapeAttr(status) + '.png" alt="" aria-hidden="true" width="100" height="100">' +
+        '</div>' +
+      '</div>' +
       '<div class="summary-status-row">' +
         statusProgressionControls(apartment.status || 'new') +
       '</div>' +
@@ -90,6 +101,7 @@
   function renderTabs(activeTab) {
     var tabs = [
       ['scorecard', 'Scorecard'],
+      ['images', 'Images'],
       ['unit', 'Unit Setup'],
       ['peter', 'Peter'],
       ['kerv', 'Kerv'],
@@ -104,6 +116,173 @@
       }).join('') +
       '<button type="button" class="status-reject-quiet summary-tabs-reject" data-status-reject aria-label="Mark rejected">Reject</button>' +
     '</div>';
+  }
+
+  function getListingPhotoUrls(apartment) {
+    return (apartment.images || []).map(function (i) { return i.image_url; }).filter(Boolean).slice(0, 3);
+  }
+
+  function syncDetailVibeSlotsFromApartment(apartment) {
+    var urls = getListingPhotoUrls(apartment);
+    state.detailVibeSlots = ['', '', ''];
+    for (var i = 0; i < urls.length && i < 3; i++) {
+      state.detailVibeSlots[i] = urls[i];
+    }
+  }
+
+  function getDetailVibeImageUrls() {
+    return state.detailVibeSlots.filter(function (u) { return u && String(u).trim(); });
+  }
+
+  function renderDetailVibeEditor() {
+    return '<div class="content-section detail-images-editor">' +
+      '<div class="section-header"><h3 class="section-title">Listing photos</h3></div>' +
+      '<p class="form-hint muted">Up to 3. Click a slot, then paste a screenshot or drop an image. Saved as compressed JPEGs (same as admin).</p>' +
+      '<div id="detail-vibe-photo-slots" class="vibe-photo-slots detail-vibe-photo-slots" role="group" aria-label="Apartment photos">' +
+        '<div class="vibe-slot" data-vibe-slot="0">' +
+          '<div class="vibe-slot-surface" tabindex="0" role="button" aria-label="Photo 1, paste or drop"></div>' +
+          '<button type="button" class="vibe-slot-clear" data-vibe-clear aria-label="Remove photo 1" hidden>×</button>' +
+        '</div>' +
+        '<div class="vibe-slot" data-vibe-slot="1">' +
+          '<div class="vibe-slot-surface" tabindex="0" role="button" aria-label="Photo 2, paste or drop"></div>' +
+          '<button type="button" class="vibe-slot-clear" data-vibe-clear aria-label="Remove photo 2" hidden>×</button>' +
+        '</div>' +
+        '<div class="vibe-slot" data-vibe-slot="2">' +
+          '<div class="vibe-slot-surface" tabindex="0" role="button" aria-label="Photo 3, paste or drop"></div>' +
+          '<button type="button" class="vibe-slot-clear" data-vibe-clear aria-label="Remove photo 3" hidden>×</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="button-row detail-vibe-actions">' +
+        '<button type="button" class="primary-btn" id="detail-vibe-save-photos">Save photos</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function firstEmptyDetailVibeIndex() {
+    for (var i = 0; i < 3; i++) {
+      if (!state.detailVibeSlots[i]) return i;
+    }
+    return -1;
+  }
+
+  function assignDetailVibeSlot(index, dataUrl) {
+    if (index < 0 || index > 2) return;
+    state.detailVibeSlots[index] = dataUrl;
+    updateDetailVibeSlotUI(index);
+  }
+
+  function updateDetailVibeSlotUI(index) {
+    var root = document.getElementById('detail-vibe-photo-slots');
+    if (!root) return;
+    var slot = root.querySelector('.vibe-slot[data-vibe-slot="' + index + '"]');
+    if (!slot) return;
+    var surface = slot.querySelector('.vibe-slot-surface');
+    var clearBtn = slot.querySelector('[data-vibe-clear]');
+    var u = state.detailVibeSlots[index];
+    if (u) {
+      surface.innerHTML = '<img class="vibe-slot-img" src="' + escapeAttr(u) + '" alt="Preview">';
+      if (clearBtn) clearBtn.hidden = false;
+    } else {
+      surface.innerHTML = '<span class="vibe-slot-placeholder">Click, paste, drop</span>';
+      if (clearBtn) clearBtn.hidden = true;
+    }
+  }
+
+  function bindDetailVibePhotoSlots() {
+    var root = document.getElementById('detail-vibe-photo-slots');
+    if (!root || !window.NyhomeVibeImages) {
+      return;
+    }
+
+    function compressAndSet(file, slotIndex) {
+      window.NyhomeVibeImages.fileToCompressedDataUrl(file).then(function (dataUrl) {
+        var idx = slotIndex;
+        if (idx < 0 || idx > 2) idx = 0;
+        assignDetailVibeSlot(idx, dataUrl);
+      }).catch(function (err) {
+        console.error('[nyhome-details] image compress', err);
+      });
+    }
+
+    root.addEventListener('click', function (e) {
+      var c = e.target.closest && e.target.closest('[data-vibe-clear]');
+      if (c) {
+        e.preventDefault();
+        e.stopPropagation();
+        var clearSlot = c.closest('.vibe-slot');
+        if (clearSlot) {
+          assignDetailVibeSlot(Number(clearSlot.getAttribute('data-vibe-slot')), '');
+        }
+        return;
+      }
+      var s = e.target.closest && e.target.closest('.vibe-slot-surface');
+      if (s) {
+        var parent = s.closest('.vibe-slot');
+        if (parent) {
+          state.detailVibeActiveSlot = Number(parent.getAttribute('data-vibe-slot')) || 0;
+        }
+        try {
+          s.focus();
+        } catch (err) { /* empty */ }
+      }
+    });
+
+    root.addEventListener('paste', function (e) {
+      var f = window.NyhomeVibeImages.clipboardImageFileFromEvent(e);
+      if (!f) return;
+      e.preventDefault();
+      e.stopPropagation();
+      var empty = firstEmptyDetailVibeIndex();
+      var idx = empty === -1 ? state.detailVibeActiveSlot : empty;
+      compressAndSet(f, idx);
+    });
+
+    root.addEventListener('dragover', function (e) {
+      e.preventDefault();
+    });
+    root.addEventListener('drop', function (e) {
+      e.preventDefault();
+      var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (!file || !file.type || file.type.indexOf('image') !== 0) return;
+      var slot = e.target.closest && e.target.closest('.vibe-slot');
+      var idx = slot ? Number(slot.getAttribute('data-vibe-slot')) : state.detailVibeActiveSlot;
+      if (Number.isNaN(idx)) idx = 0;
+      compressAndSet(file, idx);
+    });
+  }
+
+  function bindDetailVibeSave() {
+    var btn = document.getElementById('detail-vibe-save-photos');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      NyhomeAPI.saveApartment(buildApartmentPayload()).then(function () {
+        return load('images');
+      }).catch(catchSaveApartment);
+    });
+  }
+
+  function renderListingPhotoGalleryAside(apartment) {
+    var urls = getListingPhotoUrls(apartment);
+    if (urls.length) {
+      return '<aside class="detail-images-gallery" aria-label="Listing photos">' +
+        urls.map(function (url) {
+          return '<div class="vibe-thumb-frame vibe-thumb--tab"><img class="vibe-thumb-img" src="' + escapeAttr(url) + '" alt="" width="300" height="300" loading="lazy"></div>';
+        }).join('') +
+      '</aside>';
+    }
+    return '<aside class="detail-images-gallery detail-images-gallery--empty" aria-label="Listing photos"><p class="muted">No photos yet. Add up to 3 on this page (Images tab) or in Admin.</p></aside>';
+  }
+
+  function renderScorecardPhotoBlock(apartment) {
+    var urls = getListingPhotoUrls(apartment);
+    if (!urls.length) {
+      return contentSection('Photos', '<p class="muted">No photos yet. Add them in the <strong>Images</strong> tab or Admin.</p>');
+    }
+    return contentSection('Photos', '<div class="scorecard-vibe-strip" role="list">' +
+      urls.map(function (url) {
+        return '<div class="vibe-thumb-frame vibe-thumb--scorecard" role="listitem"><img class="vibe-thumb-img" src="' + escapeAttr(url) + '" alt="" width="400" height="400" loading="lazy"></div>';
+      }).join('') +
+    '</div>');
   }
 
   function renderScorecardTab(apartment, activeTab) {
@@ -126,6 +305,44 @@
         ], 'No unit details yet.')) +
       '</div>' +
       contentSection('Listing Notes', apartment.notes ? '<p>' + escapeHtml(apartment.notes) + '</p>' : '<p class="muted">No notes yet.</p>') +
+      renderScorecardPhotoBlock(apartment) +
+    '</section>';
+  }
+
+  function renderVotingScoreTable(apartment) {
+    if (!state.criteria.length) {
+      return '<div class="detail-voting-table-wrap content-section"><p class="muted">Add criteria in Admin to start scoring.</p></div>';
+    }
+    var r = apartment.ratings || {};
+    var rp = r.peter || {};
+    var rk = r.kerv || {};
+    var rows = state.criteria.map(function (c) {
+      return '<tr><th scope="row">' + escapeHtml(c.label) + '</th><td>' + votingScoreCell(rp[c.id]) + '</td><td>' + votingScoreCell(rk[c.id]) + '</td></tr>';
+    }).join('');
+    return '<div class="detail-voting-table-wrap content-section">' +
+      '<div class="section-header"><h3 class="section-title">Per-criterion scores</h3></div>' +
+      '<div class="detail-voting-table-scroll">' +
+        '<table class="detail-voting-score-table">' +
+          '<thead><tr><th scope="col">Criterion</th><th scope="col">Peter</th><th scope="col">Kerv</th></tr></thead>' +
+          '<tbody>' + rows + '</tbody>' +
+        '</table>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function votingScoreCell(v) {
+    if (v == null || v === '') return '—';
+    return escapeHtml(String(v));
+  }
+
+  function renderImagesTab(apartment, activeTab) {
+    return '<section id="tab-images" class="summary-tab-content' + (activeTab === 'images' ? ' active' : '') + '">' +
+      '<h2>Images &amp; scores</h2>' +
+      renderDetailVibeEditor() +
+      '<div class="detail-images-tab-layout">' +
+        renderVotingScoreTable(apartment) +
+        renderListingPhotoGalleryAside(apartment) +
+      '</div>' +
     '</section>';
   }
 
@@ -151,7 +368,10 @@
     var title = partnerKey === 'peter' ? 'Peter' : 'Kerv';
     return '<section id="tab-' + partnerKey + '" class="summary-tab-content' + (activeTab === partnerKey ? ' active' : '') + '">' +
       '<h2>' + title + '</h2>' +
-      renderPartnerVotingList(apartment, partnerKey) +
+      '<div class="detail-images-tab-layout detail-images-tab-layout--partner">' +
+        renderPartnerVotingList(apartment, partnerKey) +
+        renderListingPhotoGalleryAside(apartment) +
+      '</div>' +
     '</section>';
   }
 
@@ -470,6 +690,8 @@
 
   function buildApartmentPayload() {
     var apartment = state.apartment;
+    var listingEl = rootEl.querySelector('[data-listing-url]');
+    var notesEl = rootEl.querySelector('[data-notes]');
     return {
       id: apartment.id,
       neighborhood: apartment.neighborhood,
@@ -488,9 +710,9 @@
       amenities: selectedValues('amenities'),
       moveInDate: apartment.move_in_date,
       status: NyhomeStatus.normalizeStatus(getStatusValue() || 'new'),
-      listingUrl: rootEl.querySelector('[data-listing-url]').value,
-      notes: rootEl.querySelector('[data-notes]').value,
-      imageUrls: (apartment.images || []).map(function (image) { return image.image_url; }),
+      listingUrl: listingEl ? listingEl.value : (apartment.listing_url || ''),
+      notes: notesEl ? notesEl.value : (apartment.notes || ''),
+      imageUrls: getDetailVibeImageUrls(),
     };
   }
 
