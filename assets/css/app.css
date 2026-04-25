@@ -2872,12 +2872,323 @@ textarea {
   font-weight: 400;
 }
 
-body.shortlist .shortlist-sort {
+body.shortlist .shortlist-view {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 10px 14px;
   margin-top: 14px;
+}
+
+body.shortlist .shortlist-view-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9ca3af;
+}
+
+body.shortlist .shortlist-view-segment {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  max-width: 100%;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  background: var(--paper);
+  overflow: hidden;
+}
+
+body.shortlist .shortlist-view-btn {
+  margin: 0;
+  padding: 8px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+body.shortlist .shortlist-view-btn + .shortlist-view-btn {
+  border-left: 1px solid #e5e7eb;
+}
+
+body.shortlist .shortlist-view-btn:hover {
+  color: var(--ink);
+  background: rgba(243, 244, 246, 0.9);
+}
+
+body.shortlist .shortlist-view-btn[aria-selected="true"] {
+  color: var(--accent-dark);
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+
+body.shortlist .shortlist-sort--hidden {
+  display: none !important;
+}
+
+body.shortlist .card-list.card-list--finalist {
+  display: block;
+  padding: 0;
+  margin: 0;
+  min-height: 0;
+}
+
+/* Finalist: aligned column grid; score columns use same vote color tokens as cards / score boxes */
+body.shortlist .shortlist-finalist-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  font-size: 0.86rem;
+  line-height: 1.4;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+}
+
+body.shortlist .shortlist-finalist-cols {
+  --sf-col-ord: 1.9rem;
+  --sf-col-list: minmax(11rem, 1.5fr);
+  --sf-col-rent: 4.9rem;
+  --sf-col-net: 4.9rem;
+  --sf-col-move: 4.9rem;
+  --sf-col-bed: 10.5rem;
+  --sf-col-sc: 2.75rem;
+  --sf-col-st: 4.5rem;
+  display: grid;
+  grid-template-columns:
+    var(--sf-col-ord)
+    var(--sf-col-list)
+    var(--sf-col-rent)
+    var(--sf-col-net)
+    var(--sf-col-move)
+    var(--sf-col-bed)
+    var(--sf-col-sc)
+    var(--sf-col-sc)
+    var(--sf-col-sc)
+    var(--sf-col-st);
+  align-items: start;
+  column-gap: 10px;
+  min-width: 56rem;
+  width: 100%;
+  max-width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+
+body.shortlist .shortlist-finalist-header {
+  background: #f3f4f6;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 8px 10px;
+}
+
+body.shortlist .shortlist-finalist-header .shortlist-finalist-c--ord {
+  text-align: right;
+}
+
+body.shortlist .shortlist-finalist-header .shortlist-finalist-c--h {
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #6b7280;
+  line-height: 1.25;
+  hyphens: auto;
+}
+
+body.shortlist .shortlist-finalist-c--h-move {
+  min-width: 0;
+  word-wrap: break-word;
+}
+
+body.shortlist .shortlist-finalist-body {
+  display: flex;
+  flex-direction: column;
+}
+
+body.shortlist .shortlist-finalist-line {
+  text-decoration: none;
+  color: var(--ink);
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--line-light);
+  transition: background 0.12s ease;
+  margin: 0;
+  border-radius: 0;
+}
+
+body.shortlist .shortlist-finalist-line:last-child {
+  border-bottom: 0;
+}
+
+body.shortlist .shortlist-finalist-line:hover {
+  background: rgba(243, 244, 246, 0.85);
+}
+
+body.shortlist .shortlist-finalist-c {
+  min-width: 0;
+  padding-top: 1px;
+}
+
+body.shortlist .shortlist-finalist-c--ord {
+  font-weight: 600;
+  color: #374151;
+  text-align: right;
+  padding-top: 2px;
+}
+
+body.shortlist .shortlist-finalist-c--right {
+  text-align: right;
+  justify-self: end;
+  width: 100%;
+}
+
+body.shortlist .shortlist-finalist-c--place {
+  word-break: break-word;
+  color: var(--ink);
+  font-weight: 500;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+body.shortlist .shortlist-finalist-place-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+body.shortlist .shortlist-finalist-place-txt {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+
+body.shortlist .nyhome-listing-thumbs {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+body.shortlist .nyhome-listing-thumb-wrap {
+  display: inline-block;
+  flex-shrink: 0;
+  line-height: 0;
+  border-radius: 4px;
+}
+
+/* Square = one line height (1.4em); em from parent font on cards / finalist */
+body.shortlist .nyhome-listing-thumb {
+  display: block;
+  width: 1.4em;
+  height: 1.4em;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid rgba(229, 231, 235, 0.95);
+  background: #f3f4f6;
+  flex-shrink: 0;
+}
+
+/* Cards: Avg/Kerv/Peter on first line; thumbnails on the line below */
+body.shortlist .card-score-thumbs-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+body.shortlist .card-score-thumbs-row .score-grid {
+  width: 100%;
+}
+
+body.shortlist .card-listing-thumbs {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  width: 100%;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+body.shortlist .shortlist-finalist-c--bed {
+  font-size: 0.84rem;
+  color: #4b5563;
+  white-space: nowrap;
+}
+
+body.shortlist .shortlist-finalist-c--status {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 1px;
+}
+
+body.shortlist .shortlist-finalist-pct {
+  font-weight: 600;
+  font-size: 0.88rem;
+  letter-spacing: -0.01em;
+}
+
+body.shortlist .shortlist-finalist-pct--combined {
+  color: var(--vote-combined);
+}
+
+body.shortlist .shortlist-finalist-pct--kerv {
+  color: var(--kerv);
+}
+
+body.shortlist .shortlist-finalist-pct--peter {
+  color: var(--peter);
+}
+
+body.shortlist .shortlist-finalist-pct--empty {
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+/* Match admin/details status pill colors; only size tweaks (colors from .status-*) */
+body.shortlist .shortlist-finalist-pill {
+  font-size: 0.7rem;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Fixed hover preview: does not affect layout (out of document flow) */
+#nyhome-finalist-flyout.shortlist-finalist-flyout {
+  position: fixed;
+  width: 300px;
+  height: 300px;
+  z-index: 20000;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  border: 1px solid #4b5563;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f3f4f6;
+  box-shadow: 0 16px 48px rgba(15, 23, 42, 0.22);
+  pointer-events: auto;
+}
+
+#nyhome-finalist-flyout.shortlist-finalist-flyout .vibe-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+body.shortlist .shortlist-sort {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-top: 8px;
 }
 
 body.shortlist .shortlist-sort-label {
@@ -3361,7 +3672,8 @@ body.shortlist .score-chip {
   font-weight: 600;
 }
 
-body.shortlist .card-status-container .pill {
+/* Fact chips only; status pills use .status-* palette */
+body.shortlist .card-status-container .pill:not(.status-pill) {
   background: #f3f4f6;
   color: #4b5563;
 }

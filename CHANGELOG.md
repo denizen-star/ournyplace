@@ -3,6 +3,8 @@
 ## Unreleased
 
 ### Added
+- **Shortlist Finalist view:** **View** = Cards | **Finalist** (under the title, `nyhomeShortlistView` in `localStorage`). **Finalist** = aligned table: sort **Avg (desc)** then **workflow (desc)**; **Sort by** hidden. Columns: #, listing (address + neighborhood, thumbs after text when present), rent, net eff., **Move-in** `total_move_in_cents`, beds/baths, Avg / Kerv / Peter %, status (`status-pill` + `status-*` colors). Horizontal scroll on narrow viewports.
+- **Listing thumbs on shortlist / hover preview:** up to **3** `nyp_apartment_images` shown as small squares (`.nyhome-listing-thumb`); **Cards:** row **under** the Avg / Kerv / Peter score row, right-aligned. **Finalist:** in listing column. **Pointer hover** → fixed **300×300** preview (`#nyhome-finalist-flyout`, 1px border, rounded, same idea as vibe frames); out-of-flow (no row reflow). Dismiss: leave thumb/preview, **Escape**, **scroll**, **resize**. Thumbs use shared `wireListingThumbHovers()` for both views.
 - **N/A ratings:** per-criterion **N/A** in `/details` (and admin rating HTML if used); stores `NULL` in `nyp_ratings`; excluded from weighted partner % (only scored lines use weight). `npm run migrate`: `score` column nullable, `UPDATE` legacy `0` → `NULL`.
 - **Listing photos (vibe):** up to 3 per apartment. **Admin** + `/details` **Images** tab: paste/drop slots, `vibeImages.js` (resize + JPEG) → `data:` URLs in `nyp_apartment_images.image_url` (or keep older `https://` rows). Details **Save photos**; thumbnails on Scorecard / Images / Peter / Kerv (summary card has no inline strip).
 - Favicon: `assets/img/favicon1.png` in `<head>` on `/`, `/admin`, and `/details`; PWA `manifest.json` `icons` entry; `sw.js` precaches the file.
@@ -11,8 +13,9 @@
 - **Admin row → details:** click empty row area (not status, Edit, Details link, Delete) opens `/details/?id=…`.
 
 ### Changed
+- **Shortlist cards:** no longer “no photos on cards” only — show up to 3 small listing thumbs with hover preview (see Unreleased). README updated.
 - **`POST /api/ratings`:** body must include `score` (`null` for N/A, else integer `0–5`). `lib/apartmentRepository` `calculateScores` uses **included** criterion weight only when `score` is numeric.
-- **Scoring UI:** `0..5` + N/A hex row; labels flex-centered in button; `?v=` on HTML + `sw.js` `CACHE_VERSION` **41** (bump in lockstep).
+- **Scoring UI:** `0..5` + N/A hex row; labels flex-centered in button; `?v=` on HTML + `sw.js` `CACHE_VERSION` (bump in lockstep; **48** in current `index.html` / `sw.js`).
 - **`index.html`:** on `localhost` / `127.0.0.1` / `::1`, unregisters all service workers (no `sw.js` in local dev). Production still registers `sw.js`.
 
 ### Fixed

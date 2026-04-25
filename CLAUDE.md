@@ -18,7 +18,7 @@ Environment: copy `.env.example` to `.env.local` and set `DATABASE_URL` (PlanetS
 
 ### Routing (netlify.toml)
 
-- `/` → `index.html` — Public shortlist (card grid; status filter; optional **Sort by**: Workflow, Avg, Kerv, Peter, Last updated — persisted in `localStorage`)
+- `/` → `index.html` — Public shortlist: **View** Cards | **Finalist** (`nyhomeShortlistView`); **Sort by** when Cards (Workflow, Avg, Peter, Kerv, Last updated — `nyhomeShortlistSort`). Status filter; card grid with optional listing **thumbs** (row under Avg/Kerv/Peter) + **Finalist** table (thumbs after address, columns incl. move-in). Hover thumb → fixed **300px** flyout (`#nyhome-finalist-flyout`, no layout reflow)
 - `/admin` → `admin/index.html` — Management dashboard (add/edit apartments, criteria config, next actions)
 - `/details/?id=…` → `details/index.html` — Full apartment view (scorecard, tour, application tracking)
 - `/api/*` → `/.netlify/functions/:splat`
@@ -26,7 +26,7 @@ Environment: copy `.env.example` to `.env.local` and set `DATABASE_URL` (PlanetS
 ### Frontend (`assets/js/`)
 
 - **`api.js`** — Fetch wrapper; all API client methods live here
-- **`app.js`** — Shortlist render + filter; **sort** segment (`nyhomeShortlistSort` in `localStorage`)
+- **`app.js`** — Shortlist: filter, **view** (Cards / Finalist), **sort** (Cards only), `renderApartmentCard`, `renderFinalistList` (Avg→workflow sort), `listingThumbsMarkup` + `wireListingThumbHovers` (`.nyhome-listing-thumb-wrap`); fixed-position image preview
 - **`admin.js`** — Admin forms, criteria list (click-edit, drag reorder), **header search** (filters **Saved apartments**; suggestions under title; cleared when leaving **Apartment Setup** for another top tab), manager rows (row click → `/details` except interactive controls)
 - **`details.js`** — Details page tabs, status transitions, per-partner scoring UI
 - **`vibeImages.js`** — Client-side image resize + JPEG compress for listing photos (used by `admin.js` and `details.js` Images tab)
@@ -60,7 +60,7 @@ Each status has a corresponding PNG badge in `assets/img/` and a neon-border CSS
 
 ### Listing photos (vibe)
 
-Up to **3** images per apartment in `nyp_apartment_images` (`image_url` is text: `https://` or, after paste/drop, `data:image/jpeg;base64,...` from `vibeImages.js`). **Admin** (Apartment Setup) and **`/details` Images tab** use three click/paste/drop slots; **Save photos** on details sends a full apartment `PUT` with `imageUrls[]`. Thumbnail previews on Scorecard, Images, and partner tabs (not on the top summary card).
+Up to **3** images per apartment in `nyp_apartment_images` (`image_url` is text: `https://` or, after paste/drop, `data:image/jpeg;base64,...` from `vibeImages.js`). **Admin** (Apartment Setup) and **`/details` Images tab** use three click/paste/drop slots; **Save photos** on details sends a full apartment `PUT` with `imageUrls[]`. Thumbnail previews: **shortlist** Cards (under scores) and **Finalist** table + hover flyout; **Scorecard** / Images / partner tabs on `/details` (not on the details top summary card alone).
 
 ### Scoring
 
