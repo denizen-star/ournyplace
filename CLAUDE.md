@@ -18,7 +18,7 @@ Environment: copy `.env.example` to `.env.local` and set `DATABASE_URL` (PlanetS
 
 ### Routing (netlify.toml)
 
-- `/` → `index.html` — Public shortlist (card grid with scores, status, filter bar)
+- `/` → `index.html` — Public shortlist (card grid; status filter; optional **Sort by**: Workflow, Avg, Kerv, Peter, Last updated — persisted in `localStorage`)
 - `/admin` → `admin/index.html` — Management dashboard (add/edit apartments, criteria config, next actions)
 - `/details/?id=…` → `details/index.html` — Full apartment view (scorecard, tour, application tracking)
 - `/api/*` → `/.netlify/functions/:splat`
@@ -26,8 +26,8 @@ Environment: copy `.env.example` to `.env.local` and set `DATABASE_URL` (PlanetS
 ### Frontend (`assets/js/`)
 
 - **`api.js`** — Fetch wrapper; all API client methods live here
-- **`app.js`** — Shortlist rendering and filtering
-- **`admin.js`** — Admin form logic (apartments, criteria, drag-reorder)
+- **`app.js`** — Shortlist render + filter; **sort** segment (`nyhomeShortlistSort` in `localStorage`)
+- **`admin.js`** — Admin forms, criteria list (click-edit, drag reorder), **header search** (filters **Saved apartments**; suggestions under title; cleared when leaving **Apartment Setup** for another top tab), manager rows (row click → `/details` except interactive controls)
 - **`details.js`** — Details page tabs, status transitions, per-partner scoring UI
 - **`vibeImages.js`** — Client-side image resize + JPEG compress for listing photos (used by `admin.js` and `details.js` Images tab)
 - **`apartmentStatus.js`** — Shared status enum and CSS class mapping (used by both client and `lib/`)

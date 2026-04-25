@@ -22,6 +22,7 @@ Public app:
 
 - Route: `/`
 - Responsive **card grid** (`body.shortlist`): KPI strip (glass + neon border per tile, neutral fill), fourth tile **top avg score**
+- **Sort by** (under `h1`): Workflow, Avg, Peter, Kerv, Last updated — `localStorage` `nyhomeShortlistSort` (`assets/js/app.js`)
 - Summary + per-card row = **Avg** / Kerv / Peter %; label **Avg** (not “Combined”) in UI
 - Listing cards: glass panel + **`listing-status-<status>`** border/glow from normalized `status`
 - Cards omit photo gallery; up to 3 **listing photos** in Admin + `/details` **Images** (paste/drop, `vibeImages.js` → `nyp_apartment_images`)
@@ -39,8 +40,8 @@ Admin:
 - Route: `/admin`
 - No password yet
 - Top nav: `summary-tabs-header` / `Apartment Setup` / `Criteria` / `Next Actions`
-- **Saved apartments** (below form): `manager-row` layout—per-row `status` `<select>` (PUT, preserves `imageUrls` on save), rent/unit/move-in metrics, **Edit** / **Details** / **Delete**; no inline voting or tour/app blocks (per-listing “progress” lives on `/details`)
-- **Criteria** tab: add form (label, definition, weight + submit on same row); list rows = click text to edit, blur → `PUT` update; drag handle → `PUT { orderedIds }` (matches order in `/details` scoring tabs); `POST` create / `DELETE` soft-delete unchanged
+- **Saved apartments** (below form): `manager-row` layout—per-row `status` `<select>` (PUT, preserves `imageUrls` on save), rent/unit/move-in metrics, **Edit** / **Details** / **Delete**; no inline voting or tour/app blocks (per-listing “progress” lives on `/details`). **Header search** (next to page title) filters the list; **suggestions** under **Apartment manager** (name + `neighborhood · address`); clear on other top tab; **×** in field; **Escape** / blur. Click row (not `select` / links / buttons) → `/details/?id=…`
+- **Criteria** tab: add form (label, definition, weight + submit on same row); list rows = click text to edit, blur → `PUT` update; drag handle → `PUT { orderedIds }` (matches order in `/details` scoring tabs); on success, `state.criteria` re-sorted and `renderApartments()`; `POST` create / `DELETE` soft-delete unchanged
 - Load order: `apartmentStatus.js` → `api.js` → `admin.js` for `NyhomeStatus` helpers
 - Apartment form is organized into:
   - Location

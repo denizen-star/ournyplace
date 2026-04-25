@@ -6,6 +6,9 @@
 - **N/A ratings:** per-criterion **N/A** in `/details` (and admin rating HTML if used); stores `NULL` in `nyp_ratings`; excluded from weighted partner % (only scored lines use weight). `npm run migrate`: `score` column nullable, `UPDATE` legacy `0` → `NULL`.
 - **Listing photos (vibe):** up to 3 per apartment. **Admin** + `/details` **Images** tab: paste/drop slots, `vibeImages.js` (resize + JPEG) → `data:` URLs in `nyp_apartment_images.image_url` (or keep older `https://` rows). Details **Save photos**; thumbnails on Scorecard / Images / Peter / Kerv (summary card has no inline strip).
 - Favicon: `assets/img/favicon1.png` in `<head>` on `/`, `/admin`, and `/details`; PWA `manifest.json` `icons` entry; `sw.js` precaches the file.
+- **Admin saved-list search:** header field next to **Apartment manager** filters **Saved apartments**; **suggestion list** under the title (listing name + `neighborhood · address`, up to 12; match stack = title, address, neighborhood, apt, status label, unit-feature + amenity slugs/labels; not notes). **×** clear; **Escape** / blur closes list. Switching to **Criteria** or **Next Actions** clears the field.
+- **Public shortlist sort:** `Sort by` segment under `h1` (Workflow, Avg, Peter, Kerv, Last updated); choice persisted in `localStorage` key `nyhomeShortlistSort`.
+- **Admin row → details:** click empty row area (not status, Edit, Details link, Delete) opens `/details/?id=…`.
 
 ### Changed
 - **`POST /api/ratings`:** body must include `score` (`null` for N/A, else integer `0–5`). `lib/apartmentRepository` `calculateScores` uses **included** criterion weight only when `score` is numeric.
@@ -14,6 +17,7 @@
 
 ### Fixed
 - N/A and **0** could both look selected (`Number(null) === 0`); active state uses `rating != null` for numeric chips.
+- **Admin Criteria** drag-reorder: after successful `reorderCriteria`, `state.criteria` sort uses `ids.indexOf(Number(a.id))` (string/number id safe). `renderApartments()` runs to refresh **Saved apartments**.
 
 ## 1.1.0 - 2026-04-25
 
