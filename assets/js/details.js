@@ -331,7 +331,8 @@
   }
 
   function votingScoreCell(v) {
-    if (v == null || v === '') return '—';
+    if (v === null) return 'N/A';
+    if (v === undefined || v === '') return '—';
     return escapeHtml(String(v));
   }
 
@@ -482,12 +483,17 @@
     rootEl.querySelectorAll('[data-rating]').forEach(function (button) {
       button.addEventListener('click', function () {
         var parts = button.getAttribute('data-rating').split(':');
-        NyhomeAPI.saveRating({
+        var payload = {
           apartmentId: state.apartment.id,
           partnerKey: parts[0],
           criterionId: Number(parts[1]),
-          score: Number(button.getAttribute('data-score')),
-        }).then(function () { load(currentTab() || 'scorecard'); });
+        };
+        if (button.getAttribute('data-na') === 'true') {
+          payload.score = null;
+        } else {
+          payload.score = Number(button.getAttribute('data-score'));
+        }
+        NyhomeAPI.saveRating(payload).then(function () { load(currentTab() || 'scorecard'); });
       });
     });
   }
@@ -580,8 +586,9 @@
             : '<span class="criterion-def-spacer" aria-hidden="true"></span>') +
         '</div>' +
         '<div class="score-picker detail-vote-scores partner-vote-card-' + partnerKey + '">' +
+        naRatingButton(partnerKey, criterion.id, rating === null) +
         [0, 1, 2, 3, 4, 5].map(function (score) {
-          return ratingButton(partnerKey, criterion.id, score, Number(rating) === score);
+          return ratingButton(partnerKey, criterion.id, score, rating != null && Number(rating) === score);
         }).join('') +
         '</div>' +
       '</div>' +
@@ -589,6 +596,15 @@
         ? '<div class="vote-criterion-def-panel" id="' + escapeAttr(panelId) + '" hidden><p class="vote-criterion-def-text">' + escapeHtml(def) + '</p></div>'
         : '') +
     '</article>';
+  }
+
+  function naRatingButton(partnerKey, criterionId, isActive) {
+    return '<button type="button" class="score-btn score-btn--na' + (isActive ? ' active' : '') + '" data-rating="' + partnerKey + ':' + criterionId + '" data-na="true" aria-label="Not applicable">' +
+      '<svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">' +
+        '<path d="M24 4 43 15v18L24 44 5 33V15Z"></path>' +
+      '</svg>' +
+      '<span class="score-btn-na-text">N/A</span>' +
+    '</button>';
   }
 
   function ratingButton(partnerKey, criterionId, score, isActive) {

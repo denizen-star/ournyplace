@@ -1778,12 +1778,15 @@ body.shortlist .link-button--no-listing {
 
 .score-picker {
   display: grid;
-  grid-template-columns: repeat(6, minmax(36px, 1fr));
+  grid-template-columns: repeat(7, minmax(36px, 1fr));
   gap: 7px;
 }
 
 .score-btn {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-height: 44px;
   border: 0;
   background: transparent;
@@ -1811,6 +1814,15 @@ body.shortlist .link-button--no-listing {
 .score-btn span {
   position: relative;
   z-index: 1;
+  line-height: 1;
+}
+
+.score-btn-na-text {
+  font-size: 0.62rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .score-btn:hover path {
@@ -1888,10 +1900,10 @@ body.shortlist .link-button--no-listing {
   background: #ffffff;
 }
 
-/* Grid: column 1 = label+? (start-aligned); column 2 = fixed score strip so 0..5 align vertically on every row */
+/* Grid: column 1 = label+? (start-aligned); column 2 = fixed score strip so N/A + 0..5 align vertically on every row */
 .detail-vote-line {
   --detail-vote-score-gap: 5px;
-  --detail-vote-scores-w: calc(6 * 36px + 5 * var(--detail-vote-score-gap));
+  --detail-vote-scores-w: calc(7 * 36px + 6 * var(--detail-vote-score-gap));
   display: grid;
   grid-template-columns: minmax(0, 1fr) var(--detail-vote-scores-w);
   align-items: center;
@@ -1938,7 +1950,7 @@ body.shortlist .link-button--no-listing {
   min-width: 0;
   justify-self: stretch;
   gap: var(--detail-vote-score-gap) !important;
-  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
 }
 
 /* In table layout the list frame carries the 1px partner accent; rows use neutral dividers only */

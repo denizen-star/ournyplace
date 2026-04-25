@@ -12,16 +12,25 @@ exports.handler = async (event) => {
 
     const apartmentId = numberOrNull(body.apartmentId);
     const criterionId = numberOrNull(body.criterionId);
-    const score = numberOrNull(body.score);
     const partnerKey = stringOrNull(body.partnerKey);
-    if (!apartmentId || !criterionId || !partnerKey || score == null) {
-      return json(400, { error: 'apartmentId, partnerKey, criterionId, and score are required' });
+    if (!apartmentId || !criterionId || !partnerKey) {
+      return json(400, { error: 'apartmentId, partnerKey, and criterionId are required' });
+    }
+    if (!Object.prototype.hasOwnProperty.call(body, 'score')) {
+      return json(400, { error: 'score is required (0–5 or null for N/A)' });
     }
     if (!ALLOWED_PARTNERS.has(partnerKey)) {
       return json(400, { error: 'partnerKey must be kerv or peter' });
     }
-    if (!Number.isInteger(score) || score < 0 || score > 5) {
-      return json(400, { error: 'score must be an integer from 0 to 5' });
+    let score;
+    if (body.score === null) {
+      score = null;
+    } else {
+      const n = numberOrNull(body.score);
+      if (n == null || !Number.isInteger(n) || n < 0 || n > 5) {
+        return json(400, { error: 'score must be an integer from 0 to 5, or null for N/A' });
+      }
+      score = n;
     }
 
     await saveRating({

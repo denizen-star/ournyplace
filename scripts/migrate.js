@@ -65,7 +65,7 @@ const TABLES = [
     apartment_id INT NOT NULL,
     partner_key VARCHAR(40) NOT NULL,
     criterion_id INT NOT NULL,
-    score TINYINT NOT NULL,
+    score TINYINT NULL,
     notes TEXT DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -229,6 +229,13 @@ async function migrate() {
   await execute("UPDATE nyp_ratings SET partner_key = 'kerv' WHERE partner_key = 'you'");
   await execute("UPDATE nyp_ratings SET partner_key = 'peter' WHERE partner_key = 'partner'");
   console.log('[MIGRATE] OK: rating partner labels normalized');
+
+  await safeAlter(
+    'ALTER TABLE nyp_ratings MODIFY COLUMN score TINYINT NULL',
+    'nyp_ratings.score nullable (N/A)'
+  );
+  await execute('UPDATE nyp_ratings SET score = NULL WHERE score = 0');
+  console.log('[MIGRATE] OK: historical score 0 converted to N/A (NULL)');
 
   console.log('[MIGRATE] Complete.');
 }

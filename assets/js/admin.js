@@ -1000,16 +1000,27 @@
   function renderPartnerRatingCard(apartment, partnerKey) {
     return '<div class="partner-vote-card partner-vote-card-' + partnerKey + '" aria-label="' + (partnerKey === 'kerv' ? 'Kerv' : 'Peter') + ' voting card">' +
       state.criteria.map(function (criterion) {
-        var rating = ((apartment.ratings || {})[partnerKey] || {})[criterion.id] || '';
+        var rating = ((apartment.ratings || {})[partnerKey] || {})[criterion.id];
         return '<div class="vote-row">' +
           '<div class="vote-criterion"><strong>' + escapeHtml(criterion.label) + '</strong>' +
           (criterion.definition ? '<span>' + escapeHtml(criterion.definition) + '</span>' : '') + '</div>' +
-          '<div class="score-picker">' + [0, 1, 2, 3, 4, 5].map(function (score) {
-            return ratingButton(partnerKey, criterion.id, score, Number(rating) === score);
+          '<div class="score-picker">' +
+          naRatingButton(partnerKey, criterion.id, rating === null) +
+          [0, 1, 2, 3, 4, 5].map(function (score) {
+            return ratingButton(partnerKey, criterion.id, score, rating != null && Number(rating) === score);
           }).join('') + '</div>' +
         '</div>';
       }).join('') +
     '</div>';
+  }
+
+  function naRatingButton(partnerKey, criterionId, isActive) {
+    return '<button type="button" class="score-btn score-btn--na' + (isActive ? ' active' : '') + '" data-rating="' + partnerKey + ':' + criterionId + '" data-na="true" aria-label="Not applicable">' +
+      '<svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">' +
+        '<path d="M24 4 43 15v18L24 44 5 33V15Z"></path>' +
+      '</svg>' +
+      '<span class="score-btn-na-text">N/A</span>' +
+    '</button>';
   }
 
   function ratingButton(partnerKey, criterionId, score, isActive) {
