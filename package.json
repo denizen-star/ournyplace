@@ -1,11 +1,12 @@
 {
   "name": "nyhome",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Private local PWA for choosing a NYC apartment together",
   "scripts": {
     "dev": "npx netlify dev",
-    "migrate": "node scripts/migrate.js"
+    "migrate": "node scripts/migrate.js",
+    "split-badges": "python3 scripts/split_status_sprites.py assets/img/status-badges-sheet.png"
   },
   "dependencies": {
     "@planetscale/database": "^1.20.1",

@@ -23,9 +23,9 @@ There is intentionally no auth while this is local-only. Add a password gate bef
 
 ## What It Does
 
-- Public shortlist at `/`: apartment cards (no photo strip on the card—focus on text, facts, scores), summary stats, **Details** / **Listing** actions, color-coded `status` pill. Photo URLs can still be stored in admin (optional).
-- Details at `/details/?id=…` (via **Details** on a card or admin row): Hunter-style top summary (status progression + meta) and tabbed content: Scorecard, Unit Setup, Voting, Tour, Application, Activity Log. Status edits auto-save; voting uses SVG `0..5` buttons per partner.
-- Admin at `/admin`: summary-style top tabs (`Apartment Setup`, `Criteria`, `Next Actions`); `Saved Apartments` = compact one-line-style rows (status, metrics, Edit / Details / Delete)—no per-row voting or tour/app forms (use **Details** for that).
+- Public shortlist at `/`: responsive card grid (no photo strip—text, facts, scores), **KPI** strip + **Avg** / Kerv / Peter row on each card, **Details** / **Listing**, `status` **artwork** + collapsible filter; cards get **glass + status-colored** border/glow (`listing-status-*`). Photo URLs optional in admin.
+- Details at `/details/?id=…` (via **Details** on a card or admin row): Hunter-style top summary (status progression + meta) and tabbed content: Scorecard, Unit Setup, **Peter** and **Kerv** (scoring), Tour, Application, Activity Log. Status edits auto-save; each scoring tab has SVG `0..5` buttons per criterion (definition behind **?** when present).
+- Admin at `/admin`: summary-style top tabs (`Apartment Setup`, `Criteria`, `Next Actions`). **Criteria:** add row + **click-to-edit** list, drag reorder (order = voting tab order); `PUT /api/criteria` for update + reorder. `Saved Apartments` = compact rows (status, metrics, Edit / Details / Delete)—no per-row voting/tour/app (use **Details**).
 - Manual apartment entry with sections: Location, Financials, The Unit, Amenities, Listing Notes.
 - Apartment title is automatic: `Address #Apt`, e.g. `260 Gold Street #1117`.
 
@@ -39,7 +39,7 @@ new -> evaluating -> shortlisted -> tour_scheduled -> toured -> finalist -> appl
 
 - **`/admin` form:** full status `<select>` + **Reject** (no Prev/Next on the form).
 - **Admin saved list:** one row per listing; **status** dropdown saves the apartment on change.
-- **`/details`:** status `<select>` + arrow buttons move within the first 11 steps (stops on `rejected`); Reject in header actions. Status edits auto-save and refresh the **current** details tab (Unit Setup submit still returns to the Unit tab).
+- **`/details`:** status `<select>` + arrow buttons move within the first 11 steps (stops on `rejected`); **Reject** next to the progression; listing link in the **meta** row (not in the title row). Status edits auto-save and refresh the **current** details tab (Unit Setup submit still returns to the Unit tab).
 
 Palette: CSS classes `status-*` in [assets/css/app.css](assets/css/app.css) (background/text colors per state).
 
@@ -112,8 +112,8 @@ Unmapped lines are preserved under `Other:` in Notes.
 - Ratings live in `nyp_ratings`.
 - Voters: `kerv`, `peter`.
 - Scores are integers `0..5`.
-- **Where to vote:** `/details` → **Voting** tab (two partner cards, SVG score buttons; criterion = label + definition). Shortlist and admin list do not embed voting.
-- Scorecard tab shows Combined / Kerv / Peter percentages; public `/` cards show the same three in a single row.
+- **Where to vote:** `/details` → **Peter** or **Kerv** (one partner per tab). Criterion **table** (flushed rows, aligned `0..5` columns); **?** opens the definition. Unselected: pale hex + dim numeral; selected: **dark** fill + **white** numeral. Shortlist and admin saved list do not embed voting (admin form may still have criteria voting in the apartment **expand**).
+- Scorecard tab shows **Avg** / Kerv / Peter % (`Avg` = mean of the two partners when both exist; each partner % from weighted criteria in `calculateScores`); public `/` cards show the same three in one row.
 
 ## Local-Only Security
 
@@ -121,7 +121,7 @@ Mutating routes are intentionally open for local use. Before deploying publicly,
 
 - `/admin`
 - `POST/PUT/DELETE /api/apartments`
-- `POST/DELETE /api/criteria`
+- `POST/PUT/DELETE /api/criteria` (`PUT`: update fields or `{ orderedIds }` reorder)
 - `POST /api/ratings`
 - `POST /api/visits`
 - `POST /api/applications`

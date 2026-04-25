@@ -1,4 +1,4 @@
-var CACHE_VERSION = 7;
+var CACHE_VERSION = 15;
 var CACHE_NAME = 'nyhome-v' + CACHE_VERSION;
 
 var APP_SHELL = [
@@ -16,6 +16,19 @@ var APP_SHELL = [
   '/assets/js/app.js?v=' + CACHE_VERSION,
   '/assets/js/admin.js?v=' + CACHE_VERSION,
   '/assets/js/details.js?v=' + CACHE_VERSION,
+  '/assets/img/new.png',
+  '/assets/img/evaluating.png',
+  '/assets/img/shortlisted.png',
+  '/assets/img/tour_scheduled.png',
+  '/assets/img/toured.png',
+  '/assets/img/finalist.png',
+  '/assets/img/applying.png',
+  '/assets/img/applied.png',
+  '/assets/img/approved.png',
+  '/assets/img/lease_review.png',
+  '/assets/img/signed.png',
+  '/assets/img/rejected.png',
+  '/assets/img/archived.png',
 ];
 
 self.addEventListener('install', function (event) {

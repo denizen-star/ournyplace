@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="/assets/css/app.css?v=7">
+  <link rel="stylesheet" href="/assets/css/app.css?v=19">
 </head>
 <body>
   <header class="app-header">
@@ -26,8 +26,8 @@
     </nav>
 
     <section id="tab-apartments" class="tab-panel active">
-      <form id="apartment-form" class="content-section admin-form-card">
-        <div class="section-header">
+      <form id="apartment-form" class="content-section admin-form-card apartment-setup-form">
+        <div class="section-header apartment-setup-header">
           <h2 class="section-title">Apartment Setup</h2>
         </div>
         <input type="hidden" id="apartment-id">
@@ -41,7 +41,7 @@
               <label>Apt number<input id="apt-number" placeholder="717G"></label>
               <label>Move-in date<input id="move-in-date" type="date"></label>
               <label>Status
-                <div class="status-admin-row" style="margin-top:10px;">
+                <div class="status-admin-row status-admin-row--field">
                   <select class="status-pill status-select status-new" id="status" aria-label="Status"></select>
                   <button type="button" class="danger-btn status-reject-inline" id="status-reject" aria-label="Mark rejected">Reject</button>
                 </div>
@@ -113,14 +113,27 @@
     </section>
 
     <section id="tab-criteria" class="tab-panel">
-      <form id="criterion-form" class="content-section admin-form-card">
-        <div class="section-header">
+      <form id="criterion-form" class="content-section admin-form-card criterion-add-card">
+        <div class="section-header criterion-add-header">
           <h2 class="section-title">Decision Criteria</h2>
         </div>
-        <input id="criterion-label" required placeholder="Natural light">
-        <input id="criterion-weight" type="number" min="0" step="0.1" value="1" aria-label="Weight">
-        <textarea id="criterion-definition" rows="3" placeholder="Definition or decision notes"></textarea>
-        <button type="submit" class="primary-btn">Add criterion</button>
+        <div class="criterion-form-row">
+          <label class="criterion-field criterion-field--label">
+            <span class="admin-field-label">Label</span>
+            <input id="criterion-label" required placeholder="Natural light" autocomplete="off">
+          </label>
+          <label class="criterion-field criterion-field--definition">
+            <span class="admin-field-label">Definition</span>
+            <textarea id="criterion-definition" rows="1" placeholder="Definition or decision notes"></textarea>
+          </label>
+          <label class="criterion-field criterion-field--weight">
+            <span class="admin-field-label">Weight</span>
+            <input id="criterion-weight" type="number" min="0" step="0.1" value="1" aria-label="Weight">
+          </label>
+          <div class="criterion-add-actions">
+            <button type="submit" class="primary-btn criterion-add-submit">Add criterion</button>
+          </div>
+        </div>
       </form>
       <div id="criteria-list" class="compact-list"></div>
     </section>
@@ -130,8 +143,8 @@
     </section>
   </main>
 
-  <script src="/assets/js/apartmentStatus.js?v=7"></script>
-  <script src="/assets/js/api.js?v=7"></script>
-  <script src="/assets/js/admin.js?v=7"></script>
+  <script src="/assets/js/apartmentStatus.js?v=19"></script>
+  <script src="/assets/js/api.js?v=19"></script>
+  <script src="/assets/js/admin.js?v=20"></script>
 </body>
 </html>

@@ -43,6 +43,14 @@ var NyhomeAPI = (function () {
     return _send('/api/criteria', 'POST', payload);
   }
 
+  function updateCriterion(payload) {
+    return _send('/api/criteria', 'PUT', payload);
+  }
+
+  function reorderCriteria(orderedIds) {
+    return _send('/api/criteria', 'PUT', { orderedIds: orderedIds });
+  }
+
   function deleteCriterion(id) {
     return _send('/api/criteria', 'DELETE', { id: id });
   }
@@ -64,6 +72,8 @@ var NyhomeAPI = (function () {
     saveApartment: saveApartment,
     deleteApartment: deleteApartment,
     saveCriterion: saveCriterion,
+    updateCriterion: updateCriterion,
+    reorderCriteria: reorderCriteria,
     deleteCriterion: deleteCriterion,
     saveRating: saveRating,
     saveVisit: saveVisit,

@@ -4,6 +4,7 @@
   var listEl = document.getElementById('admin-apartment-list');
   var criteriaListEl = document.getElementById('criteria-list');
   var nextActionsEl = document.getElementById('next-actions');
+  var criteriaDragId = null;
 
   document.addEventListener('DOMContentLoaded', boot);
 
@@ -14,6 +15,7 @@
     bindNotesParser();
     syncStatusControls(value('status') || 'new');
     bindStatusControls();
+    bindCriteriaList();
     load();
   }
 
@@ -70,6 +72,203 @@
       }).catch(function (err) {
         console.error('[nyhome-admin] save criterion', err);
       });
+    });
+  }
+
+  function bindCriteriaList() {
+    criteriaListEl.addEventListener('click', function (event) {
+      if (event.target.closest('.criterion-drag') || event.target.closest('.criterion-delete')) return;
+      var disp = event.target.closest('.criterion-display');
+      if (!disp || !criteriaListEl.contains(disp)) return;
+      var cell = disp.closest('.criterion-cell');
+      var row = disp.closest('.criterion-edit-row');
+      if (!cell || !row) return;
+      beginCriterionEdit(cell, row);
+    });
+    criteriaListEl.addEventListener('keydown', function (event) {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      var disp = event.target.closest('.criterion-display');
+      if (!disp || !criteriaListEl.contains(disp)) return;
+      if (event.key === ' ') event.preventDefault();
+      var cell = disp.closest('.criterion-cell');
+      var row = disp.closest('.criterion-edit-row');
+      if (!cell || !row) return;
+      beginCriterionEdit(cell, row);
+    });
+    criteriaListEl.addEventListener('focusout', function (event) {
+      var t = event.target;
+      if (!t.classList || !t.classList.contains('criterion-input')) return;
+      var cell = t.closest('.criterion-cell');
+      var row = t.closest('.criterion-edit-row');
+      if (!cell || !row) return;
+      setTimeout(function () {
+        if (!cell.classList.contains('is-editing')) return;
+        if (cell.contains(document.activeElement)) return;
+        endCriterionEditCell(cell, row, true);
+      }, 0);
+    });
+    criteriaListEl.addEventListener('dragstart', function (event) {
+      var handle = event.target.closest('.criterion-drag');
+      if (!handle || !criteriaListEl.contains(handle)) return;
+      var row = handle.closest('.criterion-edit-row');
+      if (!row) return;
+      criteriaDragId = Number(row.getAttribute('data-criterion-id'));
+      row.classList.add('criterion-row--dragging');
+      event.dataTransfer.setData('text/plain', String(criteriaDragId));
+      event.dataTransfer.effectAllowed = 'move';
+    });
+    criteriaListEl.addEventListener('dragover', function (event) {
+      if (criteriaDragId == null) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+    });
+    criteriaListEl.addEventListener('drop', function (event) {
+      if (criteriaDragId == null) return;
+      event.preventDefault();
+      var dragRow = criteriaListEl.querySelector('.criterion-edit-row[data-criterion-id="' + criteriaDragId + '"]');
+      if (!dragRow) return;
+      var dropRow = event.target.closest('.criterion-edit-row');
+      if (!dropRow) {
+        criteriaListEl.appendChild(dragRow);
+      } else if (dragRow !== dropRow) {
+        var rect = dropRow.getBoundingClientRect();
+        var after = event.clientY > rect.top + rect.height / 2;
+        if (after) criteriaListEl.insertBefore(dragRow, dropRow.nextSibling);
+        else criteriaListEl.insertBefore(dragRow, dropRow);
+      }
+      var ids = Array.prototype.map.call(criteriaListEl.querySelectorAll('.criterion-edit-row'), function (el) {
+        return Number(el.getAttribute('data-criterion-id'));
+      });
+      NyhomeAPI.reorderCriteria(ids).then(function () {
+        state.criteria.sort(function (a, b) {
+          return ids.indexOf(a.id) - ids.indexOf(b.id);
+        });
+      }).catch(function (err) {
+        console.error('[nyhome-admin] reorder criteria', err);
+        load();
+      });
+      criteriaDragId = null;
+    });
+    criteriaListEl.addEventListener('dragend', function () {
+      criteriaDragId = null;
+      Array.prototype.forEach.call(criteriaListEl.querySelectorAll('.criterion-edit-row'), function (el) {
+        el.classList.remove('criterion-row--dragging');
+      });
+    });
+  }
+
+  function beginCriterionEdit(cell, row) {
+    Array.prototype.forEach.call(row.querySelectorAll('.criterion-cell.is-editing'), function (c) {
+      if (c !== cell) endCriterionEditCell(c, row, true);
+    });
+    cell.classList.add('is-editing');
+    var input = cell.querySelector('.criterion-input');
+    if (input) {
+      setTimeout(function () {
+        input.focus();
+        if (typeof input.select === 'function' && input.type !== 'number') input.select();
+      }, 0);
+    }
+  }
+
+  function syncCriterionDisplayFromInputs(row) {
+    var labelI = row.querySelector('.criterion-input--label');
+    var defI = row.querySelector('.criterion-input--definition');
+    var wI = row.querySelector('.criterion-input--weight');
+    var labelD = row.querySelector('.criterion-display--label');
+    var defD = row.querySelector('.criterion-display--definition');
+    var wD = row.querySelector('.criterion-display--weight');
+    if (labelD && labelI) labelD.textContent = labelI.value.trim() || labelD.textContent;
+    if (defD && defI) {
+      var dv = String(defI.value || '').trim();
+      if (dv) {
+        defD.textContent = defI.value;
+        defD.classList.remove('criterion-display--empty');
+      } else {
+        defD.innerHTML = '<span class="criterion-placeholder">Add notes</span>';
+        defD.classList.add('criterion-display--empty');
+      }
+    }
+    if (wD && wI) {
+      var nw = Number(wI.value);
+      if (Number.isFinite(nw) && nw >= 0) wD.textContent = nw.toFixed(1);
+    }
+  }
+
+  function syncCriterionDisplayFromState(row) {
+    var id = Number(row.getAttribute('data-criterion-id'));
+    var prev = state.criteria.find(function (c) { return c.id === id; });
+    if (!prev) return;
+    var labelD = row.querySelector('.criterion-display--label');
+    var labelI = row.querySelector('.criterion-input--label');
+    var defD = row.querySelector('.criterion-display--definition');
+    var defI = row.querySelector('.criterion-input--definition');
+    var wD = row.querySelector('.criterion-display--weight');
+    var wI = row.querySelector('.criterion-input--weight');
+    if (labelD) labelD.textContent = prev.label;
+    if (labelI) labelI.value = prev.label;
+    var defTrim = prev.definition && String(prev.definition).trim();
+    if (defD) {
+      if (defTrim) {
+        defD.textContent = prev.definition;
+        defD.classList.remove('criterion-display--empty');
+      } else {
+        defD.innerHTML = '<span class="criterion-placeholder">Add notes</span>';
+        defD.classList.add('criterion-display--empty');
+      }
+    }
+    if (defI) defI.value = prev.definition || '';
+    if (wD) wD.textContent = Number(prev.weight).toFixed(1);
+    if (wI) wI.value = String(Number(prev.weight));
+  }
+
+  function endCriterionEditCell(cell, row, shouldSave) {
+    if (!cell.classList.contains('is-editing')) return Promise.resolve();
+    cell.classList.remove('is-editing');
+    syncCriterionDisplayFromInputs(row);
+    if (shouldSave) {
+      return saveCriterionRow(row)
+        .then(function () {
+          syncCriterionDisplayFromState(row);
+        })
+        .catch(function (err) {
+          console.error('[nyhome-admin] update criterion', err);
+          load();
+        });
+    }
+    return Promise.resolve();
+  }
+
+  function saveCriterionRow(row) {
+    var id = Number(row.getAttribute('data-criterion-id'));
+    if (!id) return Promise.resolve();
+    var labelEl = row.querySelector('.criterion-input--label');
+    var defEl = row.querySelector('.criterion-input--definition');
+    var weightEl = row.querySelector('.criterion-input--weight');
+    if (!labelEl || !defEl || !weightEl) return Promise.resolve();
+    var label = labelEl.value.trim();
+    if (!label) {
+      var blankPrev = state.criteria.find(function (c) { return c.id === id; });
+      if (blankPrev) labelEl.value = blankPrev.label;
+      return Promise.resolve();
+    }
+    var definition = defEl.value;
+    var weight = Number(weightEl.value);
+    if (!Number.isFinite(weight) || weight < 0) {
+      var badPrev = state.criteria.find(function (c) { return c.id === id; });
+      if (badPrev) weightEl.value = String(Number(badPrev.weight));
+      return Promise.resolve();
+    }
+    var prev = state.criteria.find(function (c) { return c.id === id; });
+    if (prev && prev.label === label && String(prev.definition || '') === definition && Number(prev.weight) === weight) {
+      return Promise.resolve();
+    }
+    return NyhomeAPI.updateCriterion({ id: id, label: label, definition: definition, weight: weight }).then(function () {
+      if (prev) {
+        prev.label = label;
+        prev.definition = definition;
+        prev.weight = weight;
+      }
     });
   }
 
@@ -391,7 +590,7 @@
         '</select>' +
         '<span class="match-pill match-pill--row">' +
           '<span class="match-percentage">' + scoreText(apartment.scores && apartment.scores.combined) + '</span>' +
-          '<span class="match-score-label">Combined</span>' +
+          '<span class="match-score-label">Avg</span>' +
         '</span>' +
         '<span class="manager-row-metric manager-row-metric--rent" title="Rent">' + escapeHtml(apartment.rent_cents ? formatMoney(apartment.rent_cents) : 'Rent TBD') + '</span>' +
         '<span class="manager-row-metric manager-row-metric--unit" title="Unit">' + escapeHtml(unitSummary(apartment) || 'Unit TBD') + '</span>' +
@@ -452,15 +651,16 @@
       '<summary>' +
         '<span class="rating-summary-title">Voting</span>' +
         '<span class="rating-summary-stats">' +
-          scoreStat('Combined', apartment.scores && apartment.scores.combined) +
-          scoreStat('Kerv', apartment.scores && apartment.scores.kerv) +
-          scoreStat('Peter', apartment.scores && apartment.scores.peter) +
+          scoreStat('combined', 'Avg', apartment.scores && apartment.scores.combined) +
+          scoreStat('kerv', 'Kerv', apartment.scores && apartment.scores.kerv) +
+          scoreStat('peter', 'Peter', apartment.scores && apartment.scores.peter) +
         '</span>' +
       '</summary>' +
       '<section class="rating-panel">' +
         '<div class="rating-legend" aria-label="Voting legend">' +
           '<span><i class="legend-dot legend-kerv"></i>Kerv</span>' +
           '<span><i class="legend-dot legend-peter"></i>Peter</span>' +
+          '<span><i class="legend-dot legend-combined"></i>Avg</span>' +
         '</div>' +
       '<div class="partner-vote-grid">' +
         renderPartnerRatingCard(apartment, 'kerv') +
@@ -516,17 +716,36 @@
 
   function renderCriteria() {
     if (!state.criteria.length) {
-      criteriaListEl.innerHTML = '<div class="empty-state">No criteria yet.</div>';
+      criteriaListEl.innerHTML = '<div class="empty-state criteria-empty">No criteria yet.</div>';
       return;
     }
     criteriaListEl.innerHTML = '';
     state.criteria.forEach(function (criterion) {
+      var defTrim = criterion.definition && String(criterion.definition).trim();
+      var defDisplay = defTrim
+        ? escapeHtml(criterion.definition)
+        : '<span class="criterion-placeholder">Add notes</span>';
       var row = document.createElement('div');
-      row.className = 'list-row';
-      row.innerHTML = '<div><strong>' + escapeHtml(criterion.label) + '</strong>' +
-        (criterion.definition ? '<div class="muted">' + escapeHtml(criterion.definition) + '</div>' : '') +
-        '</div><div class="button-row"><span class="pill">weight ' + Number(criterion.weight).toFixed(1) + '</span><button class="danger-btn" type="button">Delete</button></div>';
-      row.querySelector('button').addEventListener('click', function () {
+      row.className = 'list-row criterion-edit-row';
+      row.setAttribute('data-criterion-id', String(criterion.id));
+      row.innerHTML =
+        '<button type="button" class="criterion-drag" draggable="true" aria-label="Drag to reorder">' +
+        '<svg class="criterion-drag-icon" viewBox="0 0 16 22" width="16" height="22" aria-hidden="true" focusable="false">' +
+        '<path fill="currentColor" d="M4 4h2v2H4V4zm6 0h2v2h-2V4zM4 9h2v2H4V9zm6 0h2v2h-2V9zm-6 5h2v2H4v-2zm6 0h2v2h-2v-2z"/></svg></button>' +
+        '<div class="criterion-cell criterion-cell--label">' +
+        '<span class="criterion-display criterion-display--label" tabindex="0" role="button" aria-label="Edit label">' + escapeHtml(criterion.label) + '</span>' +
+        '<input class="criterion-input criterion-input--label" type="text" value="' + escapeAttr(criterion.label) + '" autocomplete="off" aria-label="Criterion label">' +
+        '</div>' +
+        '<div class="criterion-cell criterion-cell--definition">' +
+        '<span class="criterion-display criterion-display--definition' + (defTrim ? '' : ' criterion-display--empty') + '" tabindex="0" role="button" aria-label="Edit definition">' + defDisplay + '</span>' +
+        '<textarea class="criterion-input criterion-input--definition" rows="3" aria-label="Criterion definition">' + escapeHtml(criterion.definition || '') + '</textarea>' +
+        '</div>' +
+        '<div class="criterion-cell criterion-cell--weight">' +
+        '<span class="criterion-display criterion-display--weight" tabindex="0" role="button" aria-label="Edit weight">' + escapeHtml(Number(criterion.weight).toFixed(1)) + '</span>' +
+        '<input class="criterion-input criterion-input--weight" type="number" min="0" step="0.1" value="' + escapeAttr(Number(criterion.weight)) + '" aria-label="Weight">' +
+        '</div>' +
+        '<button class="danger-btn criterion-delete" type="button">Delete</button>';
+      row.querySelector('.criterion-delete').addEventListener('click', function () {
         NyhomeAPI.deleteCriterion(criterion.id).then(load).catch(function (err) {
           console.error('[nyhome-admin] delete criterion', err);
         });
@@ -573,8 +792,8 @@
       : '<div class="empty-state">No next actions yet.</div>';
   }
 
-  function scoreBox(label, value) {
-    return '<div class="score-box"><span class="muted">' + label + '</span><strong>' + (value != null ? Math.round(value) : '-') + '</strong></div>';
+  function scoreBox(voteKey, label, value) {
+    return '<div class="score-box score-box--vote-' + voteKey + '"><span class="muted">' + escapeHtml(label) + '</span><span class="score-box-value">' + (value != null ? Math.round(value) : '-') + '</span></div>';
   }
 
   function scoreText(value) {
@@ -593,8 +812,8 @@
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format((Number(cents) || 0) / 100);
   }
 
-  function scoreStat(label, value) {
-    return '<span class="score-stat"><b>' + escapeHtml(label) + '</b> ' + (value != null ? Math.round(value) : '-') + '</span>';
+  function scoreStat(voteKey, label, value) {
+    return '<span class="score-stat score-stat--vote-' + voteKey + '"><b>' + escapeHtml(label) + '</b> ' + (value != null ? Math.round(value) : '-') + '</span>';
   }
 
   function checkIcon() {

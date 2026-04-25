@@ -47,7 +47,8 @@
         renderTabs(activeTab) +
         renderScorecardTab(apartment, activeTab) +
         renderUnitSetupTab(apartment, activeTab) +
-        renderVotingTab(apartment, activeTab) +
+        renderPartnerTab(apartment, 'peter', activeTab) +
+        renderPartnerTab(apartment, 'kerv', activeTab) +
         renderTourTab(apartment, activeTab) +
         renderApplicationTab(apartment, activeTab) +
         renderActivityTab(apartment, activeTab) +
@@ -56,25 +57,23 @@
     bindTabs();
     bindApartmentControls();
     bindVoting();
+    bindDefinitionToggles();
     bindVisitForm();
     bindApplicationForm();
   }
 
   function renderSummaryHeader(apartment) {
+    var status = NyhomeStatus.normalizeStatus(apartment.status || 'new');
     return '<section class="app-summary-card">' +
+      '<img class="summary-status-badge" src="/assets/img/' + escapeAttr(status) + '.png" alt="" aria-hidden="true" width="80" height="80">' +
       '<div class="summary-status-row">' +
         statusProgressionControls(apartment.status || 'new') +
-        '<span class="match-pill">' +
-          '<span class="match-percentage">' + scoreText(apartment.scores && apartment.scores.combined) + '</span>' +
-          '<span class="match-score-label">Combined</span>' +
-        '</span>' +
       '</div>' +
       '<div class="summary-title-row">' +
         '<div>' +
           '<h2 class="apartment-title">' + escapeHtml(apartment.title || 'Untitled apartment') + '</h2>' +
           '<div class="apartment-location muted">' + escapeHtml([apartment.neighborhood, apartment.address].filter(Boolean).join(' · ')) + '</div>' +
         '</div>' +
-        renderActions(apartment) +
       '</div>' +
       '<div class="app-meta">' +
         metaItem('location', apartment.neighborhood || apartment.address || 'Neighborhood TBD') +
@@ -83,6 +82,7 @@
         metaItem('calendar', apartment.move_in_date ? 'Move-in ' + apartment.move_in_date : 'Move-in TBD') +
         metaItem('refresh', apartment.updated_at ? 'Updated ' + formatDate(apartment.updated_at) : 'Updated TBD') +
         linkMetaItem(apartment.listing_url) +
+        renderScores(apartment.scores || {}, 'score-grid--meta-inline') +
       '</div>' +
     '</section>';
   }
@@ -91,7 +91,8 @@
     var tabs = [
       ['scorecard', 'Scorecard'],
       ['unit', 'Unit Setup'],
-      ['voting', 'Voting'],
+      ['peter', 'Peter'],
+      ['kerv', 'Kerv'],
       ['tour', 'Tour'],
       ['application', 'Application'],
       ['activity', 'Activity Log'],
@@ -107,7 +108,6 @@
   function renderScorecardTab(apartment, activeTab) {
     return '<section id="tab-scorecard" class="summary-tab-content' + (activeTab === 'scorecard' ? ' active' : '') + '">' +
       '<h2>Scorecard</h2>' +
-      renderScores(apartment.scores || {}) +
       '<div class="two-column">' +
         contentSection('Costs & Timing', renderList([
           ['Rent', formatMoney(apartment.rent_cents)],
@@ -146,11 +146,11 @@
     '</section>';
   }
 
-  function renderVotingTab(apartment, activeTab) {
-    return '<section id="tab-voting" class="summary-tab-content' + (activeTab === 'voting' ? ' active' : '') + '">' +
-      '<h2>Voting</h2>' +
-      '<p class="muted tab-intro">Score each criterion from 0 to 5. Each row shows only the criterion and definition, with SVG score buttons.</p>' +
-      renderVoting(apartment) +
+  function renderPartnerTab(apartment, partnerKey, activeTab) {
+    var title = partnerKey === 'peter' ? 'Peter' : 'Kerv';
+    return '<section id="tab-' + partnerKey + '" class="summary-tab-content' + (activeTab === partnerKey ? ' active' : '') + '">' +
+      '<h2>' + title + '</h2>' +
+      renderPartnerVotingList(apartment, partnerKey) +
     '</section>';
   }
 
@@ -245,6 +245,10 @@
       NyhomeAPI.saveApartment(buildApartmentPayload()).then(function () { load(currentTab() || 'scorecard'); }).catch(catchSaveApartment);
     });
 
+    if (state.apartment) {
+      syncStatusControls(NyhomeStatus.normalizeStatus(state.apartment.status || 'new'));
+    }
+
     rootEl.querySelectorAll('.selector-chip').forEach(function (button) {
       button.addEventListener('click', function () {
         button.classList.toggle('active');
@@ -262,7 +266,25 @@
           partnerKey: parts[0],
           criterionId: Number(parts[1]),
           score: Number(button.getAttribute('data-score')),
-        }).then(function () { load('voting'); });
+        }).then(function () { load(currentTab() || 'scorecard'); });
+      });
+    });
+  }
+
+  function bindDefinitionToggles() {
+    rootEl.querySelectorAll('[data-def-toggle]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        var id = button.getAttribute('data-def-for');
+        if (!id) return;
+        var panel = document.getElementById(id);
+        if (!panel || !rootEl.contains(panel)) return;
+        if (panel.hasAttribute('hidden')) {
+          panel.removeAttribute('hidden');
+          button.setAttribute('aria-expanded', 'true');
+        } else {
+          panel.setAttribute('hidden', '');
+          button.setAttribute('aria-expanded', 'false');
+        }
       });
     });
   }
@@ -296,46 +318,56 @@
     });
   }
 
-  function renderScores(scores) {
-    return '<div class="score-grid summary-score-grid">' +
-      scoreBox('Combined', scores.combined) +
-      scoreBox('Kerv', scores.kerv) +
-      scoreBox('Peter', scores.peter) +
+  function renderScores(scores, extraClass) {
+    var cls = 'score-grid' + (extraClass ? ' ' + extraClass : '');
+    return '<div class="' + cls + '" role="group" aria-label="Match scores">' +
+      scoreBox('combined', 'Avg', scores.combined) +
+      scoreBox('kerv', 'Kerv', scores.kerv) +
+      scoreBox('peter', 'Peter', scores.peter) +
     '</div>';
   }
 
-  function scoreBox(label, value) {
-    return '<div class="score-box"><span class="muted">' + escapeHtml(label) + '</span><strong>' + scoreText(value) + '</strong></div>';
+  function scoreBox(voteKey, label, value) {
+    return '<div class="score-box score-box--vote-' + voteKey + '"><span class="muted">' + escapeHtml(label) + '</span><span class="score-box-value">' + scoreText(value) + '</span></div>';
   }
 
-  function renderVoting(apartment) {
+  function renderPartnerVotingList(apartment, partnerKey) {
     if (!state.criteria.length) {
-      return '<div class="empty-state">Add criteria to start scoring.</div>';
+      return '<div class="empty-state">Add criteria in Admin to start scoring.</div>';
     }
-
-    return '<div class="partner-vote-grid detail-vote-grid">' +
-      renderPartnerRatingCard(apartment, 'kerv') +
-      renderPartnerRatingCard(apartment, 'peter') +
-    '</div>';
+    return '<section class="content-section detail-vote-content">' +
+      '<div class="compact-list detail-vote-list">' +
+        state.criteria.map(function (criterion) {
+          return renderPartnerVoteRow(apartment, partnerKey, criterion);
+        }).join('') +
+      '</div>' +
+    '</section>';
   }
 
-  function renderPartnerRatingCard(apartment, partnerKey) {
-    var label = partnerKey === 'kerv' ? 'Kerv' : 'Peter';
-    return '<div class="partner-vote-card partner-vote-card-' + partnerKey + '" aria-label="' + label + ' voting card">' +
-      '<h3>' + label + '</h3>' +
-      state.criteria.map(function (criterion) {
-        var rating = ((apartment.ratings || {})[partnerKey] || {})[criterion.id];
-        return '<div class="vote-row">' +
-          '<div class="vote-criterion">' +
-            '<strong>' + escapeHtml(criterion.label) + '</strong>' +
-            (criterion.definition ? '<span>' + escapeHtml(criterion.definition) + '</span>' : '') +
-          '</div>' +
-          '<div class="score-picker">' + [0, 1, 2, 3, 4, 5].map(function (score) {
-            return ratingButton(partnerKey, criterion.id, score, Number(rating) === score);
-          }).join('') + '</div>' +
-        '</div>';
-      }).join('') +
-    '</div>';
+  function renderPartnerVoteRow(apartment, partnerKey, criterion) {
+    var rating = ((apartment.ratings || {})[partnerKey] || {})[criterion.id];
+    var def = criterion.definition && String(criterion.definition).trim();
+    var hasDef = Boolean(def);
+    var panelId = 'criterion-def-' + partnerKey + '-' + criterion.id;
+    var rowClass = 'manager-row detail-vote-row detail-vote-row--' + partnerKey;
+    return '<article class="' + rowClass + '">' +
+      '<div class="detail-vote-line">' +
+        '<div class="detail-vote-left">' +
+          '<strong class="detail-vote-label">' + escapeHtml(criterion.label) + '</strong>' +
+          (hasDef
+            ? '<button type="button" class="criterion-def-btn" data-def-toggle data-def-for="' + escapeAttr(panelId) + '" aria-expanded="false" aria-label="Show definition for ' + escapeAttr(criterion.label) + '">?</button>'
+            : '<span class="criterion-def-spacer" aria-hidden="true"></span>') +
+        '</div>' +
+        '<div class="score-picker detail-vote-scores partner-vote-card-' + partnerKey + '">' +
+        [0, 1, 2, 3, 4, 5].map(function (score) {
+          return ratingButton(partnerKey, criterion.id, score, Number(rating) === score);
+        }).join('') +
+        '</div>' +
+      '</div>' +
+      (hasDef
+        ? '<div class="vote-criterion-def-panel" id="' + escapeAttr(panelId) + '" hidden><p class="vote-criterion-def-text">' + escapeHtml(def) + '</p></div>'
+        : '') +
+    '</article>';
   }
 
   function ratingButton(partnerKey, criterionId, score, isActive) {
@@ -354,16 +386,13 @@
         '<button type="button" class="status-arrow-link" data-status-prev aria-label="Previous status">←</button>' +
         statusSelect(safe) +
         '<button type="button" class="status-arrow-link" data-status-next aria-label="Next status">→</button>' +
+        '<button type="button" class="status-reject-quiet" data-status-reject aria-label="Mark rejected">Reject</button>' +
       '</div>'
     );
   }
 
   function statusSelect(current) {
     return '<select class="status-pill status-select ' + NyhomeStatus.statusClass(current) + '" data-status aria-label="Status">' + statusOptions(current) + '</select>';
-  }
-
-  function renderStatusPill(status) {
-    return '<span class="status-pill ' + NyhomeStatus.statusClass(status) + '">' + escapeHtml(formatStatusLabel(status)) + '</span>';
   }
 
   function statusOptions(current) {
@@ -414,7 +443,10 @@
     if (index < 0) index = 0;
     if (prev) prev.disabled = isRejected || index === 0;
     if (next) next.disabled = isRejected || index === STATUS_ORDER.length - 1;
-    if (reject) reject.disabled = isRejected;
+    if (reject) {
+      reject.disabled = isRejected;
+      reject.classList.toggle('is-rejected', isRejected);
+    }
   }
 
   function formatStatusLabel(status) {
@@ -467,24 +499,6 @@
       rootEl.querySelectorAll('[data-selector-group="' + groupName + '"] .selector-chip.active'),
       function (button) { return button.getAttribute('data-value'); }
     );
-  }
-
-  function renderActions(apartment) {
-    return '<div class="header-actions">' +
-      '<a class="secondary-btn" href="/">Shortlist</a>' +
-      actionLink('Listing', apartment.listing_url, true) +
-      '<button type="button" class="danger-btn status-reject-action" data-status-reject aria-label="Mark rejected">Reject</button>' +
-    '</div>';
-  }
-
-  function actionLink(label, href, external) {
-    if (!href) {
-      return '<span class="link-button action-disabled" aria-disabled="true">' + escapeHtml(label) + '</span>';
-    }
-
-    return '<a class="link-button" href="' + escapeAttr(href) + '"' +
-      (external ? ' target="_blank" rel="noreferrer"' : '') +
-      '>' + escapeHtml(label) + '</a>';
   }
 
   function contentSection(title, content) {

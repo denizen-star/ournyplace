@@ -21,16 +21,18 @@ It uses:
 Public app:
 
 - Route: `/`
-- Scroll-first apartment card list
-- Summary cards for active options, finalists, applications, and top score
-- Cards omit a photo gallery line (simpler card body); image URLs can still be saved in admin
-- `Details` / `Listing` on each card (Listing disabled style when no URL)
-- `status` on cards: `status-pill` + `status-*` classes from `assets/css/app.css` (from `NyhomeStatus` in `assets/js/apartmentStatus.js`)
+- Responsive **card grid** (`body.shortlist`): KPI strip (glass + neon border per tile, neutral fill), fourth tile **top avg score**
+- Summary + per-card row = **Avg** / Kerv / Peter %; label **Avg** (not “Combined”) in UI
+- Listing cards: glass panel + **`listing-status-<status>`** border/glow from normalized `status`
+- Cards omit photo gallery line; image URLs still in admin
+- `Details` / `Listing` on each card (Listing disabled when no URL)
+- `status` art: `/assets/img/<status>.png` on card + filter strip (no text pill on shortlist)
+- Optional tagline under page `h1`
 
 Details:
 
 - Route: `/details/?id=<apartmentId>`
-- Top **app-summary-card**: status progression `←` / `→` (first 11 `STATUS_NAV` values), `status` `<select>`, **Reject** + Shortlist/Listing; auto-save on status change; tabs: Scorecard, Unit Setup, Voting, Tour, Application, Activity Log (`assets/js/details.js`)
+- Top **app-summary-card**: status progression `←` / `→` (first 11 `STATUS_NAV` values), `status` `<select>`, **Reject** (quiet, same row); meta row includes **View listing** when URL set; no Shortlist/Listing in the title row. Auto-save on status change. Tabs: Scorecard, Unit Setup, **Peter**, **Kerv** (scoring, one tab per partner), Tour, Application, Activity Log (`assets/js/details.js`). Scoring: `detail-vote-list` table (zebra, bordered, 1px partner top), `detail-vote-line` two-column grid (aligned `0..5`); unselected/selected score hex in `app.css` (`--kerv-hex-faint` / `--kerv-hex-selected`, peter analogs)
 
 Admin:
 
@@ -38,6 +40,7 @@ Admin:
 - No password yet
 - Top nav: `summary-tabs-header` / `Apartment Setup` / `Criteria` / `Next Actions`
 - **Saved apartments** (below form): `manager-row` layout—per-row `status` `<select>` (PUT, preserves `imageUrls` on save), rent/unit/move-in metrics, **Edit** / **Details** / **Delete**; no inline voting or tour/app blocks (per-listing “progress” lives on `/details`)
+- **Criteria** tab: add form (label, definition, weight + submit on same row); list rows = click text to edit, blur → `PUT` update; drag handle → `PUT { orderedIds }` (matches order in `/details` scoring tabs); `POST` create / `DELETE` soft-delete unchanged
 - Load order: `apartmentStatus.js` → `api.js` → `admin.js` for `NyhomeStatus` helpers
 - Apartment form is organized into:
   - Location
@@ -147,7 +150,7 @@ Scoring is partner-based:
 
 Each criterion can be scored `0..5`.
 
-**Voting UI:** only on `/details` → **Voting** tab: two side-by-side partner cards, each row = criterion label + optional definition + SVG `0..5` buttons. Combined/Kerv/Peter appear in Scorecard tab and in the header match pill, not as a second collapsed “progress” block on the admin list.
+**Scoring UI:** only on `/details` → **Peter** or **Kerv** tab: table-style list, optional **?** for definition, SVG `0..5` aligned columns; not on admin **Saved apartments** list. **Avg** / Kerv / Peter % on Scorecard, public cards, admin row metrics (`scores.combined` = mean of Kerv & Peter % when both exist; each partner % = weighted criteria ×20 from `lib/apartmentRepository` `calculateScores`).
 
 The rating API validates:
 
@@ -182,7 +185,7 @@ The migration also seeds:
 Netlify Functions:
 
 - `GET/POST/PUT/DELETE /api/apartments` — `status` in body normalized via `lib/apartmentStatus.js` on POST/PUT
-- `POST/DELETE /api/criteria`
+- `POST/PUT/DELETE /api/criteria` — `PUT`: `{ id, label, definition, weight }` or `{ orderedIds: number[] }` for reorder
 - `POST /api/ratings`
 - `POST /api/visits`
 - `POST /api/applications`

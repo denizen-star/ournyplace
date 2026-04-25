@@ -1,6 +1,10 @@
 (function () {
   var listEl = document.getElementById('apartment-list');
   var summaryEl = document.getElementById('summary-grid');
+  var filterEl = document.getElementById('status-filter');
+
+  var activeFilters = new Set();
+  var allApartments = [];
 
   document.addEventListener('DOMContentLoaded', boot);
 
@@ -11,18 +15,16 @@
   }
 
   function render(data) {
-    var apartments = data.apartments || [];
-    renderSummary(apartments);
+    allApartments = data.apartments || [];
+    renderSummary(allApartments);
+    renderFilterBar(allApartments);
 
-    if (apartments.length === 0) {
+    if (allApartments.length === 0) {
       listEl.innerHTML = '<div class="empty-state">No apartments yet. Add the first one in Manage.</div>';
       return;
     }
 
-    listEl.innerHTML = '';
-    apartments.forEach(function (apartment) {
-      listEl.appendChild(renderApartmentCard(apartment, data.criteria || []));
-    });
+    applyFilters();
   }
 
   function renderSummary(apartments) {
@@ -37,16 +39,101 @@
       summaryCard(active.length, 'active options') +
       summaryCard(finalists.length, 'finalists') +
       summaryCard(applied.length, 'applications') +
-      summaryCard(best && best.scores.combined ? Math.round(best.scores.combined) : '-', 'top combined score');
+      summaryCard(best && best.scores.combined ? Math.round(best.scores.combined) : '-', 'top avg score', 'summary-value--vote-combined');
   }
 
-  function summaryCard(value, label) {
-    return '<article class="summary-card"><span class="summary-value">' + escapeHtml(value) + '</span><span class="summary-label">' + escapeHtml(label) + '</span></article>';
+  function summaryCard(value, label, valueClass) {
+    var valueCls = 'summary-value' + (valueClass ? ' ' + valueClass : '');
+    return '<article class="summary-card"><span class="' + valueCls + '">' + escapeHtml(value) + '</span><span class="summary-label">' + escapeHtml(label) + '</span></article>';
+  }
+
+  function renderFilterBar(apartments) {
+    if (!filterEl) return;
+
+    var existingDetails = filterEl.querySelector('.status-filter-details');
+    var isOpen = existingDetails ? existingDetails.open : false;
+
+    var counts = {};
+    NyhomeStatus.STATUS_ORDER.forEach(function (s) { counts[s] = 0; });
+    apartments.forEach(function (a) {
+      var s = NyhomeStatus.normalizeStatus(a.status);
+      counts[s] = (counts[s] || 0) + 1;
+    });
+
+    var btns = NyhomeStatus.STATUS_ORDER.map(function (status) {
+      var count = counts[status] || 0;
+      var isActive = activeFilters.has(status);
+      var isEmpty = count === 0;
+      var cls = 'status-filter-btn' + (isActive ? ' active' : '') + (isEmpty ? ' empty' : '');
+      return '<button type="button" class="' + cls + '" data-filter-status="' + escapeAttr(status) + '" aria-pressed="' + isActive + '">' +
+        '<img src="/assets/img/' + escapeAttr(status) + '.png" alt="' + escapeAttr(formatStatusLabel(status)) + '" width="80" height="80">' +
+        '<span class="status-filter-count">' + count + '</span>' +
+        '<span class="status-filter-label">' + escapeHtml(formatStatusLabel(status)) + '</span>' +
+      '</button>';
+    }).join('');
+
+    var hasClear = activeFilters.size > 0;
+    var activeSummary = hasClear ? ' <span class="status-filter-active-summary">(' + activeFilters.size + ' selected)</span>' : '';
+
+    filterEl.innerHTML =
+      '<div class="status-filter-bar">' +
+        '<details class="status-filter-details"' + (isOpen ? ' open' : '') + '>' +
+          '<summary class="status-filter-header">' +
+            '<span class="status-filter-title">Filter by status' + activeSummary + '</span>' +
+            '<span class="status-filter-chevron" aria-hidden="true"></span>' +
+          '</summary>' +
+          '<div class="status-filter-body">' +
+            '<div class="status-filter-scroll">' + btns + '</div>' +
+            (hasClear ? '<a href="#" class="status-filter-clear">Clear</a>' : '') +
+          '</div>' +
+        '</details>' +
+      '</div>';
+
+    filterEl.querySelectorAll('[data-filter-status]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var status = btn.getAttribute('data-filter-status');
+        if (activeFilters.has(status)) {
+          activeFilters.delete(status);
+        } else {
+          activeFilters.add(status);
+        }
+        renderFilterBar(allApartments);
+        applyFilters();
+      });
+    });
+
+    var clearLink = filterEl.querySelector('.status-filter-clear');
+    if (clearLink) {
+      clearLink.addEventListener('click', function (e) {
+        e.preventDefault();
+        activeFilters.clear();
+        renderFilterBar(allApartments);
+        applyFilters();
+      });
+    }
+  }
+
+  function applyFilters() {
+    var visible = activeFilters.size === 0
+      ? allApartments
+      : allApartments.filter(function (a) {
+          return activeFilters.has(NyhomeStatus.normalizeStatus(a.status));
+        });
+
+    listEl.innerHTML = '';
+    if (visible.length === 0) {
+      listEl.innerHTML = '<div class="empty-state">No apartments match the selected filters.</div>';
+      return;
+    }
+    visible.forEach(function (apartment) {
+      listEl.appendChild(renderApartmentCard(apartment));
+    });
   }
 
   function renderApartmentCard(apartment) {
     var article = document.createElement('article');
-    article.className = 'apartment-card';
+    var status = NyhomeStatus.normalizeStatus(apartment.status || 'new');
+    article.className = 'apartment-card listing-status-' + status.replace(/_/g, '-');
 
     article.innerHTML =
       '<div class="apartment-body">' +
@@ -55,10 +142,12 @@
             '<h2 class="apartment-title">' + escapeHtml(apartment.title || 'Untitled apartment') + '</h2>' +
             '<div class="apartment-location muted">' + escapeHtml([apartment.neighborhood, apartment.address].filter(Boolean).join(' · ')) + '</div>' +
           '</div>' +
-          scoreChip(apartment.scores && apartment.scores.combined) +
+          '<div class="card-topright">' +
+            scoreChip(apartment.scores && apartment.scores.combined) +
+            '<img class="card-status-badge" src="/assets/img/' + escapeAttr(status) + '.png" alt="" aria-hidden="true" width="48" height="48">' +
+          '</div>' +
         '</div>' +
         '<div class="card-status-container">' +
-          renderStatusPill(apartment.status || 'new') +
           renderFacts(apartment) +
         '</div>' +
         renderScores(apartment.scores || {}) +
@@ -72,14 +161,10 @@
 
   function scoreChip(value) {
     if (value == null) {
-      return '<span class="pill score-chip">Score -</span>';
+      return '<span class="pill score-chip score-chip--empty">Score -</span>';
     }
 
-    return '<span class="pill score-chip">' + Math.round(value) + '%</span>';
-  }
-
-  function renderStatusPill(status) {
-    return '<span class="status-pill ' + NyhomeStatus.statusClass(status) + '">' + escapeHtml(formatStatusLabel(status)) + '</span>';
+    return '<span class="pill score-chip score-chip--combined">' + Math.round(value) + '%</span>';
   }
 
   function formatStatusLabel(status) {
@@ -100,14 +185,14 @@
 
   function renderScores(scores) {
     return '<div class="score-grid">' +
-      scoreBox('Combined', scores.combined) +
-      scoreBox('Kerv', scores.kerv) +
-      scoreBox('Peter', scores.peter) +
+      scoreBox('combined', 'Avg', scores.combined) +
+      scoreBox('kerv', 'Kerv', scores.kerv) +
+      scoreBox('peter', 'Peter', scores.peter) +
     '</div>';
   }
 
-  function scoreBox(label, value) {
-    return '<div class="score-box"><span class="muted">' + label + '</span><strong>' + (value != null ? Math.round(value) + '%' : '-') + '</strong></div>';
+  function scoreBox(voteKey, label, value) {
+    return '<div class="score-box score-box--vote-' + voteKey + '"><span class="muted">' + escapeHtml(label) + '</span><span class="score-box-value">' + (value != null ? Math.round(value) + '%' : '-') + '</span></div>';
   }
 
   function renderActions(apartment) {
