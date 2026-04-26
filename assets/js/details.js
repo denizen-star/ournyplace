@@ -1,6 +1,6 @@
 (function () {
   var rootEl = document.getElementById('detail-root');
-  var state = { apartment: null, criteria: [], detailVibeSlots: ['', '', ''], detailVibeActiveSlot: 0 };
+  var state = { apartment: null, criteria: [], neighborhoods: [], detailVibeSlots: ['', '', ''], detailVibeActiveSlot: 0 };
 
   document.addEventListener('DOMContentLoaded', boot);
 
@@ -8,6 +8,16 @@
 
   function catchSaveApartment(err) {
     console.error('[nyhome-details] save apartment', err);
+    if (err.status === 409) return;
+    if (window.alert) window.alert('Could not save. Check your connection and try again.');
+  }
+
+  function saveDetailApartment() {
+    return NyhomeSaveWorkflow.saveApartmentRespectingBlacklist(NyhomeAPI.saveApartment, function (forRetry) {
+      var p = buildApartmentPayload();
+      if (forRetry) p.ignoreBlacklist = true;
+      return p;
+    });
   }
 
   function boot() {
@@ -33,6 +43,7 @@
 
       state.apartment = apartment;
       state.criteria = data.criteria || [];
+      state.neighborhoods = data.neighborhoods || [];
       render(activeTab || currentTab() || 'scorecard');
     }).catch(function () {
       rootEl.innerHTML = '<div class="empty-state">Could not load apartment details yet.</div>';
@@ -255,7 +266,7 @@
     var btn = document.getElementById('detail-vibe-save-photos');
     if (!btn) return;
     btn.addEventListener('click', function () {
-      NyhomeAPI.saveApartment(buildApartmentPayload()).then(function () {
+      saveDetailApartment().then(function () {
         return load('images');
       }).catch(catchSaveApartment);
     });
@@ -347,12 +358,23 @@
     '</section>';
   }
 
+  function detailNeighborhoodOptionsHtml() {
+    return (state.neighborhoods || []).map(function (n) {
+      return '<option value="' + escapeAttr(n.name) + '"></option>';
+    }).join('');
+  }
+
   function renderUnitSetupTab(apartment, activeTab) {
     return '<section id="tab-unit" class="summary-tab-content' + (activeTab === 'unit' ? ' active' : '') + '">' +
       '<h2>Unit Setup</h2>' +
       '<form data-apartment-form class="content-section">' +
         '<div class="section-header"><h3 class="section-title">Apartment Controls</h3></div>' +
         '<div class="form-grid">' +
+          '<label>Neighborhood<input data-detail-neighborhood list="detail-neighborhood-options" value="' + escapeAttr(apartment.neighborhood || '') + '" placeholder="Neighborhood" autocomplete="off"></label>' +
+          '<datalist id="detail-neighborhood-options">' + detailNeighborhoodOptionsHtml() + '</datalist>' +
+          '<label>Address<input data-detail-address required value="' + escapeAttr(apartment.address || '') + '" placeholder="Street address" autocomplete="street-address"></label>' +
+          '<label>Apt number<input data-detail-apt value="' + escapeAttr(apartment.apt_number || '') + '" placeholder="Unit" autocomplete="off"></label>' +
+          '<label>Move-in date<input data-detail-move-in type="date" value="' + escapeAttr(apartment.move_in_date || '') + '"></label>' +
           '<label>Listing URL<input data-listing-url type="url" value="' + escapeAttr(apartment.listing_url || '') + '" placeholder="https://..."></label>' +
           '<label class="span-2">Notes<textarea data-notes rows="5">' + escapeHtml(apartment.notes || '') + '</textarea></label>' +
         '</div>' +
@@ -447,7 +469,7 @@
     if (!form) return;
     form.addEventListener('submit', function (event) {
       event.preventDefault();
-      NyhomeAPI.saveApartment(buildApartmentPayload()).then(function () { load('unit'); }).catch(catchSaveApartment);
+      saveDetailApartment().then(function () { load('unit'); }).catch(catchSaveApartment);
     });
 
     var prev = rootEl.querySelector('[data-status-prev]');
@@ -460,11 +482,11 @@
       if (!confirm('Mark this apartment as rejected?')) return;
       setStatusValue('rejected');
       syncStatusControls('rejected');
-      NyhomeAPI.saveApartment(buildApartmentPayload()).then(function () { load(currentTab() || 'scorecard'); }).catch(catchSaveApartment);
+      saveDetailApartment().then(function () { load(currentTab() || 'scorecard'); }).catch(catchSaveApartment);
     });
     if (status) status.addEventListener('change', function () {
       syncStatusControls(status.value || 'new');
-      NyhomeAPI.saveApartment(buildApartmentPayload()).then(function () { load(currentTab() || 'scorecard'); }).catch(catchSaveApartment);
+      saveDetailApartment().then(function () { load(currentTab() || 'scorecard'); }).catch(catchSaveApartment);
     });
 
     if (state.apartment) {
@@ -641,15 +663,14 @@
 
   function stepStatus(delta, shouldSave) {
     var current = getStatusValue() || 'new';
-    if (current === 'rejected') return;
     var index = STATUS_ORDER.indexOf(current);
-    if (index < 0) index = 0;
+    if (index < 0) return;
     var nextIndex = Math.max(0, Math.min(STATUS_ORDER.length - 1, index + delta));
     var next = STATUS_ORDER[nextIndex];
     setStatusValue(next);
     syncStatusControls(next);
     if (shouldSave) {
-      NyhomeAPI.saveApartment(buildApartmentPayload()).then(function () { load(currentTab() || 'scorecard'); }).catch(catchSaveApartment);
+      saveDetailApartment().then(function () { load(currentTab() || 'scorecard'); }).catch(catchSaveApartment);
     }
   }
 
@@ -676,9 +697,9 @@
 
     var isRejected = current === 'rejected';
     var index = STATUS_ORDER.indexOf(current);
-    if (index < 0) index = 0;
-    if (prev) prev.disabled = isRejected || index === 0;
-    if (next) next.disabled = isRejected || index === STATUS_ORDER.length - 1;
+    var inNav = index >= 0;
+    if (prev) prev.disabled = !inNav || isRejected || index === 0;
+    if (next) next.disabled = !inNav || isRejected || index === STATUS_ORDER.length - 1;
     if (reject) {
       reject.disabled = isRejected;
       reject.classList.toggle('is-rejected', isRejected);
@@ -708,11 +729,15 @@
     var apartment = state.apartment;
     var listingEl = rootEl.querySelector('[data-listing-url]');
     var notesEl = rootEl.querySelector('[data-notes]');
+    var neighEl = rootEl.querySelector('[data-detail-neighborhood]');
+    var addrEl = rootEl.querySelector('[data-detail-address]');
+    var aptEl = rootEl.querySelector('[data-detail-apt]');
+    var moveEl = rootEl.querySelector('[data-detail-move-in]');
     return {
       id: apartment.id,
-      neighborhood: apartment.neighborhood,
-      address: apartment.address,
-      aptNumber: apartment.apt_number,
+      neighborhood: neighEl ? neighEl.value.trim() : apartment.neighborhood,
+      address: addrEl ? addrEl.value.trim() : apartment.address,
+      aptNumber: aptEl ? aptEl.value.trim() : apartment.apt_number,
       rent: centsToDollars(apartment.rent_cents),
       netEffective: centsToDollars(apartment.net_effective_cents),
       brokerFee: centsToDollars(apartment.broker_fee_cents),
@@ -724,7 +749,7 @@
       squareFeet: apartment.square_feet,
       unitFeatures: selectedValues('unit-features'),
       amenities: selectedValues('amenities'),
-      moveInDate: apartment.move_in_date,
+      moveInDate: moveEl && moveEl.value ? moveEl.value : apartment.move_in_date,
       status: NyhomeStatus.normalizeStatus(getStatusValue() || 'new'),
       listingUrl: listingEl ? listingEl.value : (apartment.listing_url || ''),
       notes: notesEl ? notesEl.value : (apartment.notes || ''),

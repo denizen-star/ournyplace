@@ -1,8 +1,9 @@
 (function () {
-  var state = { apartments: [], criteria: [], neighborhoods: [] };
+  var state = { apartments: [], criteria: [], neighborhoods: [], buildingBlacklist: [] };
   var form = document.getElementById('apartment-form');
   var listEl = document.getElementById('admin-apartment-list');
   var criteriaListEl = document.getElementById('criteria-list');
+  var blacklistListEl = document.getElementById('building-blacklist-list');
   var criteriaDragId = null;
   var vibeSlots = ['', '', ''];
   var vibeActiveSlot = 0;
@@ -19,21 +20,33 @@
     syncStatusControls(value('status') || 'new');
     bindStatusControls();
     bindCriteriaList();
+    bindBlacklistList();
+    bindBlacklistForm();
+    bindBlacklistPasteHelper();
     load();
   }
 
   function load() {
-    return NyhomeAPI.getApartments().then(function (data) {
-      state.apartments = data.apartments || [];
-      state.criteria = data.criteria || [];
-      state.neighborhoods = data.neighborhoods || [];
-      renderApartments();
-      renderSearchSuggestions();
-      renderCriteria();
-      renderNeighborhoodOptions();
-    }).catch(function (err) {
-      console.error('[nyhome-admin] load', err);
-    });
+    return NyhomeAPI.getApartments()
+      .then(function (data) {
+        state.apartments = data.apartments || [];
+        state.criteria = data.criteria || [];
+        state.neighborhoods = data.neighborhoods || [];
+        return NyhomeAPI.getBuildingBlacklist().catch(function () {
+          return { entries: [] };
+        });
+      })
+      .then(function (bl) {
+        state.buildingBlacklist = (bl && bl.entries) || [];
+        renderApartments();
+        renderSearchSuggestions();
+        renderCriteria();
+        renderNeighborhoodOptions();
+        renderBlacklist();
+      })
+      .catch(function (err) {
+        console.error('[nyhome-admin] load', err);
+      });
   }
 
   function bindTabs() {
@@ -189,13 +202,20 @@
   function bindForms() {
     form.addEventListener('submit', function (event) {
       event.preventDefault();
-      NyhomeAPI.saveApartment(readApartmentForm()).then(function () {
-        clearApartmentForm();
-        return load();
-      }).catch(function (err) {
-        console.error('[nyhome-admin] save apartment', err);
-        window.alert('Could not save this apartment. Confirm the address field is filled, you are online, and the API is reachable. Details are in the browser console.');
-      });
+      NyhomeSaveWorkflow.saveApartmentRespectingBlacklist(NyhomeAPI.saveApartment, function (forRetry) {
+        var p = readApartmentForm();
+        if (forRetry) p.ignoreBlacklist = true;
+        return p;
+      })
+        .then(function () {
+          clearApartmentForm();
+          return load();
+        })
+        .catch(function (err) {
+          console.error('[nyhome-admin] save apartment', err);
+          if (err.status === 409) return;
+          window.alert('Could not save this apartment. Confirm the address field is filled, you are online, and the API is reachable. Details are in the browser console.');
+        });
     });
 
     document.getElementById('reset-form').addEventListener('click', clearApartmentForm);
@@ -297,6 +317,219 @@
       Array.prototype.forEach.call(criteriaListEl.querySelectorAll('.criterion-edit-row'), function (el) {
         el.classList.remove('criterion-row--dragging');
       });
+    });
+  }
+
+  function bindBlacklistForm() {
+    var form = document.getElementById('blacklist-add-form');
+    if (!form) return;
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var manual = document.getElementById('blacklist-address-manual');
+      var pasteEl = document.getElementById('blacklist-raw-paste');
+      var notesEl = document.getElementById('blacklist-notes');
+      var addr = manual && manual.value.trim();
+      var paste = pasteEl && pasteEl.value.trim();
+      if (!addr && !paste) {
+        window.alert('Enter a street address or paste listing text that includes an address line.');
+        return;
+      }
+      NyhomeAPI.createBuildingBlacklist({
+        address: addr || null,
+        rawPaste: paste || null,
+        notes: notesEl ? notesEl.value.trim() : '',
+      })
+        .then(function () {
+          if (pasteEl) pasteEl.value = '';
+          if (manual) manual.value = '';
+          if (notesEl) notesEl.value = '';
+          return load();
+        })
+        .catch(function (err) {
+          console.error('[nyhome-admin] blacklist add', err);
+          window.alert(err.message || 'Could not add to blacklist.');
+        });
+    });
+  }
+
+  function bindBlacklistList() {
+    if (!blacklistListEl) return;
+    blacklistListEl.addEventListener('click', function (event) {
+      var del = event.target.closest('.blacklist-delete');
+      if (del && blacklistListEl.contains(del)) {
+        var rowDel = del.closest('[data-blacklist-id]');
+        var bid = rowDel ? Number(rowDel.getAttribute('data-blacklist-id')) : 0;
+        if (!bid) return;
+        if (!window.confirm('Remove this building from the blacklist?')) return;
+        NyhomeAPI.deleteBuildingBlacklist(bid).then(load).catch(function (err) {
+          console.error('[nyhome-admin] blacklist delete', err);
+        });
+        return;
+      }
+      var disp = event.target.closest('.criterion-display');
+      if (!disp || !blacklistListEl.contains(disp)) return;
+      var cell = disp.closest('.criterion-cell');
+      var row = disp.closest('.blacklist-edit-row');
+      if (!cell || !row) return;
+      beginBlacklistEdit(cell, row);
+    });
+    blacklistListEl.addEventListener('keydown', function (event) {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      var disp = event.target.closest('.criterion-display');
+      if (!disp || !blacklistListEl.contains(disp)) return;
+      if (event.key === ' ') event.preventDefault();
+      var cell = disp.closest('.criterion-cell');
+      var row = disp.closest('.blacklist-edit-row');
+      if (!cell || !row) return;
+      beginBlacklistEdit(cell, row);
+    });
+    blacklistListEl.addEventListener('focusout', function (event) {
+      var t = event.target;
+      if (!t.classList || !t.classList.contains('criterion-input')) return;
+      var cell = t.closest('.criterion-cell');
+      var row = t.closest('.blacklist-edit-row');
+      if (!cell || !row || !blacklistListEl.contains(row)) return;
+      setTimeout(function () {
+        if (!cell.classList.contains('is-editing')) return;
+        if (cell.contains(document.activeElement)) return;
+        endBlacklistEditCell(cell, row, true);
+      }, 0);
+    });
+  }
+
+  function beginBlacklistEdit(cell, row) {
+    Array.prototype.forEach.call(row.querySelectorAll('.criterion-cell.is-editing'), function (c) {
+      if (c !== cell) endBlacklistEditCell(c, row, true);
+    });
+    cell.classList.add('is-editing');
+    var input = cell.querySelector('.criterion-input');
+    if (input) {
+      setTimeout(function () {
+        input.focus();
+        if (typeof input.select === 'function' && input.type !== 'number') input.select();
+      }, 0);
+    }
+  }
+
+  function syncBlacklistDisplayFromInputs(row) {
+    var addrI = row.querySelector('.blacklist-input--address');
+    var notesI = row.querySelector('.blacklist-input--notes');
+    var addrD = row.querySelector('.blacklist-display--street');
+    var notesD = row.querySelector('.blacklist-display--notes');
+    if (addrD && addrI) {
+      var av = addrI.value.trim();
+      addrD.textContent = av || addrD.textContent;
+    }
+    if (notesD && notesI) {
+      var dv = String(notesI.value || '').trim();
+      if (dv) {
+        notesD.textContent = notesI.value;
+        notesD.classList.remove('criterion-display--empty');
+      } else {
+        notesD.innerHTML = '<span class="criterion-placeholder">Notes</span>';
+        notesD.classList.add('criterion-display--empty');
+      }
+    }
+  }
+
+  function syncBlacklistDisplayFromState(row) {
+    var id = Number(row.getAttribute('data-blacklist-id'));
+    var prev = state.buildingBlacklist.find(function (x) { return x.id === id; });
+    if (!prev) return;
+    var addrD = row.querySelector('.blacklist-display--street');
+    var notesD = row.querySelector('.blacklist-display--notes');
+    var addrI = row.querySelector('.blacklist-input--address');
+    var notesI = row.querySelector('.blacklist-input--notes');
+    var keyEl = row.querySelector('.blacklist-row-key');
+    if (keyEl) {
+      keyEl.textContent = prev.normalized_key || '';
+      keyEl.setAttribute('title', prev.normalized_key || '');
+    }
+    var streetShow = prev.display_address || prev.normalized_key || '';
+    if (addrD) addrD.textContent = streetShow;
+    if (addrI) addrI.value = prev.display_address || '';
+    var defTrim = prev.notes && String(prev.notes).trim();
+    if (notesD) {
+      if (defTrim) {
+        notesD.textContent = prev.notes;
+        notesD.classList.remove('criterion-display--empty');
+      } else {
+        notesD.innerHTML = '<span class="criterion-placeholder">Notes</span>';
+        notesD.classList.add('criterion-display--empty');
+      }
+    }
+    if (notesI) notesI.value = prev.notes || '';
+  }
+
+  function endBlacklistEditCell(cell, row, shouldSave) {
+    if (!cell.classList.contains('is-editing')) return Promise.resolve();
+    cell.classList.remove('is-editing');
+    syncBlacklistDisplayFromInputs(row);
+    if (shouldSave) {
+      return saveBlacklistRow(row)
+        .then(function () {
+          syncBlacklistDisplayFromState(row);
+        })
+        .catch(function () {
+          load();
+        });
+    }
+    return Promise.resolve();
+  }
+
+  function saveBlacklistRow(row) {
+    var id = Number(row.getAttribute('data-blacklist-id'));
+    if (!id) return Promise.resolve();
+    var addrEl = row.querySelector('.blacklist-input--address');
+    var notesEl = row.querySelector('.blacklist-input--notes');
+    if (!addrEl || !notesEl) return Promise.resolve();
+    var displayAddress = addrEl.value.trim();
+    if (!displayAddress) {
+      var blankPrev = state.buildingBlacklist.find(function (x) { return x.id === id; });
+      if (blankPrev) addrEl.value = blankPrev.display_address || blankPrev.normalized_key || '';
+      return Promise.resolve();
+    }
+    var notes = notesEl.value;
+    var prev = state.buildingBlacklist.find(function (x) { return x.id === id; });
+    if (prev && prev.display_address === displayAddress && String(prev.notes || '') === String(notes || '')) {
+      return Promise.resolve();
+    }
+    return NyhomeAPI.updateBuildingBlacklist({ id: id, displayAddress: displayAddress, notes: notes }).then(function () {
+      if (prev) {
+        prev.display_address = displayAddress;
+        prev.notes = notes;
+      }
+    });
+  }
+
+  function renderBlacklist() {
+    if (!blacklistListEl) return;
+    if (!state.buildingBlacklist.length) {
+      blacklistListEl.innerHTML = '<div class="empty-state">No blacklisted buildings yet.</div>';
+      return;
+    }
+    blacklistListEl.innerHTML = '';
+    state.buildingBlacklist.forEach(function (row) {
+      var streetShow = row.display_address || row.normalized_key || '';
+      var defTrim = row.notes && String(row.notes).trim();
+      var notesDisplay = defTrim
+        ? escapeHtml(row.notes)
+        : '<span class="criterion-placeholder">Notes</span>';
+      var el = document.createElement('div');
+      el.className = 'list-row criterion-edit-row blacklist-edit-row';
+      el.setAttribute('data-blacklist-id', String(row.id));
+      el.innerHTML =
+        '<span class="blacklist-row-key muted" title="' + escapeAttr(row.normalized_key || '') + '">' + escapeHtml(row.normalized_key || '') + '</span>' +
+        '<div class="criterion-cell criterion-cell--label blacklist-cell--street">' +
+          '<span class="criterion-display criterion-display--label blacklist-display--street" tabindex="0" role="button" aria-label="Edit street">' + escapeHtml(streetShow) + '</span>' +
+          '<input type="text" class="criterion-input criterion-input--label blacklist-input--address" value="' + escapeAttr(row.display_address || '') + '" autocomplete="off" aria-label="Street display">' +
+        '</div>' +
+        '<div class="criterion-cell criterion-cell--definition blacklist-cell--notes">' +
+          '<span class="criterion-display criterion-display--definition blacklist-display--notes' + (defTrim ? '' : ' criterion-display--empty') + '" tabindex="0" role="button" aria-label="Edit notes">' + notesDisplay + '</span>' +
+          '<textarea class="criterion-input criterion-input--definition blacklist-input--notes" rows="2" aria-label="Notes">' + escapeHtml(row.notes || '') + '</textarea>' +
+        '</div>' +
+        '<button type="button" class="danger-btn criterion-delete blacklist-delete">Delete</button>';
+      blacklistListEl.appendChild(el);
     });
   }
 
@@ -706,20 +939,78 @@
     });
   }
 
+  /** Paste often fires before the textarea value updates; use clipboard text and insert explicitly. */
+  function insertPlainTextFromPaste(textarea, e, onAfter) {
+    var cd = e.clipboardData;
+    var clip = cd && typeof cd.getData === 'function' ? cd.getData('text/plain') : '';
+    if (!clip) return false;
+    e.preventDefault();
+    var start = textarea.selectionStart;
+    var end = textarea.selectionEnd;
+    var val = textarea.value || '';
+    if (typeof start !== 'number' || typeof end !== 'number') {
+      textarea.value = val + clip;
+    } else {
+      textarea.value = val.slice(0, start) + clip + val.slice(end);
+      var caret = start + clip.length;
+      try {
+        textarea.setSelectionRange(caret, caret);
+      } catch (err) { /* empty */ }
+    }
+    if (typeof onAfter === 'function') onAfter(textarea.value);
+    return true;
+  }
+
   function bindNotesParser() {
     var notes = document.getElementById('notes');
-    notes.addEventListener('paste', function () {
-      setTimeout(function () {
-        applyListingText(notes.value);
-      }, 0);
+    if (!notes) return;
+    if (typeof NyhomeListingText === 'undefined' || typeof NyhomeListingText.parseListingText !== 'function') {
+      console.warn('[nyhome-admin] NyhomeListingText not loaded; apartment Notes paste helper disabled.');
+      return;
+    }
+    notes.addEventListener('paste', function (e) {
+      if (!insertPlainTextFromPaste(notes, e, applyListingText)) {
+        setTimeout(function () {
+          applyListingText(notes.value);
+        }, 0);
+      }
     });
     notes.addEventListener('blur', function () {
       applyListingText(notes.value);
     });
   }
 
+  function bindBlacklistPasteHelper() {
+    var raw = document.getElementById('blacklist-raw-paste');
+    var manual = document.getElementById('blacklist-address-manual');
+    if (!raw || !manual) return;
+    if (typeof NyhomeListingText === 'undefined' || typeof NyhomeListingText.parseListingText !== 'function') return;
+
+    function fillStreetFromRaw(val) {
+      var parsed = NyhomeListingText.parseListingText(val);
+      if (parsed && parsed.address) manual.value = parsed.address;
+    }
+
+    raw.addEventListener('paste', function (e) {
+      if (!insertPlainTextFromPaste(raw, e, fillStreetFromRaw)) {
+        setTimeout(function () {
+          fillStreetFromRaw(raw.value);
+        }, 0);
+      }
+    });
+    raw.addEventListener('blur', function () {
+      var parsed = NyhomeListingText.parseListingText(raw.value);
+      if (parsed && parsed.address && !manual.value.trim()) {
+        manual.value = parsed.address;
+      }
+    });
+  }
+
   function applyListingText(text) {
-    var parsed = parseListingText(text);
+    if (typeof NyhomeListingText === 'undefined' || typeof NyhomeListingText.parseListingText !== 'function') {
+      return;
+    }
+    var parsed = NyhomeListingText.parseListingText(text);
     if (!parsed) return;
     var notes = document.getElementById('notes');
     if (parsed.address) setValue('address', parsed.address);
@@ -735,118 +1026,7 @@
     if (parsed.amenities && parsed.amenities.length) {
       setSelectedValues('amenities', mergeValues(getSelectedValues('amenities'), parsed.amenities));
     }
-    if (parsed.organizedNotes) notes.value = parsed.organizedNotes;
-  }
-
-  function parseListingText(text) {
-    if (!text || !String(text).trim()) return null;
-    var lines = String(text).split(/\r?\n/).map(function (line) { return line.trim(); }).filter(Boolean);
-    var parsed = { amenities: [] };
-    var notes = [];
-    var other = [];
-    var consumed = {};
-
-    lines.forEach(function (line, index) {
-      var neighborhoodMatch = line.match(/^Rental unit in (.+)$/i);
-      if (neighborhoodMatch) {
-        parsed.neighborhood = neighborhoodMatch[1].trim();
-        consumed[index] = true;
-        notes.push('Listing type: Rental unit');
-        return;
-      }
-
-      if (/^New Development$/i.test(line)) {
-        parsed.amenities.push('new-construction');
-        consumed[index] = true;
-        notes.push('Building: New development');
-        return;
-      }
-
-      var addressMatch = line.match(/^(.+\d{1,6}.*?)(?:\s+#\s*([A-Za-z0-9-]+))$/);
-      if (addressMatch) {
-        parsed.address = addressMatch[1].trim();
-        parsed.aptNumber = addressMatch[2] || '';
-        consumed[index] = true;
-        return;
-      }
-
-      var linkMatch = line.match(/^https?:\/\/\S+$/i);
-      if (linkMatch) {
-        parsed.listingUrl = line;
-        consumed[index] = true;
-      }
-    });
-
-    for (var i = 0; i < lines.length; i++) {
-      if (/^\$[\d,]+$/.test(lines[i])) {
-        var amount = Number(lines[i].replace(/[$,]/g, ''));
-        var next = lines[i + 1] || '';
-        if (/^base rent$/i.test(next) && parsed.rent == null) {
-          parsed.rent = amount;
-          consumed[i] = true;
-          consumed[i + 1] = true;
-        } else if (/net effective base rent/i.test(next)) {
-          parsed.netEffective = amount;
-          consumed[i] = true;
-          consumed[i + 1] = true;
-        } else if (amount < 1000 && parsed.amenitiesFees == null) {
-          parsed.amenitiesFees = amount;
-          consumed[i] = true;
-          notes.push('Additional monthly fee: $' + amount);
-        }
-      } else {
-        var inlineNet = lines[i].match(/^\$([\d,]+)\s+net effective base rent$/i);
-        if (inlineNet) {
-          parsed.netEffective = Number(inlineNet[1].replace(/,/g, ''));
-          consumed[i] = true;
-        }
-      }
-    }
-
-    var sqftMatch = String(text).match(/([\d,]+|-)\s*ft²/i);
-    if (sqftMatch && sqftMatch[1] !== '-') parsed.squareFeet = Number(sqftMatch[1].replace(/,/g, ''));
-
-    var bedMatch = String(text).match(/(\d+(?:\.\d+)?)\s*bed\b/i);
-    if (bedMatch) parsed.bedrooms = Number(bedMatch[1]);
-
-    var bathMatch = String(text).match(/(\d+(?:\.\d+)?)\s*bath\b/i);
-    if (bathMatch) parsed.bathrooms = Number(bathMatch[1]);
-
-    lines.forEach(function (line, index) {
-      if (consumed[index]) return;
-      if (/^Save$/i.test(line) || /^For Rent$/i.test(line)) return;
-      if (/^\d+(?:\.\d+)?\s*bed$/i.test(line)) return;
-      if (/^\d+(?:\.\d+)?\s*bath$/i.test(line)) return;
-      if (/^[\d,-]+\s*ft²$/i.test(line)) return;
-      if (/^\$\d+ per ft²$/i.test(line)) return;
-      if (/^\d+ rooms?$/i.test(line)) return;
-      if (/months? free|month free|lease/i.test(line)) {
-        notes.push('Concession: ' + line);
-        return;
-      }
-      if (/^Listing by /i.test(line)) {
-        notes.push(line);
-        return;
-      }
-      if (/Base rent only|full breakdown/i.test(line)) {
-        notes.push(line);
-        return;
-      }
-      other.push(line);
-    });
-
-    if (!parsed.address && parsed.rent == null && parsed.netEffective == null && !parsed.neighborhood) return null;
-    parsed.organizedNotes = buildOrganizedNotes(notes, other);
-    return parsed;
-  }
-
-  function buildOrganizedNotes(notes, other) {
-    var sections = [];
-    var uniqueNotes = Array.from(new Set(notes));
-    var uniqueOther = Array.from(new Set(other));
-    if (uniqueNotes.length) sections.push(uniqueNotes.join('\n'));
-    if (uniqueOther.length) sections.push('Other:\n' + uniqueOther.join('\n'));
-    return sections.join('\n\n');
+    if (parsed.organizedNotes && notes) notes.value = parsed.organizedNotes;
   }
 
   function renderApartments() {
@@ -907,20 +1087,27 @@
         var payload = NyhomeApartmentPayload.apartmentToSavePayload(apartment, { status: nextStatus });
         statusSelect.className = 'status-pill status-select manager-row-status ' + NyhomeStatus.statusClass(nextStatus);
         statusSelect.disabled = true;
-        NyhomeAPI.saveApartment(payload).then(function () {
-          apartment.status = nextStatus;
-          if (String(value('apartment-id')) === String(apartment.id)) {
-            setValue('status', nextStatus);
-            syncStatusControls(nextStatus);
-          }
-          return load();
-        }).catch(function (err) {
-          console.error('[nyhome-admin] save apartment status', err);
-          if (statusSelect.isConnected) {
-            statusSelect.value = prev;
-            statusSelect.className = 'status-pill status-select manager-row-status ' + NyhomeStatus.statusClass(prev);
-          }
-        }).then(function () {
+        NyhomeSaveWorkflow.saveApartmentRespectingBlacklist(NyhomeAPI.saveApartment, function (forRetry) {
+          var o = { status: nextStatus };
+          if (forRetry) o.ignoreBlacklist = true;
+          return NyhomeApartmentPayload.apartmentToSavePayload(apartment, o);
+        })
+          .then(function () {
+            apartment.status = nextStatus;
+            if (String(value('apartment-id')) === String(apartment.id)) {
+              setValue('status', nextStatus);
+              syncStatusControls(nextStatus);
+            }
+            return load();
+          })
+          .catch(function (err) {
+            console.error('[nyhome-admin] save apartment status', err);
+            if (statusSelect.isConnected) {
+              statusSelect.value = prev;
+              statusSelect.className = 'status-pill status-select manager-row-status ' + NyhomeStatus.statusClass(prev);
+            }
+          })
+          .then(function () {
           if (statusSelect.isConnected) {
             statusSelect.disabled = false;
           }

@@ -16,11 +16,12 @@
     'lease_review',
     'signed',
     'rejected',
+    'blacklisted',
     'archived',
   ];
   var SET = new Set(STATUS_ORDER);
   var STATUS_NAV = STATUS_ORDER.filter(function (s) {
-    return s !== 'rejected' && s !== 'archived';
+    return s !== 'rejected' && s !== 'archived' && s !== 'blacklisted';
   });
 
   function normalizeStatus(input) {

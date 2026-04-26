@@ -15,6 +15,8 @@ exports.handler = async (event) => {
       const address = stringOrNull(body.address);
       if (!address) return json(400, { error: 'address is required' });
 
+      const ignoreBlacklist = Boolean(body.ignoreBlacklist);
+
       const id = await saveApartment({
         id: numberOrNull(body.id),
         address,
@@ -38,6 +40,7 @@ exports.handler = async (event) => {
         status: normalizeStatus(stringOrNull(body.status)),
         notes: stringOrNull(body.notes),
         imageUrls: Array.isArray(body.imageUrls) ? body.imageUrls.map(stringOrNull).filter(Boolean) : [],
+        ignoreBlacklist,
       });
       return json(200, { success: true, id });
     }
@@ -51,6 +54,17 @@ exports.handler = async (event) => {
 
     return json(405, { error: 'Method not allowed' });
   } catch (err) {
+    if (err.code === 'DUPLICATE_LISTING') {
+      return json(409, { error: err.message, code: err.code, existingId: err.existingId });
+    }
+    if (err.code === 'BLACKLISTED') {
+      return json(409, {
+        error: err.message,
+        code: err.code,
+        blacklistId: err.blacklistId,
+        displayAddress: err.displayAddress,
+      });
+    }
     console.error('[apartments] Error:', err.message);
     return json(500, { error: 'Something went wrong' });
   }

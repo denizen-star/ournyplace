@@ -2,8 +2,18 @@ var NyhomeAPI = (function () {
   var APARTMENTS_CACHE_KEY = 'nyhome-apartments-cache';
 
   function _json(res) {
-    if (!res.ok) throw new Error(String(res.status));
-    return res.json();
+    return res.json().catch(function () {
+      return {};
+    }).then(function (data) {
+      if (!res.ok) {
+        var err = new Error(data.error || res.statusText || String(res.status));
+        err.status = res.status;
+        err.code = data.code;
+        err.payload = data;
+        throw err;
+      }
+      return data;
+    });
   }
 
   function _get(url) {
@@ -69,10 +79,30 @@ var NyhomeAPI = (function () {
     return _send('/api/applications', 'POST', payload);
   }
 
+  function getBuildingBlacklist() {
+    return _get('/api/building-blacklist');
+  }
+
+  function createBuildingBlacklist(payload) {
+    return _send('/api/building-blacklist', 'POST', payload);
+  }
+
+  function updateBuildingBlacklist(payload) {
+    return _send('/api/building-blacklist', 'PUT', payload);
+  }
+
+  function deleteBuildingBlacklist(id) {
+    return _send('/api/building-blacklist', 'DELETE', { id: id });
+  }
+
   return {
     getApartments: getApartments,
     saveApartment: saveApartment,
     deleteApartment: deleteApartment,
+    getBuildingBlacklist: getBuildingBlacklist,
+    createBuildingBlacklist: createBuildingBlacklist,
+    updateBuildingBlacklist: updateBuildingBlacklist,
+    deleteBuildingBlacklist: deleteBuildingBlacklist,
     saveCriterion: saveCriterion,
     updateCriterion: updateCriterion,
     reorderCriteria: reorderCriteria,

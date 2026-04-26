@@ -13,7 +13,7 @@
           : o.listingUrl != null
             ? o.listingUrl
             : apartment.listing_url || '';
-    return {
+    var payload = {
       id: o.id != null ? o.id : apartment.id,
       neighborhood: o.neighborhood != null ? o.neighborhood : apartment.neighborhood || '',
       address: o.address != null ? o.address : apartment.address,
@@ -45,6 +45,8 @@
               return img.image_url;
             }).filter(Boolean),
     };
+    if (o.ignoreBlacklist === true) payload.ignoreBlacklist = true;
+    return payload;
   }
 
   global.NyhomeApartmentPayload = {

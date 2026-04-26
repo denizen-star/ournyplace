@@ -112,6 +112,18 @@ const TABLES = [
     score TINYINT NULL,
     INDEX idx_nyp_listing_events_apt_time (apartment_id, created_at)
   )`,
+
+  `CREATE TABLE IF NOT EXISTS nyp_building_blacklist (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    normalized_key VARCHAR(768) NOT NULL,
+    display_address VARCHAR(255) DEFAULT NULL,
+    notes TEXT DEFAULT NULL,
+    source_apartment_id INT DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_nyp_blacklist_key (normalized_key),
+    INDEX idx_nyp_blacklist_source_apt (source_apartment_id)
+  )`,
 ];
 
 const DEFAULT_CRITERIA = [

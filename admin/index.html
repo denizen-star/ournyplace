@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="/assets/css/app.css?v=50">
+  <link rel="stylesheet" href="/assets/css/app.css?v=56">
 </head>
 <body>
   <header class="app-header app-header--admin">
@@ -35,6 +35,7 @@
     <nav class="summary-tabs-header admin-tabs" aria-label="Admin sections">
       <button class="summary-tab tab active" data-tab="apartments">Apartment Setup</button>
       <button class="summary-tab tab" data-tab="criteria">Criteria</button>
+      <button class="summary-tab tab" data-tab="blacklist">Building blacklist</button>
     </nav>
 
     <section id="tab-apartments" class="tab-panel active">
@@ -141,6 +142,39 @@
       </section>
     </section>
 
+    <section id="tab-blacklist" class="tab-panel">
+      <form id="blacklist-add-form" class="content-section admin-form-card">
+        <div class="section-header criterion-add-header">
+          <h2 class="section-title">Add a blacklisted building</h2>
+        </div>
+        <p class="form-hint muted">Applies to the <strong>whole building</strong> (any unit will trigger a warning when saving a listing). Paste StreetEasy-style text or type the street address.</p>
+        <div class="form-grid">
+          <label class="span-2">Paste listing text
+            <textarea id="blacklist-raw-paste" rows="5" placeholder="Same format as apartment Notes paste helper"></textarea>
+          </label>
+          <div class="blacklist-address-field span-2">
+            <div class="blacklist-address-row">
+              <label class="blacklist-address-primary" for="blacklist-address-manual">Street address</label>
+              <input id="blacklist-address-manual" type="text" placeholder="260 Gold Street" autocomplete="off">
+              <span class="blacklist-address-hint muted" title="Optional when paste already includes a full street line">*Street address (optional if paste includes a line with number + street)</span>
+            </div>
+          </div>
+          <label class="span-2">Notes
+            <textarea id="blacklist-notes" rows="2" placeholder="Why we are skipping this building"></textarea>
+          </label>
+        </div>
+        <div class="button-row">
+          <button type="submit" class="primary-btn">Add to blacklist</button>
+        </div>
+      </form>
+      <div class="content-section">
+        <div class="section-header">
+          <h2 class="section-title">Blacklisted buildings</h2>
+        </div>
+        <div id="building-blacklist-list"></div>
+      </div>
+    </section>
+
     <section id="tab-criteria" class="tab-panel">
       <form id="criterion-form" class="content-section admin-form-card criterion-add-card">
         <div class="section-header criterion-add-header">
@@ -169,10 +203,23 @@
 
   </main>
 
-  <script src="/assets/js/apartmentStatus.js?v=50"></script>
-  <script src="/assets/js/apartmentSavePayload.js?v=50"></script>
-  <script src="/assets/js/api.js?v=50"></script>
-  <script src="/assets/js/vibeImages.js?v=50"></script>
-  <script src="/assets/js/admin.js?v=50"></script>
+  <dialog id="nyhome-blacklist-dialog" class="nyhome-modal">
+    <div class="nyhome-modal-inner">
+      <h2 class="nyhome-modal-title">Blacklisted building</h2>
+      <p id="nyhome-blacklist-dialog-msg" class="nyhome-modal-msg muted"></p>
+      <div class="nyhome-modal-actions">
+        <button type="button" class="secondary-btn" id="nyhome-blacklist-cancel">Go back</button>
+        <button type="button" class="primary-btn" id="nyhome-blacklist-confirm">Save anyway</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="/assets/js/apartmentStatus.js?v=56"></script>
+  <script src="/assets/js/listingTextParse.js?v=56"></script>
+  <script src="/assets/js/apartmentSavePayload.js?v=56"></script>
+  <script src="/assets/js/saveApartmentWorkflow.js?v=56"></script>
+  <script src="/assets/js/api.js?v=56"></script>
+  <script src="/assets/js/vibeImages.js?v=56"></script>
+  <script src="/assets/js/admin.js?v=56"></script>
 </body>
 </html>

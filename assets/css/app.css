@@ -799,6 +799,11 @@ body.shortlist .link-button--no-listing {
   color: #991b1b;
 }
 
+.status-blacklisted {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
 .status-archived {
   background: #e5e7eb;
   color: #374151;
@@ -3780,6 +3785,24 @@ body.shortlist .apartment-card.listing-status-rejected:hover {
     0 14px 36px rgba(15, 23, 42, 0.1);
 }
 
+body.shortlist .apartment-card.listing-status-blacklisted {
+  border-color: rgba(167, 139, 250, 0.78);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.76),
+    0 0 0 1px rgba(139, 92, 246, 0.38),
+    0 0 34px rgba(124, 58, 237, 0.26),
+    0 10px 28px rgba(15, 23, 42, 0.09);
+}
+
+body.shortlist .apartment-card.listing-status-blacklisted:hover {
+  border-color: rgba(139, 92, 246, 0.92);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 0 0 1px rgba(124, 58, 237, 0.48),
+    0 0 44px rgba(109, 40, 217, 0.34),
+    0 14px 36px rgba(15, 23, 42, 0.11);
+}
+
 body.shortlist .apartment-card.listing-status-archived {
   border-color: rgba(168, 162, 158, 0.72);
   box-shadow:
@@ -3970,4 +3993,101 @@ body.shortlist .empty-state {
     align-items: flex-start;
     flex-direction: column;
   }
+}
+
+/* Blacklist confirmation dialog */
+.nyhome-modal {
+  max-width: 420px;
+  padding: 0;
+  border: none;
+  border-radius: 14px;
+  background: var(--panel, #fff);
+  box-shadow: 0 28px 64px rgba(15, 23, 42, 0.28);
+}
+
+.nyhome-modal::backdrop {
+  background: rgba(15, 23, 42, 0.48);
+}
+
+.nyhome-modal-inner {
+  padding: 1.35rem 1.5rem 1.5rem;
+}
+
+.nyhome-modal-title {
+  margin: 0 0 0.65rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.nyhome-modal-msg {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.nyhome-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  margin-top: 1.35rem;
+}
+
+/* Admin blacklist: label + input + trailing hint on one row */
+.blacklist-address-row {
+  display: grid;
+  grid-template-columns: minmax(7rem, auto) minmax(0, 1fr) minmax(12rem, 38%);
+  gap: 0.65rem 1rem;
+  align-items: center;
+}
+
+.blacklist-address-primary {
+  font-weight: 500;
+  margin: 0;
+}
+
+.blacklist-address-hint {
+  font-size: 0.78rem;
+  line-height: 1.35;
+  hyphens: auto;
+}
+
+@media (max-width: 900px) {
+  .blacklist-address-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .blacklist-address-hint {
+    grid-column: 1;
+  }
+}
+
+/* Blacklisted buildings: same click-to-edit pattern as criteria */
+#building-blacklist-list:has(.blacklist-edit-row) {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  background: var(--paper);
+  box-shadow: var(--shadow);
+}
+
+#building-blacklist-list .blacklist-edit-row {
+  grid-template-columns: minmax(52px, 0.42fr) minmax(100px, 1.05fr) minmax(0, 2fr) auto;
+  column-gap: 12px;
+}
+
+#building-blacklist-list .blacklist-edit-row:last-child {
+  border-bottom: none;
+}
+
+#building-blacklist-list .blacklist-row-key {
+  font-size: 0.72rem;
+  line-height: 1.25;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  align-self: center;
+  padding: 0 4px;
+  min-width: 0;
 }

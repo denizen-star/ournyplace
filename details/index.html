@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="/assets/css/app.css?v=50">
+  <link rel="stylesheet" href="/assets/css/app.css?v=56">
 </head>
 <body>
   <header class="app-header">
@@ -27,9 +27,21 @@
     </section>
   </main>
 
-  <script src="/assets/js/apartmentStatus.js?v=50"></script>
-  <script src="/assets/js/api.js?v=50"></script>
-  <script src="/assets/js/vibeImages.js?v=50"></script>
-  <script src="/assets/js/details.js?v=50"></script>
+  <dialog id="nyhome-blacklist-dialog" class="nyhome-modal">
+    <div class="nyhome-modal-inner">
+      <h2 class="nyhome-modal-title">Blacklisted building</h2>
+      <p id="nyhome-blacklist-dialog-msg" class="nyhome-modal-msg muted"></p>
+      <div class="nyhome-modal-actions">
+        <button type="button" class="secondary-btn" id="nyhome-blacklist-cancel">Go back</button>
+        <button type="button" class="primary-btn" id="nyhome-blacklist-confirm">Save anyway</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="/assets/js/apartmentStatus.js?v=53"></script>
+  <script src="/assets/js/api.js?v=53"></script>
+  <script src="/assets/js/saveApartmentWorkflow.js?v=53"></script>
+  <script src="/assets/js/vibeImages.js?v=53"></script>
+  <script src="/assets/js/details.js?v=53"></script>
 </body>
 </html>
