@@ -3,24 +3,30 @@
 ## Unreleased
 
 ### Added
-- **Shortlist Finalist view:** **View** = Cards | **Finalist** (under the title, `nyhomeShortlistView` in `localStorage`). **Finalist** = aligned table: sort **Avg (desc)** then **workflow (desc)**; **Sort by** hidden. Columns: #, listing (address + neighborhood, thumbs after text when present), rent, net eff., **Move-in** `total_move_in_cents`, beds/baths, Avg / Kerv / Peter %, status (`status-pill` + `status-*` colors). Horizontal scroll on narrow viewports.
-- **Listing thumbs on shortlist / hover preview:** up to **3** `nyp_apartment_images` shown as small squares (`.nyhome-listing-thumb`); **Cards:** row **under** the Avg / Kerv / Peter score row, right-aligned. **Finalist:** in listing column. **Pointer hover** → fixed **300×300** preview (`#nyhome-finalist-flyout`, 1px border, rounded, same idea as vibe frames); out-of-flow (no row reflow). Dismiss: leave thumb/preview, **Escape**, **scroll**, **resize**. Thumbs use shared `wireListingThumbHovers()` for both views.
-- **N/A ratings:** per-criterion **N/A** in `/details` (and admin rating HTML if used); stores `NULL` in `nyp_ratings`; excluded from weighted partner % (only scored lines use weight). `npm run migrate`: `score` column nullable, `UPDATE` legacy `0` → `NULL`.
-- **Listing photos (vibe):** up to 3 per apartment. **Admin** + `/details` **Images** tab: paste/drop slots, `vibeImages.js` (resize + JPEG) → `data:` URLs in `nyp_apartment_images.image_url` (or keep older `https://` rows). Details **Save photos**; thumbnails on Scorecard / Images / Peter / Kerv (summary card has no inline strip).
-- Favicon: `assets/img/favicon1.png` in `<head>` on `/`, `/admin`, and `/details`; PWA `manifest.json` `icons` entry; `sw.js` precaches the file.
-- **Admin saved-list search:** header field next to **Apartment manager** filters **Saved apartments**; **suggestion list** under the title (listing name + `neighborhood · address`, up to 12; match stack = title, address, neighborhood, apt, status label, unit-feature + amenity slugs/labels; not notes). **×** clear; **Escape** / blur closes list. Switching to **Criteria** or **Next Actions** clears the field.
-- **Public shortlist sort:** `Sort by` segment under `h1` (Workflow, Avg, Peter, Kerv, Last updated); choice persisted in `localStorage` key `nyhomeShortlistSort`.
-- **Admin row → details:** click empty row area (not status, Edit, Details link, Delete) opens `/details/?id=…`.
+- **Shortlist Next actions** (`nyhomeShortlistView` = `next-actions`): third **View** tab after **Finalist**. Rows = listings with **scheduled tour** and/or **application deadline** (one row per apt). One-line row: title · location · dates · status pill; **?** = same `criterion-def-btn` + `vote-criterion-def-panel` toggle as **Peter/Kerv** scoring (prep copy). **Next:** / **Reject** call `saveApartment`; main strip links `/details`. **Sort by** hidden (same as Finalist).
+- **`nyp_listing_events`:** migration creates table; `saveApartment` logs status changes, `saveRating` logs vote when score changes; `GET /api/apartments` attaches `listing_events` (max 50/apt, newest first). **`/details` Activity Log** merges those events with Created / Tour / Application (dropped coarse “details updated” row).
+- **`assets/js/apartmentSavePayload.js`:** `NyhomeApartmentPayload.apartmentToSavePayload(apartment, overrides?)` for admin row status + shortlist Next actions saves.
+- **Shortlist Finalist view:** **View** = Cards | **Finalist** (`nyhomeShortlistView`). **Finalist** table: sort **Avg (desc)** then **workflow**; **Sort by** hidden. Columns incl. move-in, scores, status pill. Narrow = horizontal scroll.
+- **Listing thumbs on shortlist / hover preview:** up to **3** images; **Cards** under score row; **Finalist** in listing column; hover → `#nyhome-finalist-flyout` 300px preview. `wireListingThumbHovers()` shared.
+- **N/A ratings** in `/details`; `NULL` in DB; migrate nullable `score` + legacy `0` → `NULL`.
+- **Listing photos (vibe):** Admin + `/details` Images; `vibeImages.js`; thumbnails on score tabs.
+- Favicon + `manifest` + `sw.js` precache.
+- **Admin saved-list search** (header); suggestions; clear on **Criteria** tab.
+- **Public shortlist sort** (`nyhomeShortlistSort`).
+- **Admin row → details** click (excluding controls).
 
 ### Changed
-- **Shortlist cards:** no longer “no photos on cards” only — show up to 3 small listing thumbs with hover preview (see Unreleased). README updated.
-- **`POST /api/ratings`:** body must include `score` (`null` for N/A, else integer `0–5`). `lib/apartmentRepository` `calculateScores` uses **included** criterion weight only when `score` is numeric.
-- **Scoring UI:** `0..5` + N/A hex row; labels flex-centered in button; `?v=` on HTML + `sw.js` `CACHE_VERSION` (bump in lockstep; **48** in current `index.html` / `sw.js`).
-- **`index.html`:** on `localhost` / `127.0.0.1` / `::1`, unregisters all service workers (no `sw.js` in local dev). Production still registers `sw.js`.
+- **`/admin`:** removed **Next Actions** tab (moved to `/` **Next actions**). Search clears when leaving **Apartment Setup** for **Criteria** only.
+- **`NyhomeAPI.saveApartment`:** `PUT` if `Number(id) > 0`, else `POST`.
+- **Shortlist cards:** thumbs + hover preview (README).
+- **`POST /api/ratings`:** `score` required (`null` or `0–5`); weighted avg uses numeric rows only.
+- **Scoring UI:** hex buttons; cache `?v=` + `sw.js` **51** lockstep.
+- **`index.html`:** localhost unregisters service workers.
 
 ### Fixed
-- N/A and **0** could both look selected (`Number(null) === 0`); active state uses `rating != null` for numeric chips.
-- **Admin Criteria** drag-reorder: after successful `reorderCriteria`, `state.criteria` sort uses `ids.indexOf(Number(a.id))` (string/number id safe). `renderApartments()` runs to refresh **Saved apartments**.
+- **Saves if `nyp_listing_events` missing:** try/catch on event write/read/delete; **admin** save fail → **alert** + `console.error`.
+- N/A vs **0** active state (`rating != null` for numeric chips).
+- **Admin Criteria** drag-reorder refresh (`ids.indexOf(Number(a.id))`).
 
 ## 1.1.0 - 2026-04-25
 

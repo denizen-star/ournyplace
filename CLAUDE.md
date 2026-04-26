@@ -18,7 +18,7 @@ Environment: copy `.env.example` to `.env.local` and set `DATABASE_URL` (PlanetS
 
 ### Routing (netlify.toml)
 
-- `/` → `index.html` — Public shortlist: **View** Cards | **Finalist** | **Next actions** (`nyhomeShortlistView`); **Sort by** when Cards only (Workflow, Avg, Peter, Kerv, Last updated — `nyhomeShortlistSort`). Status filter; card grid with optional listing **thumbs** (row under Avg/Kerv/Peter) + **Finalist** table (thumbs after address, columns incl. move-in) + **Next actions** (listings with a scheduled tour and/or an application deadline: status pill, advance/reject, prep copy, row link to `/details`). Hover thumb → fixed **300px** flyout (`#nyhome-finalist-flyout`, no layout reflow)
+- `/` → `index.html` — Public shortlist: **View** Cards | **Finalist** | **Next actions** (`nyhomeShortlistView`); **Sort by** when Cards only (Workflow, Avg, Peter, Kerv, Last updated — `nyhomeShortlistSort`). Status filter; card grid with optional listing **thumbs** (row under Avg/Kerv/Peter) + **Finalist** table (thumbs after address, columns incl. move-in) + **Next actions** (tour and/or app deadline: one-line row, status pill, **?** = `criterion-def-btn` + definition-style panel for prep text, **Next** / **Reject**, link to `/details`). Hover thumb → fixed **300px** flyout (`#nyhome-finalist-flyout`, no layout reflow)
 - `/admin` → `admin/index.html` — Management dashboard (add/edit apartments, criteria config)
 - `/details/?id=…` → `details/index.html` — Full apartment view (scorecard, tour, application tracking)
 - `/api/*` → `/.netlify/functions/:splat`
@@ -33,7 +33,7 @@ Environment: copy `.env.example` to `.env.local` and set `DATABASE_URL` (PlanetS
 - **`vibeImages.js`** — Client-side image resize + JPEG compress for listing photos (used by `admin.js` and `details.js` Images tab)
 - **`apartmentStatus.js`** — Shared status enum and CSS class mapping (used by both client and `lib/`)
 
-Data is fetched on load, cached to `localStorage`, and re-fetched after mutations. UI re-renders optimistically on success; failures show toast feedback.
+Data is fetched on load, cached to `localStorage`, and re-fetched after mutations. UI re-renders after successful saves; failures log to the console; **admin** apartment form save also shows a **browser alert** on error.
 
 ### Backend (`netlify/functions/`, `lib/`)
 

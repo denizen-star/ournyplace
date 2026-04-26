@@ -10,6 +10,8 @@ npm run migrate
 npm run dev
 ```
 
+`npm run migrate` applies schema + seeds and creates **`nyp_listing_events`** (status + vote rows for **`/details` → Activity Log**). Skipping migrate still allows saves, but the log omits those events until the table exists.
+
 The app is static HTML/CSS/JS with Netlify Functions and PlanetScale. It uses its own `nyp_` database tables and `nyhome-*` browser keys. PWA: `manifest.json` + service worker; favicon is `assets/img/favicon1.png`. On `localhost` the shortlist page unregisters service workers so local dev is not stuck behind cached shell assets.
 
 Required local environment:
@@ -23,9 +25,9 @@ There is intentionally no auth while this is local-only. Add a password gate bef
 
 ## What It Does
 
-- Public shortlist at `/`: **View** **Cards** | **Finalist** (saved in browser). **Cards:** responsive card grid, **KPI** strip, facts, **Avg** / Kerv / Peter, then up to **3** small **listing** thumbs (from saved photos) on the line under scores; **pointer hover** → large fixed preview (no row jump). **Sort by** (Workflow, Avg, Peter, Kerv, Last updated) on Cards. **Finalist** table: sort by Avg then workflow; columns include rent, net, move-in, scores, `status` pill colors. **Details** / **Listing**, `status` **artwork** + collapsible filter; cards get **glass + status-colored** border/glow (`listing-status-*`). Add photos in **Admin** or **`/details` → Images** (up to 3).
-- Details at `/details/?id=…` (via **Details** on a card or admin row): Hunter-style top summary (status + meta) and tabs: **Scorecard**, **Images** (edit/save 3 photos + per-criterion table + gallery), **Unit Setup**, **Peter** and **Kerv** (scoring), Tour, Application, Activity Log. Status edits auto-save; scoring tabs: **N/A** + SVG `0..5` per criterion (definition behind **?** when present).
-- Admin at `/admin`: summary-style top tabs (`Apartment Setup`, `Criteria`, `Next Actions`). **Header** search next to **Apartment manager** filters **Saved apartments** (suggestion list under the title); switching to **Criteria** or **Next Actions** clears it. **Criteria:** add row + **click-to-edit** list, drag reorder (order = `/details` scoring tab order); `PUT /api/criteria` for update + reorder. `Saved Apartments` = compact rows (status, metrics, Edit / Details / Delete); click the row (not controls) opens `/details`.
+- Public shortlist at `/`: **View** **Cards** | **Finalist** | **Next actions** (`nyhomeShortlistView` in `localStorage`). **Cards:** responsive card grid, **KPI** strip, facts, **Avg** / Kerv / Peter, up to **3** listing thumbs under scores; hover → fixed preview. **Sort by** on Cards only. **Finalist:** table sorted by Avg then workflow; rent, net, move-in, scores, status pills. **Next actions:** one row per listing with **tour** and/or **app deadline**; status pill, **Next** / **Reject** (saves apartment), **?** prep toggle (same pattern as scoring definitions), strip links **Details**. **Details** / **Listing**; status filter + card glow (`listing-status-*`). Photos: **Admin** or **`/details` → Images** (up to 3).
+- Details at `/details/?id=…`: Hunter-style summary + tabs: **Scorecard**, **Images**, **Unit Setup**, **Peter** / **Kerv**, Tour, Application, **Activity Log** (includes **status** + **vote** history from `nyp_listing_events` after `npm run migrate`, plus tour/app milestones). Status auto-save; scoring: **N/A** + `0..5`, criterion **?** toggles definition panel when set.
+- Admin at `/admin`: tabs **Apartment Setup** | **Criteria**. **Header** search filters **Saved apartments**; cleared when switching to **Criteria**. **Criteria:** add + click-to-edit, drag reorder; `PUT /api/criteria`. **Saved Apartments:** compact rows; row click (not controls) → `/details`.
 - Manual apartment entry with sections: Location, Financials, The Unit, Amenities, Listing Notes, **Listing photos** (3 paste/drop slots, same encoding as on `/details` Images).
 - Apartment title is automatic: `Address #Apt`, e.g. `260 Gold Street #1117`.
 
