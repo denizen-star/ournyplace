@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 npm run dev        # Start local dev server at http://localhost:8889 (requires Netlify CLI)
-npm run migrate    # Schema + seeds: criteria, neighborhoods; alters (e.g. nullable `nyp_ratings.score`, legacy 0→NULL)
+npm run migrate    # Schema + seeds: criteria, neighborhoods; alters; `nyp_listing_events` (status + vote audit)
 npm run split-badges  # Split status badge sprite sheet into individual PNGs
 ```
 
@@ -18,17 +18,18 @@ Environment: copy `.env.example` to `.env.local` and set `DATABASE_URL` (PlanetS
 
 ### Routing (netlify.toml)
 
-- `/` → `index.html` — Public shortlist: **View** Cards | **Finalist** (`nyhomeShortlistView`); **Sort by** when Cards (Workflow, Avg, Peter, Kerv, Last updated — `nyhomeShortlistSort`). Status filter; card grid with optional listing **thumbs** (row under Avg/Kerv/Peter) + **Finalist** table (thumbs after address, columns incl. move-in). Hover thumb → fixed **300px** flyout (`#nyhome-finalist-flyout`, no layout reflow)
-- `/admin` → `admin/index.html` — Management dashboard (add/edit apartments, criteria config, next actions)
+- `/` → `index.html` — Public shortlist: **View** Cards | **Finalist** | **Next actions** (`nyhomeShortlistView`); **Sort by** when Cards only (Workflow, Avg, Peter, Kerv, Last updated — `nyhomeShortlistSort`). Status filter; card grid with optional listing **thumbs** (row under Avg/Kerv/Peter) + **Finalist** table (thumbs after address, columns incl. move-in) + **Next actions** (listings with a scheduled tour and/or an application deadline: status pill, advance/reject, prep copy, row link to `/details`). Hover thumb → fixed **300px** flyout (`#nyhome-finalist-flyout`, no layout reflow)
+- `/admin` → `admin/index.html` — Management dashboard (add/edit apartments, criteria config)
 - `/details/?id=…` → `details/index.html` — Full apartment view (scorecard, tour, application tracking)
 - `/api/*` → `/.netlify/functions/:splat`
 
 ### Frontend (`assets/js/`)
 
 - **`api.js`** — Fetch wrapper; all API client methods live here
-- **`app.js`** — Shortlist: filter, **view** (Cards / Finalist), **sort** (Cards only), `renderApartmentCard`, `renderFinalistList` (Avg→workflow sort), `listingThumbsMarkup` + `wireListingThumbHovers` (`.nyhome-listing-thumb-wrap`); fixed-position image preview
-- **`admin.js`** — Admin forms, criteria list (click-edit, drag reorder), **header search** (filters **Saved apartments**; suggestions under title; cleared when leaving **Apartment Setup** for another top tab), manager rows (row click → `/details` except interactive controls)
-- **`details.js`** — Details page tabs, status transitions, per-partner scoring UI
+- **`app.js`** — Shortlist: filter, **view** (Cards / Finalist / Next actions), **sort** (Cards only), `renderApartmentCard`, `renderFinalistList` (Avg→workflow sort), `renderNextActionsList`, `listingThumbsMarkup` + `wireListingThumbHovers` (`.nyhome-listing-thumb-wrap`); fixed-position image preview
+- **`apartmentSavePayload.js`** — `NyhomeApartmentPayload.apartmentToSavePayload(apartment, overrides?)` for consistent `PUT`/`POST` apartment bodies (admin manager status, shortlist Next actions)
+- **`admin.js`** — Admin forms, criteria list (click-edit, drag reorder), **header search** (filters **Saved apartments**; suggestions under title; cleared when leaving **Apartment Setup** for **Criteria**), manager rows (row click → `/details` except interactive controls)
+- **`details.js`** — Details page tabs, status transitions, per-partner scoring UI; **Activity Log** merges `listing_events` (status changes + votes from `nyp_listing_events`) with tour/application milestones
 - **`vibeImages.js`** — Client-side image resize + JPEG compress for listing photos (used by `admin.js` and `details.js` Images tab)
 - **`apartmentStatus.js`** — Shared status enum and CSS class mapping (used by both client and `lib/`)
 
@@ -46,7 +47,7 @@ Data is fetched on load, cached to `localStorage`, and re-fetched after mutation
 
 ### Database
 
-All tables prefixed `nyp_`. Money stored as integer cents. Key tables: `nyp_apartments`, `nyp_criteria`, `nyp_ratings` (one row per apartment × partner × criterion, unique; `score` nullable — `NULL` = N/A), `nyp_visits`, `nyp_applications`, `nyp_neighborhoods` (autocomplete seed data).
+All tables prefixed `nyp_`. Money stored as integer cents. Key tables: `nyp_apartments`, `nyp_criteria`, `nyp_ratings` (one row per apartment × partner × criterion, unique; `score` nullable — `NULL` = N/A), `nyp_visits`, `nyp_applications`, `nyp_neighborhoods` (autocomplete seed data), `nyp_listing_events` (append-only status and vote events; last 50 per apartment on `GET /api/apartments`).
 
 ### Status Progression
 

@@ -8,7 +8,7 @@
   var SORT_STORAGE_KEY = 'nyhomeShortlistSort';
   var VIEW_STORAGE_KEY = 'nyhomeShortlistView';
   var VALID_SORTS = { workflow: 1, avg: 1, peter: 1, kerv: 1, updated: 1 };
-  var VALID_VIEWS = { cards: 1, finalist: 1 };
+  var VALID_VIEWS = { cards: 1, finalist: 1, 'next-actions': 1 };
   var activeFilters = new Set();
   var allApartments = [];
   var sortMode = 'workflow';
@@ -61,7 +61,7 @@
       btn.setAttribute('aria-selected', on ? 'true' : 'false');
     });
     if (sortRootEl) {
-      if (viewMode === 'finalist') {
+      if (viewMode === 'finalist' || viewMode === 'next-actions') {
         sortRootEl.classList.add('shortlist-sort--hidden');
         sortRootEl.setAttribute('aria-hidden', 'true');
       } else {
@@ -167,6 +167,48 @@
       if (c !== 0) return c;
       return compareWorkflowDesc(a, b);
     });
+  }
+
+  /** One row per listing with a scheduled tour and/or an application deadline (same rule as legacy admin Next actions). */
+  function qualifiesNextActions(apartment) {
+    return !!(apartment && (apartment.next_visit || (apartment.application && apartment.application.deadline_at)));
+  }
+
+  var PREP_BY_STATUS = {
+    new: 'Capture listing basics, photos, and a first-pass score so you can compare apples to apples.',
+    evaluating: 'Align on deal-breakers and schedule tours for anything still in contention.',
+    shortlisted: 'Confirm tour times, route, and who is taking notes or video during each visit.',
+    tour_scheduled: 'Re-read the listing, prep questions for the broker, and plan travel plus a post-tour debrief.',
+    toured: 'Compare impressions while fresh; update scores and note follow-ups (board pack, comps, second visit).',
+    finalist: 'Gather net-effective math, move-in total, and timeline; decide if you are ready to apply.',
+    applying: 'Assemble pay stubs, references, and guarantor paperwork; track deadlines in Application.',
+    applied: 'Stay responsive to the landlord; keep a copy of everything submitted and note any open items.',
+    approved: 'Review the lease draft against your checklist; flag fees, renewal terms, and rider clauses early.',
+    lease_review: 'Run the numbers one last time (rent, concessions, move-in) before countersigning.',
+    signed: 'Plan move logistics: insurance, utilities, keys, and a final walkthrough if offered.',
+    rejected: 'Archive lessons learned so the next search stays sharper.',
+    archived: 'Listing is archived; no further prep needed here.',
+  };
+
+  function prepLineForStatus(status) {
+    var s = NyhomeStatus.normalizeStatus(status || 'new');
+    return PREP_BY_STATUS[s] || PREP_BY_STATUS.new;
+  }
+
+  function nextNavStatus(current) {
+    var nav = NyhomeStatus.STATUS_NAV;
+    var s = NyhomeStatus.normalizeStatus(current || 'new');
+    if (s === 'rejected') return null;
+    var i = nav.indexOf(s);
+    if (i < 0 || i >= nav.length - 1) return null;
+    return nav[i + 1];
+  }
+
+  function formatShortDateTime(value) {
+    if (!value) return '';
+    var d = new Date(value);
+    if (Number.isNaN(d.getTime())) return String(value).slice(0, 16);
+    return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
   }
 
   function formatOneDecimal(n) {
@@ -367,6 +409,7 @@
 
     if (allApartments.length === 0) {
       listEl.classList.remove('card-list--finalist');
+      listEl.classList.remove('card-list--next-actions');
       listEl.innerHTML = '<div class="empty-state">No apartments yet. Add the first one in Manage.</div>';
       hideFinalistFlyout();
       return;
@@ -469,6 +512,7 @@
         });
 
     listEl.classList.toggle('card-list--finalist', viewMode === 'finalist');
+    listEl.classList.toggle('card-list--next-actions', viewMode === 'next-actions');
     listEl.innerHTML = '';
     hideFinalistFlyout();
     if (visible.length === 0) {
@@ -477,6 +521,10 @@
     }
     if (viewMode === 'finalist') {
       renderFinalistList(visible);
+      return;
+    }
+    if (viewMode === 'next-actions') {
+      renderNextActionsList(visible);
       return;
     }
     sortForDisplay(visible).forEach(function (apartment) {
@@ -512,6 +560,163 @@
     wireListingThumbHovers();
   }
 
+  function renderNextActionsList(visible) {
+    var filtered = visible.filter(qualifiesNextActions);
+    var sorted = sortForFinalist(filtered);
+    if (!sorted.length) {
+      listEl.innerHTML =
+        '<div class="shortlist-next-actions-wrap">' +
+        '<div class="empty-state">No next actions yet. Schedule a tour or set an application deadline on a listing.</div>' +
+        '</div>';
+      return;
+    }
+    listEl.innerHTML =
+      '<div class="shortlist-next-actions-wrap" role="region" aria-label="Next actions">' +
+      '<p class="shortlist-next-actions-intro muted">Tours and deadlines — advance, reject, or open a row for details.</p>' +
+      '<div class="shortlist-next-actions-list">' +
+        sorted.map(function (apartment) {
+          return renderNextActionsRow(apartment);
+        }).join('') +
+      '</div>' +
+      '</div>';
+    wireNextActionsListInteractions();
+  }
+
+  function renderNextActionsRow(apartment) {
+    var id = apartment.id;
+    var href = id != null ? '/details/?id=' + encodeURIComponent(id) : '#';
+    var status = NyhomeStatus.normalizeStatus(apartment.status || 'new');
+    var statusLabel = formatStatusLabel(status);
+    var nextS = nextNavStatus(status);
+    var isRejected = status === 'rejected';
+    var loc = [apartment.neighborhood, apartment.address].filter(Boolean).join(' · ');
+    var metaBits = [];
+    if (apartment.next_visit && apartment.next_visit.visit_at) {
+      metaBits.push('Tour ' + formatShortDateTime(apartment.next_visit.visit_at));
+    }
+    if (apartment.application && apartment.application.deadline_at) {
+      metaBits.push('Deadline ' + formatShortDateTime(apartment.application.deadline_at));
+    }
+    var metaInline = metaBits.length
+      ? '<span class="shortlist-next-actions-sep muted">·</span><span class="shortlist-next-actions-dates muted">' +
+        escapeHtml(metaBits.join(' · ')) +
+        '</span>'
+      : '';
+    var advanceBtn;
+    if (!isRejected && nextS) {
+      advanceBtn =
+        '<button type="button" class="secondary-btn shortlist-next-actions-advance" data-advance-status data-apartment-id="' +
+        escapeAttr(String(id)) +
+        '" aria-label="Move to next status">Next: ' +
+        escapeHtml(formatStatusLabel(nextS)) +
+        '</button>';
+    } else {
+      advanceBtn =
+        '<button type="button" class="secondary-btn shortlist-next-actions-advance" disabled data-apartment-id="' +
+        escapeAttr(String(id)) +
+        '">' +
+        escapeHtml(isRejected ? 'Rejected' : 'At pipeline end') +
+        '</button>';
+    }
+    var rejectCtrl = isRejected
+      ? '<span class="shortlist-next-actions-reject muted" aria-disabled="true">Rejected</span>'
+      : '<button type="button" class="shortlist-next-actions-reject link-button" data-reject-apartment data-apartment-id="' +
+        escapeAttr(String(id)) +
+        '">Reject</button>';
+    var prep = prepLineForStatus(status);
+    var prepPanelId = 'shortlist-next-prep-' + String(id);
+    var prepToggleLabel = 'Show prep tips for ' + String(apartment.title || 'this listing').trim();
+    return (
+      '<article class="shortlist-next-actions-row" data-apartment-id="' + escapeAttr(String(id)) + '">' +
+        '<div class="shortlist-next-actions-row-top">' +
+          '<div class="shortlist-next-actions-scroll">' +
+            '<a class="shortlist-next-actions-main" href="' + escapeAttr(href) + '">' +
+              '<span class="shortlist-next-actions-title">' + escapeHtml(apartment.title || 'Untitled apartment') + '</span>' +
+              '<span class="shortlist-next-actions-sep muted">·</span>' +
+              '<span class="shortlist-next-actions-loc muted">' + escapeHtml(loc || '—') + '</span>' +
+              metaInline +
+              '<span class="shortlist-next-actions-sep muted">·</span>' +
+              '<span class="status-pill ' + NyhomeStatus.statusClass(status) + ' shortlist-next-actions-pill">' + escapeHtml(statusLabel) + '</span>' +
+            '</a>' +
+            '<button type="button" class="criterion-def-btn" data-def-toggle data-def-for="' + escapeAttr(prepPanelId) + '" aria-expanded="false" aria-label="' + escapeAttr(prepToggleLabel) + '">?</button>' +
+          '</div>' +
+          '<div class="shortlist-next-actions-side">' +
+            advanceBtn +
+            rejectCtrl +
+          '</div>' +
+        '</div>' +
+        '<div class="vote-criterion-def-panel shortlist-next-actions-def" id="' + escapeAttr(prepPanelId) + '" hidden>' +
+          '<p class="vote-criterion-def-text">' + escapeHtml(prep) + '</p>' +
+        '</div>' +
+      '</article>'
+    );
+  }
+
+  function wireNextActionsListInteractions() {
+    if (!listEl) return;
+    listEl.querySelectorAll('[data-def-toggle]').forEach(function (button) {
+      button.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var panelId = button.getAttribute('data-def-for');
+        if (!panelId) return;
+        var panel = document.getElementById(panelId);
+        if (!panel || !listEl.contains(panel)) return;
+        if (panel.hasAttribute('hidden')) {
+          panel.removeAttribute('hidden');
+          button.setAttribute('aria-expanded', 'true');
+        } else {
+          panel.setAttribute('hidden', '');
+          button.setAttribute('aria-expanded', 'false');
+        }
+      });
+    });
+    listEl.querySelectorAll('[data-advance-status]').forEach(function (btn) {
+      if (btn.disabled) return;
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var rawId = btn.getAttribute('data-apartment-id');
+        var id = Number(rawId);
+        var apt = allApartments.find(function (a) { return Number(a.id) === id; });
+        if (!apt) return;
+        var nextS = nextNavStatus(apt.status);
+        if (!nextS) return;
+        btn.disabled = true;
+        NyhomeAPI.saveApartment(NyhomeApartmentPayload.apartmentToSavePayload(apt, { status: nextS }))
+          .then(function () {
+            return NyhomeAPI.getApartments();
+          })
+          .then(render)
+          .catch(function (err) {
+            console.error('[nyhome-shortlist] advance status', err);
+            btn.disabled = false;
+          });
+      });
+    });
+    listEl.querySelectorAll('[data-reject-apartment]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!confirm('Mark this apartment as rejected?')) return;
+        var rawId = btn.getAttribute('data-apartment-id');
+        var id = Number(rawId);
+        var apt = allApartments.find(function (a) { return Number(a.id) === id; });
+        if (!apt) return;
+        btn.disabled = true;
+        NyhomeAPI.saveApartment(NyhomeApartmentPayload.apartmentToSavePayload(apt, { status: 'rejected' }))
+          .then(function () {
+            return NyhomeAPI.getApartments();
+          })
+          .then(render)
+          .catch(function (err) {
+            console.error('[nyhome-shortlist] reject', err);
+            btn.disabled = false;
+          });
+      });
+    });
+  }
+
   function renderApartmentCard(apartment) {
     var article = document.createElement('article');
     var status = NyhomeStatus.normalizeStatus(apartment.status || 'new');
@@ -533,7 +738,7 @@
           renderFacts(apartment) +
         '</div>' +
         renderScoresAndThumbs(apartment) +
-        renderNextActions(apartment) +
+        renderCardScheduleMeta(apartment) +
         (apartment.notes ? '<div class="card-notes">' + escapeHtml(apartment.notes) + '</div>' : '') +
         renderActions(apartment) +
       '</div>';
@@ -607,7 +812,7 @@
       '>' + escapeHtml(label) + '</a>';
   }
 
-  function renderNextActions(apartment) {
+  function renderCardScheduleMeta(apartment) {
     var bits = [];
     if (apartment.next_visit) bits.push('Tour: ' + apartment.next_visit.visit_at);
     if (apartment.application && apartment.application.status) bits.push('Application: ' + apartment.application.status);

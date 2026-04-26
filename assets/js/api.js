@@ -32,7 +32,9 @@ var NyhomeAPI = (function () {
   }
 
   function saveApartment(payload) {
-    return _send('/api/apartments', payload.id ? 'PUT' : 'POST', payload);
+    var id = Number(payload && payload.id);
+    var method = Number.isFinite(id) && id > 0 ? 'PUT' : 'POST';
+    return _send('/api/apartments', method, payload);
   }
 
   function deleteApartment(id) {

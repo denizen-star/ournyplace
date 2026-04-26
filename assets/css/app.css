@@ -2937,6 +2937,165 @@ body.shortlist .card-list.card-list--finalist {
   min-height: 0;
 }
 
+body.shortlist .card-list.card-list--next-actions {
+  display: block;
+  padding: 0;
+  margin: 0;
+  min-height: 0;
+}
+
+body.shortlist .shortlist-next-actions-wrap {
+  width: 100%;
+  max-width: 100%;
+}
+
+body.shortlist .shortlist-next-actions-intro {
+  margin: 0 0 12px;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+body.shortlist .shortlist-next-actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+body.shortlist .shortlist-next-actions-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
+}
+
+body.shortlist .shortlist-next-actions-row-top {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 10px 12px;
+  min-width: 0;
+}
+
+body.shortlist .shortlist-next-actions-scroll .criterion-def-btn {
+  flex: 0 0 24px;
+}
+
+body.shortlist .shortlist-next-actions-row .vote-criterion-def-panel.shortlist-next-actions-def {
+  margin-top: 8px;
+  padding-top: 8px;
+}
+
+body.shortlist .shortlist-next-actions-scroll {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  white-space: nowrap;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+body.shortlist .shortlist-next-actions-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px;
+  margin: 0;
+  border-radius: 6px;
+  transition: background 0.12s ease;
+}
+
+body.shortlist .shortlist-next-actions-main:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+body.shortlist .shortlist-next-actions-title {
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 600;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body.shortlist .shortlist-next-actions-sep {
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+
+body.shortlist .shortlist-next-actions-loc,
+body.shortlist .shortlist-next-actions-dates {
+  flex-shrink: 0;
+  max-width: 42vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body.shortlist .shortlist-next-actions-pill {
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  line-height: 1.2;
+}
+
+body.shortlist .shortlist-next-actions-side {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+}
+
+body.shortlist .shortlist-next-actions-advance {
+  white-space: nowrap;
+  font-size: 0.72rem;
+  padding: 6px 10px;
+}
+
+body.shortlist .shortlist-next-actions-reject {
+  font-size: 0.72rem;
+  text-align: center;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 4px 6px;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+body.shortlist .shortlist-next-actions-reject:hover:not([aria-disabled="true"]) {
+  color: #fca5a5;
+}
+
+@media (max-width: 640px) {
+  body.shortlist .shortlist-next-actions-row-top {
+    flex-wrap: wrap;
+  }
+
+  body.shortlist .shortlist-next-actions-side {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
 /* Finalist: aligned column grid; score columns use same vote color tokens as cards / score boxes */
 body.shortlist .shortlist-finalist-wrap {
   width: 100%;

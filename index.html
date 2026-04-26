@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="/assets/css/app.css?v=48">
+  <link rel="stylesheet" href="/assets/css/app.css?v=51">
 </head>
 <body class="shortlist">
   <header class="app-header">
@@ -23,6 +23,7 @@
         <div class="shortlist-view-segment" role="presentation">
           <button type="button" class="shortlist-view-btn" role="tab" id="shortlist-view-cards" data-shortlist-view="cards" aria-selected="true" aria-controls="apartment-list">Cards</button>
           <button type="button" class="shortlist-view-btn" role="tab" id="shortlist-view-finalist" data-shortlist-view="finalist" aria-selected="false" aria-controls="apartment-list">Finalist</button>
+          <button type="button" class="shortlist-view-btn" role="tab" id="shortlist-view-next-actions" data-shortlist-view="next-actions" aria-selected="false" aria-controls="apartment-list">Next actions</button>
         </div>
       </div>
       <div class="shortlist-sort" id="shortlist-sort" role="group" aria-label="Sort apartment cards">
@@ -47,9 +48,10 @@
     </section>
   </main>
 
-  <script src="/assets/js/apartmentStatus.js?v=48"></script>
-  <script src="/assets/js/api.js?v=48"></script>
-  <script src="/assets/js/app.js?v=48"></script>
+  <script src="/assets/js/apartmentStatus.js?v=51"></script>
+  <script src="/assets/js/apartmentSavePayload.js?v=51"></script>
+  <script src="/assets/js/api.js?v=51"></script>
+  <script src="/assets/js/app.js?v=51"></script>
   <script>
     (function () {
       var h = location.hostname;

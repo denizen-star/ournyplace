@@ -98,6 +98,20 @@ const TABLES = [
     INDEX idx_nyp_applications_apartment (apartment_id),
     INDEX idx_nyp_applications_deadline (deadline_at)
   )`,
+
+  `CREATE TABLE IF NOT EXISTS nyp_listing_events (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    apartment_id INT NOT NULL,
+    event_type VARCHAR(20) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    from_status VARCHAR(40) DEFAULT NULL,
+    to_status VARCHAR(40) DEFAULT NULL,
+    partner_key VARCHAR(40) DEFAULT NULL,
+    criterion_id INT DEFAULT NULL,
+    criterion_label VARCHAR(255) DEFAULT NULL,
+    score TINYINT NULL,
+    INDEX idx_nyp_listing_events_apt_time (apartment_id, created_at)
+  )`,
 ];
 
 const DEFAULT_CRITERIA = [

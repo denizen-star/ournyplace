@@ -1,4 +1,4 @@
-var CACHE_VERSION = 48;
+var CACHE_VERSION = 51;
 var CACHE_NAME = 'nyhome-v' + CACHE_VERSION;
 
 var APP_SHELL = [
@@ -13,6 +13,7 @@ var APP_SHELL = [
   '/assets/img/favicon1.png',
   '/assets/css/app.css?v=' + CACHE_VERSION,
   '/assets/js/apartmentStatus.js?v=' + CACHE_VERSION,
+  '/assets/js/apartmentSavePayload.js?v=' + CACHE_VERSION,
   '/assets/js/api.js?v=' + CACHE_VERSION,
   '/assets/js/app.js?v=' + CACHE_VERSION,
   '/assets/js/vibeImages.js?v=' + CACHE_VERSION,

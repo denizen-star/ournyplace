@@ -3,7 +3,6 @@
   var form = document.getElementById('apartment-form');
   var listEl = document.getElementById('admin-apartment-list');
   var criteriaListEl = document.getElementById('criteria-list');
-  var nextActionsEl = document.getElementById('next-actions');
   var criteriaDragId = null;
   var vibeSlots = ['', '', ''];
   var vibeActiveSlot = 0;
@@ -32,7 +31,6 @@
       renderSearchSuggestions();
       renderCriteria();
       renderNeighborhoodOptions();
-      renderNextActions();
     }).catch(function (err) {
       console.error('[nyhome-admin] load', err);
     });
@@ -196,6 +194,7 @@
         return load();
       }).catch(function (err) {
         console.error('[nyhome-admin] save apartment', err);
+        window.alert('Could not save this apartment. Confirm the address field is filled, you are online, and the API is reachable. Details are in the browser console.');
       });
     });
 
@@ -517,33 +516,6 @@
     return values.map(function (status) {
       return '<option value="' + escapeAttr(status) + '"' + (status === current ? ' selected' : '') + '>' + escapeHtml(formatStatusLabel(status)) + '</option>';
     }).join('');
-  }
-
-  function apartmentToSavePayload(apartment) {
-    return {
-      id: apartment.id,
-      neighborhood: apartment.neighborhood || '',
-      address: apartment.address,
-      aptNumber: apartment.apt_number || '',
-      rent: apartment.rent_cents != null ? apartment.rent_cents / 100 : null,
-      netEffective: apartment.net_effective_cents != null ? apartment.net_effective_cents / 100 : null,
-      brokerFee: apartment.broker_fee_cents != null ? apartment.broker_fee_cents / 100 : null,
-      deposit: apartment.deposit_cents != null ? apartment.deposit_cents / 100 : null,
-      amenitiesFees: apartment.amenities_fees_cents != null ? apartment.amenities_fees_cents / 100 : null,
-      totalMoveIn: apartment.total_move_in_cents != null ? apartment.total_move_in_cents / 100 : null,
-      bedrooms: apartment.bedrooms != null ? apartment.bedrooms : 1,
-      bathrooms: apartment.bathrooms != null ? apartment.bathrooms : 1,
-      squareFeet: apartment.square_feet,
-      unitFeatures: apartment.unit_features || [],
-      amenities: apartment.amenities || [],
-      moveInDate: apartment.move_in_date || null,
-      status: NyhomeStatus.normalizeStatus(apartment.status || 'new'),
-      listingUrl: apartment.listing_url || '',
-      sourceUrl: apartment.source_url != null && apartment.source_url !== '' ? apartment.source_url : (apartment.listing_url || ''),
-      importStatus: apartment.import_status || 'manual',
-      notes: apartment.notes || '',
-      imageUrls: (apartment.images || []).map(function (img) { return img.image_url; }).filter(Boolean),
-    };
   }
 
   function readApartmentForm() {
@@ -932,8 +904,7 @@
       statusSelect.addEventListener('change', function () {
         var nextStatus = NyhomeStatus.normalizeStatus(statusSelect.value);
         var prev = apartment.status || 'new';
-        var payload = apartmentToSavePayload(apartment);
-        payload.status = nextStatus;
+        var payload = NyhomeApartmentPayload.apartmentToSavePayload(apartment, { status: nextStatus });
         statusSelect.className = 'status-pill status-select manager-row-status ' + NyhomeStatus.statusClass(nextStatus);
         statusSelect.disabled = true;
         NyhomeAPI.saveApartment(payload).then(function () {
@@ -1118,17 +1089,6 @@
 
   function mergeValues(a, b) {
     return Array.from(new Set([].concat(a || [], b || [])));
-  }
-
-  function renderNextActions() {
-    var actions = [];
-    state.apartments.forEach(function (apartment) {
-      if (apartment.next_visit) actions.push(apartment.title + ': tour ' + apartment.next_visit.visit_at);
-      if (apartment.application && apartment.application.deadline_at) actions.push(apartment.title + ': application deadline ' + apartment.application.deadline_at);
-    });
-    nextActionsEl.innerHTML = actions.length
-      ? actions.map(function (action) { return '<div class="list-row">' + escapeHtml(action) + '</div>'; }).join('')
-      : '<div class="empty-state">No next actions yet.</div>';
   }
 
   function scoreBox(voteKey, label, value) {

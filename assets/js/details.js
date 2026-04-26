@@ -754,15 +754,70 @@
     }).join('') + '</ul>';
   }
 
+  function activityTimestamp(value) {
+    if (!value) return 0;
+    var t = Date.parse(String(value).replace(' ', 'T'));
+    return Number.isNaN(t) ? 0 : t;
+  }
+
+  function formatActivityDateTime(value) {
+    if (!value) return '';
+    var date = new Date(String(value).replace(' ', 'T'));
+    if (Number.isNaN(date.getTime())) return String(value).slice(0, 16);
+    return date.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  }
+
   function buildActivityItems(apartment) {
-    var items = [];
-    if (apartment.created_at) items.push(['Created', formatDate(apartment.created_at), apartment.title || 'Apartment added']);
-    if (apartment.updated_at) items.push(['Updated', formatDate(apartment.updated_at), 'Apartment details updated']);
-    if (apartment.next_visit) items.push(['Tour', formatDate(apartment.next_visit.visit_at), apartment.next_visit.notes || 'Tour scheduled']);
-    if (apartment.application) {
-      items.push(['Application', formatDate(apartment.application.updated_at || apartment.application.deadline_at), apartment.application.status || 'Application tracked']);
+    var rows = [];
+    if (apartment.created_at) {
+      rows.push({
+        ts: activityTimestamp(apartment.created_at),
+        tuple: ['Created', formatDate(apartment.created_at), apartment.title || 'Apartment added'],
+      });
     }
-    return items.reverse();
+    (apartment.listing_events || []).forEach(function (ev) {
+      var ts = activityTimestamp(ev.created_at);
+      if (ev.event_type === 'status') {
+        var fromL = ev.from_status ? formatStatusLabel(ev.from_status) : 'Start';
+        var toL = formatStatusLabel(ev.to_status || 'new');
+        rows.push({
+          ts: ts,
+          tuple: ['Status', formatActivityDateTime(ev.created_at), fromL + ' → ' + toL],
+        });
+      } else if (ev.event_type === 'vote') {
+        var partner = ev.partner_key
+          ? String(ev.partner_key).charAt(0).toUpperCase() + String(ev.partner_key).slice(1)
+          : 'Vote';
+        var sc = ev.score == null ? 'N/A' : String(ev.score);
+        var lab = ev.criterion_label || 'Criterion';
+        rows.push({
+          ts: ts,
+          tuple: ['Vote', formatActivityDateTime(ev.created_at), partner + ': ' + lab + ' — ' + sc],
+        });
+      }
+    });
+    if (apartment.next_visit) {
+      rows.push({
+        ts: activityTimestamp(apartment.next_visit.visit_at),
+        tuple: ['Tour', formatDate(apartment.next_visit.visit_at), apartment.next_visit.notes || 'Tour scheduled'],
+      });
+    }
+    if (apartment.application) {
+      rows.push({
+        ts: activityTimestamp(apartment.application.updated_at || apartment.application.deadline_at),
+        tuple: [
+          'Application',
+          formatDate(apartment.application.updated_at || apartment.application.deadline_at),
+          apartment.application.status || 'Application tracked',
+        ],
+      });
+    }
+    rows.sort(function (a, b) {
+      return b.ts - a.ts;
+    });
+    return rows.map(function (r) {
+      return r.tuple;
+    });
   }
 
   function renderTimelineItem(item) {
