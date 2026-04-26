@@ -1,5 +1,12 @@
 (function () {
-  var state = { apartments: [], criteria: [], neighborhoods: [], buildingBlacklist: [] };
+  var state = {
+    apartments: [],
+    criteria: [],
+    neighborhoods: [],
+    buildingBlacklist: [],
+    adminCriteriaPainted: false,
+    adminBlacklistPainted: false,
+  };
   var form = document.getElementById('apartment-form');
   var listEl = document.getElementById('admin-apartment-list');
   var criteriaListEl = document.getElementById('criteria-list');
@@ -26,23 +33,40 @@
     load();
   }
 
+  function applyAdminListPaint() {
+    renderApartments();
+    renderSearchSuggestions();
+    renderNeighborhoodOptions();
+    if (state.adminCriteriaPainted) {
+      renderCriteria();
+    }
+    if (state.adminBlacklistPainted) {
+      renderBlacklist();
+    }
+  }
+
   function load() {
-    return NyhomeAPI.getApartments()
-      .then(function (data) {
+    var cached = NyhomeAPI.getApartmentsCache();
+    if (cached) {
+      state.apartments = cached.apartments || [];
+      state.criteria = cached.criteria || [];
+      state.neighborhoods = cached.neighborhoods || [];
+      applyAdminListPaint();
+    }
+    return Promise.all([
+      NyhomeAPI.getApartments(),
+      NyhomeAPI.getBuildingBlacklist().catch(function () {
+        return { entries: [] };
+      }),
+    ])
+      .then(function (results) {
+        var data = results[0] || {};
+        var bl = results[1] || { entries: [] };
         state.apartments = data.apartments || [];
         state.criteria = data.criteria || [];
         state.neighborhoods = data.neighborhoods || [];
-        return NyhomeAPI.getBuildingBlacklist().catch(function () {
-          return { entries: [] };
-        });
-      })
-      .then(function (bl) {
         state.buildingBlacklist = (bl && bl.entries) || [];
-        renderApartments();
-        renderSearchSuggestions();
-        renderCriteria();
-        renderNeighborhoodOptions();
-        renderBlacklist();
+        applyAdminListPaint();
       })
       .catch(function (err) {
         console.error('[nyhome-admin] load', err);
@@ -62,6 +86,13 @@
         document.querySelectorAll('.tab-panel').forEach(function (el) { el.classList.remove('active'); });
         button.classList.add('active');
         document.getElementById('tab-' + tab).classList.add('active');
+        if (tab === 'criteria' && !state.adminCriteriaPainted) {
+          state.adminCriteriaPainted = true;
+          renderCriteria();
+        } else if (tab === 'blacklist' && !state.adminBlacklistPainted) {
+          state.adminBlacklistPainted = true;
+          renderBlacklist();
+        }
       });
     });
   }

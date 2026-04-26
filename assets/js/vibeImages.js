@@ -1,7 +1,8 @@
 (function (global) {
   var MAX_IMAGES = 3;
-  var MAX_EDGE = 1600;
-  var JPEG_QUALITY = 0.82;
+  /** ~screen-quality max dimension; keeps stored payloads and transfer smaller */
+  var MAX_EDGE = 1280;
+  var JPEG_QUALITY = 0.78;
 
   function fileToCompressedDataUrl(file) {
     return new Promise(function (resolve, reject) {

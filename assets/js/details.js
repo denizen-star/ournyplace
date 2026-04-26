@@ -31,53 +31,96 @@
       return;
     }
 
-    NyhomeAPI.getApartments().then(function (data) {
-      var apartment = (data.apartments || []).find(function (item) {
-        return String(item.id) === String(id);
-      });
-
-      if (!apartment) {
-        rootEl.innerHTML = '<div class="empty-state">Apartment not found.</div>';
-        return;
+    var tab = activeTab || (currentTab() || 'scorecard');
+    var cached = NyhomeAPI.getApartmentsCache();
+    if (cached) {
+      try {
+        var fromCache = (cached.apartments || []).find(function (item) {
+          return String(item.id) === String(id);
+        });
+        if (fromCache) {
+          state.apartment = fromCache;
+          state.criteria = cached.criteria || [];
+          state.neighborhoods = cached.neighborhoods || [];
+          render(tab);
+        }
+      } catch (e) {
+        console.error('[nyhome-details] cache render', e);
       }
+    }
 
-      state.apartment = apartment;
-      state.criteria = data.criteria || [];
-      state.neighborhoods = data.neighborhoods || [];
-      render(activeTab || currentTab() || 'scorecard');
-    }).catch(function () {
-      rootEl.innerHTML = '<div class="empty-state">Could not load apartment details yet.</div>';
-    });
+    NyhomeAPI.getApartments()
+      .then(function (data) {
+        var apartment = (data.apartments || []).find(function (item) {
+          return String(item.id) === String(id);
+        });
+
+        if (!apartment) {
+          rootEl.innerHTML = '<div class="empty-state">Apartment not found.</div>';
+          return;
+        }
+
+        state.apartment = apartment;
+        state.criteria = data.criteria || [];
+        state.neighborhoods = data.neighborhoods || [];
+        render(activeTab || currentTab() || 'scorecard');
+      })
+      .catch(function () {
+        if (state.apartment) {
+          return;
+        }
+        rootEl.innerHTML = '<div class="empty-state">Could not load apartment details yet.</div>';
+      });
   }
 
   function render(activeTab) {
     var apartment = state.apartment;
+    if (!apartment) return;
+    var tab = activeTab || 'scorecard';
     syncDetailVibeSlotsFromApartment(apartment);
     rootEl.innerHTML =
       renderSummaryHeader(apartment) +
       '<div class="summary-tabs-container">' +
-        renderTabs(activeTab) +
-        renderScorecardTab(apartment, activeTab) +
-        renderImagesTab(apartment, activeTab) +
-        renderUnitSetupTab(apartment, activeTab) +
-        renderPartnerTab(apartment, 'peter', activeTab) +
-        renderPartnerTab(apartment, 'kerv', activeTab) +
-        renderTourTab(apartment, activeTab) +
-        renderApplicationTab(apartment, activeTab) +
-        renderActivityTab(apartment, activeTab) +
+        renderTabs(tab) +
+        '<div class="summary-tab-panels" id="detail-tab-panels">' + tabPanelHtml(apartment, tab) + '</div>' +
       '</div>';
 
     bindTabs();
-    bindApartmentControls();
-    bindVoting();
-    bindDefinitionToggles();
-    bindVisitForm();
-    bindApplicationForm();
-    for (var vi = 0; vi < 3; vi++) {
-      updateDetailVibeSlotUI(vi);
+    bindStatusHeader();
+    detailPanelBind(tab);
+  }
+
+  function tabPanelHtml(apartment, activeTab) {
+    if (activeTab === 'scorecard') return renderScorecardTab(apartment, activeTab);
+    if (activeTab === 'images') return renderImagesTab(apartment, activeTab);
+    if (activeTab === 'unit') return renderUnitSetupTab(apartment, activeTab);
+    if (activeTab === 'peter') return renderPartnerTab(apartment, 'peter', activeTab);
+    if (activeTab === 'kerv') return renderPartnerTab(apartment, 'kerv', activeTab);
+    if (activeTab === 'tour') return renderTourTab(apartment, activeTab);
+    if (activeTab === 'application') return renderApplicationTab(apartment, activeTab);
+    if (activeTab === 'activity') return renderActivityTab(apartment, activeTab);
+    return renderScorecardTab(apartment, 'scorecard');
+  }
+
+  function detailPanelBind(tabId) {
+    if (tabId === 'images') {
+      for (var vi = 0; vi < 3; vi++) {
+        updateDetailVibeSlotUI(vi);
+      }
+      bindDetailVibePhotoSlots();
+      bindDetailVibeSave();
+      bindVoting();
+      bindDefinitionToggles();
+    } else if (tabId === 'peter' || tabId === 'kerv') {
+      bindVoting();
+      bindDefinitionToggles();
+    } else if (tabId === 'unit') {
+      bindUnitPanel();
+    } else if (tabId === 'tour') {
+      bindVisitForm();
+    } else if (tabId === 'application') {
+      bindApplicationForm();
     }
-    bindDetailVibePhotoSlots();
-    bindDetailVibeSave();
   }
 
   function renderSummaryHeader(apartment) {
@@ -451,12 +494,15 @@
   }
 
   function showTab(tabId) {
+    if (!state.apartment) return;
     rootEl.querySelectorAll('.summary-tab').forEach(function (tab) {
       tab.classList.toggle('active', tab.getAttribute('data-tab-target') === tabId);
     });
-    rootEl.querySelectorAll('.summary-tab-content').forEach(function (panel) {
-      panel.classList.toggle('active', panel.id === 'tab-' + tabId);
-    });
+    var host = document.getElementById('detail-tab-panels');
+    if (host) {
+      host.innerHTML = tabPanelHtml(state.apartment, tabId);
+      detailPanelBind(tabId);
+    }
   }
 
   function currentTab() {
@@ -464,14 +510,7 @@
     return active ? active.getAttribute('data-tab-target') : '';
   }
 
-  function bindApartmentControls() {
-    var form = rootEl.querySelector('[data-apartment-form]');
-    if (!form) return;
-    form.addEventListener('submit', function (event) {
-      event.preventDefault();
-      saveDetailApartment().then(function () { load('unit'); }).catch(catchSaveApartment);
-    });
-
+  function bindStatusHeader() {
     var prev = rootEl.querySelector('[data-status-prev]');
     var next = rootEl.querySelector('[data-status-next]');
     var reject = rootEl.querySelector('[data-status-reject]');
@@ -492,7 +531,15 @@
     if (state.apartment) {
       syncStatusControls(NyhomeStatus.normalizeStatus(state.apartment.status || 'new'));
     }
+  }
 
+  function bindUnitPanel() {
+    var form = rootEl.querySelector('[data-apartment-form]');
+    if (!form) return;
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      saveDetailApartment().then(function () { load('unit'); }).catch(catchSaveApartment);
+    });
     rootEl.querySelectorAll('.selector-chip').forEach(function (button) {
       button.addEventListener('click', function () {
         button.classList.toggle('active');
@@ -725,8 +772,13 @@
     '</div>';
   }
 
+  function haveUnitFormInDom() {
+    return !!rootEl.querySelector('[data-apartment-form]');
+  }
+
   function buildApartmentPayload() {
     var apartment = state.apartment;
+    var uForm = haveUnitFormInDom();
     var listingEl = rootEl.querySelector('[data-listing-url]');
     var notesEl = rootEl.querySelector('[data-notes]');
     var neighEl = rootEl.querySelector('[data-detail-neighborhood]');
@@ -735,9 +787,9 @@
     var moveEl = rootEl.querySelector('[data-detail-move-in]');
     return {
       id: apartment.id,
-      neighborhood: neighEl ? neighEl.value.trim() : apartment.neighborhood,
-      address: addrEl ? addrEl.value.trim() : apartment.address,
-      aptNumber: aptEl ? aptEl.value.trim() : apartment.apt_number,
+      neighborhood: uForm && neighEl ? neighEl.value.trim() : apartment.neighborhood,
+      address: uForm && addrEl ? addrEl.value.trim() : apartment.address,
+      aptNumber: uForm && aptEl ? aptEl.value.trim() : apartment.apt_number,
       rent: centsToDollars(apartment.rent_cents),
       netEffective: centsToDollars(apartment.net_effective_cents),
       brokerFee: centsToDollars(apartment.broker_fee_cents),
@@ -747,12 +799,12 @@
       bedrooms: apartment.bedrooms,
       bathrooms: apartment.bathrooms,
       squareFeet: apartment.square_feet,
-      unitFeatures: selectedValues('unit-features'),
-      amenities: selectedValues('amenities'),
-      moveInDate: moveEl && moveEl.value ? moveEl.value : apartment.move_in_date,
+      unitFeatures: uForm ? selectedValues('unit-features') : (apartment.unit_features || []),
+      amenities: uForm ? selectedValues('amenities') : (apartment.amenities || []),
+      moveInDate: uForm && moveEl && moveEl.value ? moveEl.value : apartment.move_in_date,
       status: NyhomeStatus.normalizeStatus(getStatusValue() || 'new'),
-      listingUrl: listingEl ? listingEl.value : (apartment.listing_url || ''),
-      notes: notesEl ? notesEl.value : (apartment.notes || ''),
+      listingUrl: uForm && listingEl ? listingEl.value : (apartment.listing_url || ''),
+      notes: uForm && notesEl ? notesEl.value : (apartment.notes || ''),
       imageUrls: getDetailVibeImageUrls(),
     };
   }

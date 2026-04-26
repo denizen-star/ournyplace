@@ -22,9 +22,27 @@
   function boot() {
     initShortlistView();
     initShortlistSort();
-    NyhomeAPI.getApartments().then(render).catch(function () {
-      listEl.innerHTML = '<div class="empty-state">Could not load apartments yet.</div>';
-    });
+    var cached = NyhomeAPI.getApartmentsCache();
+    if (cached) {
+      try {
+        render(cached);
+      } catch (e) {
+        console.error('[nyhome-shortlist] cache render', e);
+      }
+    } else if (listEl) {
+      listEl.innerHTML = '<div class="empty-state">Loading&hellip;</div>';
+    }
+    NyhomeAPI.getApartments()
+      .then(render)
+      .catch(function (err) {
+        console.error('[nyhome-shortlist] load', err);
+        if (allApartments && allApartments.length) {
+          return;
+        }
+        if (listEl) {
+          listEl.innerHTML = '<div class="empty-state">Could not load apartments yet.</div>';
+        }
+      });
   }
 
   function initShortlistView() {
@@ -739,7 +757,6 @@
         '</div>' +
         renderScoresAndThumbs(apartment) +
         renderCardScheduleMeta(apartment) +
-        (apartment.notes ? '<div class="card-notes">' + escapeHtml(apartment.notes) + '</div>' : '') +
         renderActions(apartment) +
       '</div>';
 

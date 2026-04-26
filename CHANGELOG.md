@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Added
+- **Building blacklist:** `nyp_building_blacklist` (unique `normalized_key`); admin tab **Building blacklist** (criteria-style click-to-edit); paste address block like Notes. Save apartment → modal if building blacklisted (**Save anyway** = `ignoreBlacklist`); status **blacklisted** upserts blacklist row.
+- **Listing status `blacklisted`:** terminal (no Prev/Next in nav); badge + shortlist `listing-status-blacklisted`.
+- **Paste parser:** `lib/listingTextParse.js` + client mirror — Google Maps one-liner, StreetEasy unit-first / gross rent lines; Notes paste inserts clipboard then parses (no race).
 - **Shortlist Next actions** (`nyhomeShortlistView` = `next-actions`): third **View** tab after **Finalist**. Rows = listings with **scheduled tour** and/or **application deadline** (one row per apt). One-line row: title · location · dates · status pill; **?** = same `criterion-def-btn` + `vote-criterion-def-panel` toggle as **Peter/Kerv** scoring (prep copy). **Next:** / **Reject** call `saveApartment`; main strip links `/details`. **Sort by** hidden (same as Finalist).
 - **`nyp_listing_events`:** migration creates table; `saveApartment` logs status changes, `saveRating` logs vote when score changes; `GET /api/apartments` attaches `listing_events` (max 50/apt, newest first). **`/details` Activity Log** merges those events with Created / Tour / Application (dropped coarse “details updated” row).
 - **`assets/js/apartmentSavePayload.js`:** `NyhomeApartmentPayload.apartmentToSavePayload(apartment, overrides?)` for admin row status + shortlist Next actions saves.
@@ -16,6 +19,7 @@
 - **Admin row → details** click (excluding controls).
 
 ### Changed
+- **`POST/PUT /api/apartments`:** `409` + `code` **`BLACKLISTED`** / **`DUPLICATE_LISTING`** (second = another **non-`rejected`** listing shares normalized address+unit). `/details` Unit Setup address/apt saves same checks.
 - **`/admin`:** removed **Next Actions** tab (moved to `/` **Next actions**). Search clears when leaving **Apartment Setup** for **Criteria** only.
 - **`NyhomeAPI.saveApartment`:** `PUT` if `Number(id) > 0`, else `POST`.
 - **Shortlist cards:** thumbs + hover preview (README).
@@ -24,6 +28,7 @@
 - **`index.html`:** localhost unregisters service workers.
 
 ### Fixed
+- **Notes paste:** first paste could skip parse (textarea value not updated yet).
 - **Saves if `nyp_listing_events` missing:** try/catch on event write/read/delete; **admin** save fail → **alert** + `console.error`.
 - N/A vs **0** active state (`rating != null` for numeric chips).
 - **Admin Criteria** drag-reorder refresh (`ids.indexOf(Number(a.id))`).

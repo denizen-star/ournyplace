@@ -6,10 +6,14 @@ Manual entry is the source of truth for v1. Every apartment stores `listing_url`
 
 The Notes field already parses pasted listing text. It does not fetch remote pages.
 
-It recognizes:
+It recognizes (see `lib/listingTextParse.js` / `assets/js/listingTextParse.js`):
 
 - `Rental unit in <Neighborhood>` -> Neighborhood
-- `<Address> #<Apt>` -> Address and Apt number
+- Google Maps-style comma line starting with street number, e.g. `250 Ashland Pl, Brooklyn, NY 11217, United States` -> Address (+ neighborhood segment before state/zip when present)
+- Top line only `#39M` (or similar) -> Apt; often paired with a following address line
+- `250 Ashland Place #39M` (street + `#` unit on one line) -> Address + Apt
+- `<Address> #<Apt>` (other layouts) -> Address and Apt number
+- `$x` with next line `For Rent` -> Rent (if amount ≥ 400 and rent not yet set; same pass as `base rent`)
 - `$x` followed by `base rent` -> Rent
 - `$x net effective base rent` -> Net effective
 - Small standalone fee lines, e.g. `$150` -> Amenities fees

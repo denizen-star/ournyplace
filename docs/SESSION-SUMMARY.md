@@ -33,16 +33,17 @@ Public app:
 Details:
 
 - Route: `/details/?id=<apartmentId>`
-- Top **app-summary-card**: status progression `←` / `→` (first 11 `STATUS_NAV` values), `status` `<select>`, **Reject** (quiet, same row); meta row includes **View listing** when URL set; no inline photo strip. Auto-save on status change. Tabs: **Scorecard** (incl. photo strip when present), **Images** (3 paste/drop slots + **Save photos**, per-criterion score table, preview column; `vibeImages.js`), Unit Setup, **Peter**, **Kerv** (scoring, one tab per partner; same gallery column as Images), Tour, Application, Activity Log (`assets/js/details.js`). Scoring: `detail-vote-list` table (zebra, bordered, 1px partner top), `detail-vote-line` two-column grid (aligned **N/A** + `0..5`); unselected/selected score hex in `app.css` (`--kerv-hex-faint` / `--kerv-hex-selected`, peter analogs)
+- Top **app-summary-card**: status progression `←` / `→` (first 11 `STATUS_NAV` values; excludes `rejected`, `blacklisted`, `archived`), `status` `<select>`, **Reject** (quiet, same row); meta row includes **View listing** when URL set; no inline photo strip. Auto-save on status change. Tabs: **Scorecard** (incl. photo strip when present), **Images** (3 paste/drop slots + **Save photos**, per-criterion score table, preview column; `vibeImages.js`), **Unit Setup** (address/apt changes use blacklist + duplicate validation + `saveApartmentWorkflow` modal), **Peter**, **Kerv** (scoring, one tab per partner; same gallery column as Images), Tour, Application, Activity Log (`assets/js/details.js`). Scoring: `detail-vote-list` table (zebra, bordered, 1px partner top), `detail-vote-line` two-column grid (aligned **N/A** + `0..5`); unselected/selected score hex in `app.css` (`--kerv-hex-faint` / `--kerv-hex-selected`, peter analogs)
 
 Admin:
 
 - Route: `/admin`
 - No password yet
-- Top nav: `summary-tabs-header` / `Apartment Setup` / `Criteria` (Next actions digest lives on public `/` shortlist)
+- Top nav: `summary-tabs-header` / `Apartment Setup` / `Criteria` / **Building blacklist** (Next actions digest lives on public `/` shortlist)
 - **Saved apartments** (below form): `manager-row` layout—per-row `status` `<select>` (PUT, preserves `imageUrls` on save), rent/unit/move-in metrics, **Edit** / **Details** / **Delete**; no inline voting or tour/app blocks (per-listing “progress” lives on `/details`). **Header search** (next to page title) filters the list; **suggestions** under **Apartment manager** (name + `neighborhood · address`); clear on other top tab; **×** in field; **Escape** / blur. Click row (not `select` / links / buttons) → `/details/?id=…`
 - **Criteria** tab: add form (label, definition, weight + submit on same row); list rows = click text to edit, blur → `PUT` update; drag handle → `PUT { orderedIds }` (matches order in `/details` scoring tabs); on success, `state.criteria` re-sorted and `renderApartments()`; `POST` create / `DELETE` soft-delete unchanged
-- Load order: `apartmentStatus.js` → `api.js` → `admin.js` for `NyhomeStatus` helpers
+- **Building blacklist** tab: add street (manual + paste helper) + notes; list = click street/notes to edit, blur → `PUT /api/building-blacklist`; delete per row. Apartment save warns if normalized building key matches; user can **Save anyway** (`ignoreBlacklist`). Duplicate address+unit blocked unless existing listing is **`rejected`** only.
+- Load order: `apartmentStatus.js` → `listingTextParse.js` → `apartmentSavePayload.js` → `saveApartmentWorkflow.js` → `api.js` → `admin.js` for `NyhomeStatus` / `NyhomeListingText` helpers
 - Apartment form is organized into:
   - Location
   - Financials
@@ -72,7 +73,7 @@ Location fields:
 - Apt number optional
 - Move-in date
 - **Status** on form: full `<select>` of allowed values + **Reject** (no Prev/Next on the form; those are on `/details` only for stepping the first 11 states)
-- Allowed `status` values: same order as `lib/apartmentStatus.js` / `assets/js/apartmentStatus.js` (includes `rejected`, `archived`); server normalizes invalid values to `new`
+- Allowed `status` values: same order as `lib/apartmentStatus.js` / `assets/js/apartmentStatus.js` (includes `rejected`, `blacklisted`, `archived`); `STATUS_NAV` excludes terminal states for Prev/Next; server normalizes invalid values to `new`. **`blacklisted`** upserts `nyp_building_blacklist`.
 - Listing URL
 
 Financial fields, all optional:
@@ -108,7 +109,7 @@ Amenities:
 
 ## Paste Helper
 
-The Notes field parses pasted listing text.
+The Notes field parses pasted listing text (clipboard inserted into the field first, then parse — avoids paste race). **Building blacklist** paste uses the same parser for address/neighborhood.
 
 It supports StreetEasy-style blocks like:
 
@@ -130,9 +131,9 @@ Listing by Dalan Rentals
 It extracts:
 
 - Neighborhood
-- Address
+- Address (incl. Google Maps comma lines, `street #unit` one-liners, unit-first `#` line + following address)
 - Apt number
-- Rent
+- Rent (incl. gross / For Rent style when matched)
 - Net effective
 - Amenities fees
 - Bedrooms
@@ -170,6 +171,7 @@ Tables use the `nyp_` prefix:
 - `nyp_ratings` (`score` nullable: N/A = `NULL`)
 - `nyp_visits`
 - `nyp_applications`
+- `nyp_building_blacklist` (unique `normalized_key`; building-level warn on apartment save)
 
 Migration:
 
@@ -186,7 +188,8 @@ The migration also seeds:
 
 Netlify Functions:
 
-- `GET/POST/PUT/DELETE /api/apartments` — `status` in body normalized via `lib/apartmentStatus.js` on POST/PUT
+- `GET/POST/PUT/DELETE /api/apartments` — `status` in body normalized via `lib/apartmentStatus.js` on POST/PUT; `409` + `code` `BLACKLISTED` / `DUPLICATE_LISTING`; optional `ignoreBlacklist` on retry
+- `GET/POST/PUT/DELETE /api/building-blacklist` — CRUD for blacklisted buildings (`display_address`, `notes`, normalized key server-side)
 - `POST/PUT/DELETE /api/criteria` — `PUT`: `{ id, label, definition, weight }` or `{ orderedIds: number[] }` for reorder
 - `POST /api/ratings`
 - `POST /api/visits`
@@ -220,10 +223,10 @@ APP_NAME=nyhome
 ## Docs Updated
 
 - `README.md` (shortlist + details + admin + scoring location)
-- `CHANGELOG.md` (summary/details/admin UI, `apartmentStatus`, save/error behavior, N/A ratings)
-- `CLAUDE.md` (scoring, ratings API, `nyp_ratings` nullable)
+- `CHANGELOG.md` (summary/details/admin UI, `apartmentStatus`, save/error behavior, N/A ratings, building blacklist + paste parser)
+- `CLAUDE.md` (scoring, ratings API, `nyp_ratings` nullable, blacklist API + `listingTextParse`, `saveApartmentWorkflow`)
 - `docs/SESSION-SUMMARY.md` (this file)
-- `docs/IMPORT-SCRAPING.md`
+- `docs/IMPORT-SCRAPING.md` (paste patterns)
 - `PLAN.md`
 
 ## Verification Done

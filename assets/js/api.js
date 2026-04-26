@@ -28,6 +28,14 @@ var NyhomeAPI = (function () {
     }).then(_json);
   }
 
+  function getApartmentsCache() {
+    try {
+      var raw = localStorage.getItem(APARTMENTS_CACHE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return null;
+  }
+
   function getApartments() {
     return _get('/api/apartments').then(function (data) {
       try { localStorage.setItem(APARTMENTS_CACHE_KEY, JSON.stringify(data)); } catch (e) {}
@@ -96,6 +104,7 @@ var NyhomeAPI = (function () {
   }
 
   return {
+    getApartmentsCache: getApartmentsCache,
     getApartments: getApartments,
     saveApartment: saveApartment,
     deleteApartment: deleteApartment,
