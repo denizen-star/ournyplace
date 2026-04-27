@@ -7,8 +7,19 @@
 
   var SORT_STORAGE_KEY = 'nyhomeShortlistSort';
   var VIEW_STORAGE_KEY = 'nyhomeShortlistView';
+  var NA_LAYOUT_STORAGE_KEY = 'nyhomeNextActionsLayout';
+  var NA_OMIT_TOUR_KEY = 'nyhomeNextActionsOmitTour';
+  var NA_OMIT_DEADLINE_KEY = 'nyhomeNextActionsOmitDeadline';
+  var NA_OMIT_MOVEIN_KEY = 'nyhomeNextActionsOmitMoveIn';
   var VALID_SORTS = { workflow: 1, avg: 1, peter: 1, kerv: 1, updated: 1 };
   var VALID_VIEWS = { cards: 1, finalist: 1, 'next-actions': 1 };
+  var VALID_NA_LAYOUTS = { list: 1, calendar: 1 };
+  /** Next actions: list vs calendar (calendar = day-grouped agenda). */
+  var naLayoutMode = 'list';
+  /** When true, hide listings that have the corresponding date field set. */
+  var naOmitTour = false;
+  var naOmitDeadline = false;
+  var naOmitMoveIn = false;
   var activeFilters = new Set();
   /** When true, show only listings where at least one partner has no score rollup. */
   var extraFilterNotVoted = false;
@@ -76,6 +87,7 @@
     initFiltersDrawer();
     initShortlistView();
     initShortlistSort();
+    initNextActionsPrefs();
     var cached = NyhomeAPI.getApartmentsCache();
     if (cached) {
       try {
@@ -177,6 +189,44 @@
       var on = mode === sortMode;
       btn.setAttribute('aria-checked', on ? 'true' : 'false');
     });
+  }
+
+  function loadStoredBool(key) {
+    try {
+      return localStorage.getItem(key) === '1';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function initNextActionsPrefs() {
+    var l;
+    try {
+      l = localStorage.getItem(NA_LAYOUT_STORAGE_KEY);
+    } catch (e) {
+      l = null;
+    }
+    if (l && VALID_NA_LAYOUTS[l]) {
+      naLayoutMode = l;
+    } else {
+      naLayoutMode = 'list';
+    }
+    naOmitTour = loadStoredBool(NA_OMIT_TOUR_KEY);
+    naOmitDeadline = loadStoredBool(NA_OMIT_DEADLINE_KEY);
+    naOmitMoveIn = loadStoredBool(NA_OMIT_MOVEIN_KEY);
+  }
+
+  function saveNextActionsPrefs() {
+    try {
+      localStorage.setItem(NA_LAYOUT_STORAGE_KEY, naLayoutMode);
+      localStorage.setItem(NA_OMIT_TOUR_KEY, naOmitTour ? '1' : '');
+      localStorage.setItem(NA_OMIT_DEADLINE_KEY, naOmitDeadline ? '1' : '');
+      localStorage.setItem(NA_OMIT_MOVEIN_KEY, naOmitMoveIn ? '1' : '');
+    } catch (e) {}
+  }
+
+  function hasMoveInDate(apartment) {
+    return !!(apartment && apartment.move_in_date && String(apartment.move_in_date).trim());
   }
 
   function updatedAtMs(apt) {
@@ -309,9 +359,22 @@
     });
   }
 
-  /** One row per listing with a scheduled tour and/or an application deadline (same rule as legacy admin Next actions). */
+  /** Listing appears in Next actions if it has a tour, application deadline, and/or move-in date. */
   function qualifiesNextActions(apartment) {
-    return !!(apartment && (apartment.next_visit || (apartment.application && apartment.application.deadline_at)));
+    if (!apartment) return false;
+    if (apartment.next_visit) return true;
+    if (apartment.application && apartment.application.deadline_at) return true;
+    if (hasMoveInDate(apartment)) return true;
+    return false;
+  }
+
+  /** Apply “exclude if this date is set” toggles (each hides listings with that field populated). */
+  function passesNextActionsOmitFilters(apartment) {
+    if (!qualifiesNextActions(apartment)) return false;
+    if (naOmitTour && apartment.next_visit && apartment.next_visit.visit_at) return false;
+    if (naOmitDeadline && apartment.application && apartment.application.deadline_at) return false;
+    if (naOmitMoveIn && hasMoveInDate(apartment)) return false;
+    return true;
   }
 
   var PREP_BY_STATUS = {
@@ -349,6 +412,79 @@
     var d = new Date(value);
     if (Number.isNaN(d.getTime())) return String(value).slice(0, 16);
     return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  }
+
+  function pad2(n) {
+    return n < 10 ? '0' + n : String(n);
+  }
+
+  function dayKeyFromMs(ms) {
+    var d = new Date(ms);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+
+  function parseMoveInNoonMs(isoDate) {
+    var s = String(isoDate || '').trim();
+    if (!s) return NaN;
+    var t = Date.parse(s + 'T12:00:00');
+    return Number.isNaN(t) ? Date.parse(s) : t;
+  }
+
+  function formatCalendarDayHeading(dayKey) {
+    var t = Date.parse(dayKey + 'T12:00:00');
+    if (Number.isNaN(t)) return dayKey;
+    return new Date(t).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  }
+
+  function formatEventTimeOrAllDay(ev) {
+    if (ev.kind === 'movein') return 'All day';
+    if (Number.isNaN(ev.sortTs)) return '';
+    var d = new Date(ev.sortTs);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+
+  function collectNextActionEvents(apartments) {
+    var out = [];
+    apartments.forEach(function (apt) {
+      if (apt.next_visit && apt.next_visit.visit_at) {
+        var ts = Date.parse(apt.next_visit.visit_at);
+        if (!Number.isNaN(ts)) {
+          var dk = dayKeyFromMs(ts);
+          if (dk) out.push({ apt: apt, kind: 'tour', sortTs: ts, dayKey: dk });
+        }
+      }
+      if (apt.application && apt.application.deadline_at) {
+        var ts2 = Date.parse(apt.application.deadline_at);
+        if (!Number.isNaN(ts2)) {
+          var dk2 = dayKeyFromMs(ts2);
+          if (dk2) out.push({ apt: apt, kind: 'deadline', sortTs: ts2, dayKey: dk2 });
+        }
+      }
+      if (hasMoveInDate(apt)) {
+        var ts3 = parseMoveInNoonMs(apt.move_in_date);
+        if (!Number.isNaN(ts3)) {
+          var dk3 = dayKeyFromMs(ts3);
+          if (dk3) out.push({ apt: apt, kind: 'movein', sortTs: ts3, dayKey: dk3 });
+        }
+      }
+    });
+    return out;
+  }
+
+  function nextActionsFactDetailLine(apartment) {
+    var parts = [];
+    if (apartment.rent_cents) parts.push(formatMoney(apartment.rent_cents) + '/mo');
+    if (apartment.net_effective_cents) parts.push('Net eff. ' + formatMoney(apartment.net_effective_cents) + '/mo');
+    if (apartment.total_move_in_cents != null) {
+      parts.push('Move-in ' + formatMoney(apartment.total_move_in_cents) + ' total');
+    }
+    if (apartment.bedrooms != null) parts.push(apartment.bedrooms + ' bed');
+    if (apartment.bathrooms != null) parts.push(apartment.bathrooms + ' bath');
+    var line = parts.join(' · ');
+    if (!line) return '';
+    return '<p class="shortlist-na-detail-facts muted">' + escapeHtml(line) + '</p>';
   }
 
   function formatOneDecimal(n) {
@@ -785,6 +921,10 @@
       });
     }
 
+    if (viewMode === 'next-actions') {
+      visible = visible.filter(passesNextActionsOmitFilters);
+    }
+
     listEl.classList.toggle('card-list--finalist', viewMode === 'finalist');
     listEl.classList.toggle('card-list--next-actions', viewMode === 'next-actions');
     listEl.innerHTML = '';
@@ -834,26 +974,235 @@
     wireListingThumbHovers();
   }
 
+  function renderNextActionsToolbarHtml() {
+    return (
+      '<div class="shortlist-next-actions-toolbar">' +
+        '<div class="shortlist-next-actions-toolbar-row">' +
+          '<div class="shortlist-next-actions-layout" role="group" aria-label="Next actions layout">' +
+            '<span class="shortlist-na-toolbar-label">Layout</span>' +
+            '<div class="shortlist-view-segment shortlist-na-segment" role="presentation">' +
+              '<button type="button" class="shortlist-view-btn" data-na-layout="list" aria-pressed="' +
+              (naLayoutMode === 'list' ? 'true' : 'false') +
+              '">List</button>' +
+              '<button type="button" class="shortlist-view-btn" data-na-layout="calendar" aria-pressed="' +
+              (naLayoutMode === 'calendar' ? 'true' : 'false') +
+              '">Calendar</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="shortlist-next-actions-omit" role="group" aria-label="Exclude listings that have these set">' +
+            '<span class="shortlist-na-toolbar-label">Exclude if set</span>' +
+            '<label class="shortlist-na-check">' +
+              '<input type="checkbox" data-na-omit="tour"' +
+              (naOmitTour ? ' checked' : '') +
+              '> Tour</label>' +
+            '<label class="shortlist-na-check">' +
+              '<input type="checkbox" data-na-omit="deadline"' +
+              (naOmitDeadline ? ' checked' : '') +
+              '> App deadline</label>' +
+            '<label class="shortlist-na-check">' +
+              '<input type="checkbox" data-na-omit="movein"' +
+              (naOmitMoveIn ? ' checked' : '') +
+              '> Move-in</label>' +
+          '</div>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  function renderNextActionsCalendarHtml(apartments) {
+    var events = collectNextActionEvents(apartments);
+    if (!events.length) {
+      return '<div class="empty-state">No dated events in this list.</div>';
+    }
+    var byDay = {};
+    events.forEach(function (ev) {
+      var k = ev.dayKey;
+      if (!byDay[k]) byDay[k] = [];
+      byDay[k].push(ev);
+    });
+    var dayKeys = Object.keys(byDay).sort();
+    var html =
+      '<div class="shortlist-na-calendar" role="region" aria-label="Next actions by day">';
+    dayKeys.forEach(function (dk) {
+      var list = byDay[dk].slice().sort(function (a, b) {
+        return a.sortTs - b.sortTs;
+      });
+      var uid = 'na-day-' + dk.replace(/[^0-9a-z-]/gi, '');
+      html +=
+        '<section class="shortlist-na-day" aria-labelledby="' +
+        escapeAttr(uid) +
+        '">' +
+        '<h3 class="shortlist-na-day-heading" id="' +
+        escapeAttr(uid) +
+        '">' +
+        escapeHtml(formatCalendarDayHeading(dk)) +
+        '</h3>' +
+        '<div class="shortlist-na-day-events">' +
+        list.map(function (ev) {
+          return renderNextActionsEventBlock(ev);
+        }).join('') +
+        '</div>' +
+        '</section>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  function renderNextActionsEventBlock(ev) {
+    var apartment = ev.apt;
+    var id = apartment.id;
+    var href = id != null ? '/details/?id=' + encodeURIComponent(id) : '#';
+    var status = NyhomeStatus.normalizeStatus(apartment.status || 'new');
+    var statusLabel = formatStatusLabel(status);
+    var nextS = nextNavStatus(status);
+    var isRejected = status === 'rejected';
+    var kindClass = 'shortlist-na-etype--' + ev.kind;
+    var kindLabel =
+      ev.kind === 'tour' ? 'Tour' : ev.kind === 'deadline' ? 'App deadline' : 'Move-in';
+    var timeLine = formatEventTimeOrAllDay(ev);
+    var title = String(apartment.title || 'Untitled apartment');
+    var place = [apartment.neighborhood, apartment.address].filter(Boolean).join(' — ');
+    var visitNotes =
+      ev.kind === 'tour' && apartment.next_visit && apartment.next_visit.notes
+        ? '<p class="shortlist-na-visit-note muted"><strong>Notes</strong> · ' +
+          escapeHtml(String(apartment.next_visit.notes)) +
+          '</p>'
+        : '';
+    var advanceBtn;
+    if (!isRejected && nextS) {
+      advanceBtn =
+        '<button type="button" class="secondary-btn shortlist-next-actions-advance" data-advance-status data-apartment-id="' +
+        escapeAttr(String(id)) +
+        '" aria-label="Move to next status">Next: ' +
+        escapeHtml(formatStatusLabel(nextS)) +
+        '</button>';
+    } else {
+      advanceBtn =
+        '<button type="button" class="secondary-btn shortlist-next-actions-advance" disabled data-apartment-id="' +
+        escapeAttr(String(id)) +
+        '">' +
+        escapeHtml(isRejected ? 'Rejected' : 'At pipeline end') +
+        '</button>';
+    }
+    var rejectCtrl = isRejected
+      ? '<span class="shortlist-next-actions-reject muted" aria-disabled="true">Rejected</span>'
+      : '<button type="button" class="shortlist-next-actions-reject link-button" data-reject-apartment data-apartment-id="' +
+        escapeAttr(String(id)) +
+        '">Reject</button>';
+    var prep = prepLineForStatus(status);
+    var prepPanelId = 'shortlist-next-prep-' + String(id) + '-' + ev.kind;
+    var prepToggleLabel = 'Show prep tips for ' + title.trim();
+    return (
+      '<article class="shortlist-next-actions-row shortlist-na-event-block ' +
+      kindClass +
+      '" data-apartment-id="' +
+      escapeAttr(String(id)) +
+      '">' +
+      '<div class="shortlist-na-event-head">' +
+      '<div class="shortlist-na-event-head-txt">' +
+      '<span class="shortlist-na-etype">' +
+      escapeHtml(kindLabel) +
+      '</span>' +
+      '<span class="shortlist-na-time muted" data-na-time>' +
+      escapeHtml(timeLine) +
+      '</span>' +
+      '</div>' +
+      '<span class="status-pill ' +
+      NyhomeStatus.statusClass(status) +
+      ' shortlist-next-actions-pill">' +
+      escapeHtml(statusLabel) +
+      '</span>' +
+      '</div>' +
+      '<div class="shortlist-na-event-body">' +
+      '<a class="shortlist-na-titlelink" href="' +
+      escapeAttr(href) +
+      '"><strong class="shortlist-na-etitle">' +
+      escapeHtml(title) +
+      '</strong></a>' +
+      (place
+        ? '<p class="shortlist-na-place muted">' + escapeHtml(place) + '</p>'
+        : '') +
+      nextActionsFactDetailLine(apartment) +
+      visitNotes +
+      '</div>' +
+      '<div class="shortlist-na-event-actions">' +
+      '<div class="shortlist-next-actions-side">' +
+      advanceBtn +
+      rejectCtrl +
+      '<button type="button" class="criterion-def-btn" data-def-toggle data-def-for="' +
+      escapeAttr(prepPanelId) +
+      '" aria-expanded="false" aria-label="' +
+      escapeAttr(prepToggleLabel) +
+      '">?</button>' +
+      '</div></div>' +
+      '<div class="vote-criterion-def-panel shortlist-next-actions-def" id="' +
+      escapeAttr(prepPanelId) +
+      '" hidden>' +
+      '<p class="vote-criterion-def-text">' +
+      escapeHtml(prep) +
+      '</p></div></article>'
+    );
+  }
+
   function renderNextActionsList(visible) {
-    var filtered = visible.filter(qualifiesNextActions);
-    var sorted = sortForFinalist(filtered);
+    var sorted = sortForFinalist(visible);
+    var toolbar = renderNextActionsToolbarHtml();
+    var printTitle = '<h2 class="shortlist-na-print-title">Next actions</h2>';
     if (!sorted.length) {
       listEl.innerHTML =
         '<div class="shortlist-next-actions-wrap">' +
-        '<div class="empty-state">No next actions yet. Schedule a tour or set an application deadline on a listing.</div>' +
+        toolbar +
+        printTitle +
+        '<div class="empty-state">No next actions match. Add a tour, app deadline, or move-in — or change the exclude filters.</div>' +
         '</div>';
+      wireNextActionsChrome();
       return;
     }
-    listEl.innerHTML =
-      '<div class="shortlist-next-actions-wrap" role="region" aria-label="Next actions">' +
-      '<p class="shortlist-next-actions-intro muted">Tours and deadlines — advance, reject, or open a row for details.</p>' +
-      '<div class="shortlist-next-actions-list">' +
+    if (naLayoutMode === 'calendar') {
+      listEl.innerHTML =
+        '<div class="shortlist-next-actions-wrap" role="region" aria-label="Next actions">' +
+        toolbar +
+        printTitle +
+        renderNextActionsCalendarHtml(sorted) +
+        '</div>';
+    } else {
+      listEl.innerHTML =
+        '<div class="shortlist-next-actions-wrap" role="region" aria-label="Next actions">' +
+        toolbar +
+        printTitle +
+        '<p class="shortlist-next-actions-intro muted">Tours, deadlines, and move-in — advance, reject, or open a row for details.</p>' +
+        '<div class="shortlist-next-actions-list">' +
         sorted.map(function (apartment) {
           return renderNextActionsRow(apartment);
         }).join('') +
-      '</div>' +
-      '</div>';
+        '</div></div>';
+    }
+    wireNextActionsChrome();
+  }
+
+  function wireNextActionsChrome() {
     wireNextActionsListInteractions();
+    if (!listEl) return;
+    listEl.querySelectorAll('[data-na-layout]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var m = btn.getAttribute('data-na-layout');
+        if (!m || m === naLayoutMode || !VALID_NA_LAYOUTS[m]) return;
+        naLayoutMode = m;
+        saveNextActionsPrefs();
+        if (allApartments.length) applyFilters();
+      });
+    });
+    listEl.querySelectorAll('input[type="checkbox"][data-na-omit]').forEach(function (el) {
+      el.addEventListener('change', function () {
+        var k = el.getAttribute('data-na-omit');
+        var on = el.checked;
+        if (k === 'tour') naOmitTour = on;
+        else if (k === 'deadline') naOmitDeadline = on;
+        else if (k === 'movein') naOmitMoveIn = on;
+        saveNextActionsPrefs();
+        if (allApartments.length) applyFilters();
+      });
+    });
   }
 
   function renderNextActionsRow(apartment) {
@@ -870,6 +1219,9 @@
     }
     if (apartment.application && apartment.application.deadline_at) {
       metaBits.push('Deadline ' + formatShortDateTime(apartment.application.deadline_at));
+    }
+    if (hasMoveInDate(apartment)) {
+      metaBits.push('Move-in ' + String(apartment.move_in_date).trim());
     }
     var metaInline = metaBits.length
       ? '<span class="shortlist-next-actions-sep muted">·</span><span class="shortlist-next-actions-dates muted">' +

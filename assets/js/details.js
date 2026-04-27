@@ -8,6 +8,22 @@
   /** Mirrors `calculateScores` in lib/apartmentRepository.js */
   var SCORE_PARTNERS = ['kerv', 'peter'];
 
+  /** Same display strings as admin `LISTING_CHIP_LABELS` (short labels, consistent chip width). */
+  var LISTING_CHIP_LABELS = {
+    dishwasher: 'Dishwasher',
+    'washer-dryer': 'W/D',
+    storage: 'Storage',
+    views: 'Views',
+    doorman: 'Doorman',
+    highrise: 'Highrise',
+    'new-construction': 'New construction',
+    walkup: 'Walkup',
+    pool: 'Pool',
+    sauna: 'Sauna',
+    'laundry-room': 'Laundry room',
+    suites: 'Suites',
+  };
+
   function catchSaveApartment(err) {
     console.error('[nyhome-details] save apartment', err);
     if (err.status === 409) return;
@@ -356,8 +372,8 @@
         ], 'No cost details yet.')) +
         contentSection('Unit Snapshot', renderList([
           ['Unit', unitSummary(apartment)],
-          ['Unit features', (apartment.unit_features || []).map(formatLabel).join(', ')],
-          ['Amenities', (apartment.amenities || []).map(formatLabel).join(', ')],
+          ['Unit features', (apartment.unit_features || []).map(formatChipDisplayLabel).join(', ')],
+          ['Amenities', (apartment.amenities || []).map(formatChipDisplayLabel).join(', ')],
         ], 'No unit details yet.')) +
       '</div>' +
       contentSection('Listing Notes', apartment.notes ? '<p>' + escapeHtml(apartment.notes) + '</p>' : '<p class="muted">No notes yet.</p>') +
@@ -409,25 +425,52 @@
     }).join('');
   }
 
+  function detailDollarsField(cents) {
+    if (cents == null) return '';
+    return String(Number(cents) / 100);
+  }
+
   function renderUnitSetupTab(apartment, activeTab) {
+    var br = apartment.bedrooms != null ? apartment.bedrooms : 1;
+    var ba = apartment.bathrooms != null ? apartment.bathrooms : 1;
     return '<section id="tab-unit" class="summary-tab-content' + (activeTab === 'unit' ? ' active' : '') + '">' +
       '<h2>Unit Setup</h2>' +
-      '<form data-apartment-form class="content-section">' +
-        '<div class="section-header"><h3 class="section-title">Apartment Controls</h3></div>' +
+      '<form data-apartment-form class="content-section detail-unit-setup-form">' +
+        '<div class="section-header"><h3 class="section-title">Location</h3></div>' +
         '<div class="form-grid">' +
           '<label>Neighborhood<input data-detail-neighborhood list="detail-neighborhood-options" value="' + escapeAttr(apartment.neighborhood || '') + '" placeholder="Neighborhood" autocomplete="off"></label>' +
           '<datalist id="detail-neighborhood-options">' + detailNeighborhoodOptionsHtml() + '</datalist>' +
           '<label>Address<input data-detail-address required value="' + escapeAttr(apartment.address || '') + '" placeholder="Street address" autocomplete="street-address"></label>' +
           '<label>Apt number<input data-detail-apt value="' + escapeAttr(apartment.apt_number || '') + '" placeholder="Unit" autocomplete="off"></label>' +
           '<label>Move-in date<input data-detail-move-in type="date" value="' + escapeAttr(apartment.move_in_date || '') + '"></label>' +
-          '<label>Listing URL<input data-listing-url type="url" value="' + escapeAttr(apartment.listing_url || '') + '" placeholder="https://..."></label>' +
-          '<label class="span-2">Notes<textarea data-notes rows="5">' + escapeHtml(apartment.notes || '') + '</textarea></label>' +
+          '<label class="span-2">Listing URL<input data-listing-url type="url" value="' + escapeAttr(apartment.listing_url || '') + '" placeholder="https://..."></label>' +
+        '</div>' +
+        '<div class="section-header"><h3 class="section-title">Financials</h3></div>' +
+        '<div class="form-grid">' +
+          '<label>Rent<input data-detail-rent type="number" min="0" step="1" placeholder="3840" value="' + escapeAttr(detailDollarsField(apartment.rent_cents)) + '"></label>' +
+          '<label>Net effective<input data-detail-net-effective type="number" min="0" step="1" placeholder="optional" value="' + escapeAttr(detailDollarsField(apartment.net_effective_cents)) + '"></label>' +
+          '<label>Broker fee<input data-detail-broker-fee type="number" min="0" step="1" placeholder="optional" value="' + escapeAttr(detailDollarsField(apartment.broker_fee_cents)) + '"></label>' +
+          '<label>Deposit<input data-detail-deposit type="number" min="0" step="1" placeholder="optional" value="' + escapeAttr(detailDollarsField(apartment.deposit_cents)) + '"></label>' +
+          '<label>Amenities fees<input data-detail-amenities-fees type="number" min="0" step="1" placeholder="optional" value="' + escapeAttr(detailDollarsField(apartment.amenities_fees_cents)) + '"></label>' +
+          '<label>Total move-in amount<input data-detail-total-move-in type="number" min="0" step="1" placeholder="optional" value="' + escapeAttr(detailDollarsField(apartment.total_move_in_cents)) + '"></label>' +
+        '</div>' +
+        '<div class="section-header"><h3 class="section-title">The unit</h3></div>' +
+        '<div class="form-grid">' +
+          '<label>Bedrooms<input data-detail-bedrooms type="number" min="0" step="0.5" value="' + escapeAttr(String(br)) + '"></label>' +
+          '<label>Bathrooms<input data-detail-bathrooms type="number" min="0" step="0.5" value="' + escapeAttr(String(ba)) + '"></label>' +
+          '<label>Sq ft<input data-detail-square-feet type="number" min="0" step="1" placeholder="498" value="' + escapeAttr(apartment.square_feet != null ? String(apartment.square_feet) : '') + '"></label>' +
         '</div>' +
         '<div class="two-column controls-columns">' +
-          '<div class="control-group"><h3>Unit Features</h3>' + selectorGroup('unit-features', ['dishwasher', 'washer-dryer', 'storage', 'views'], apartment.unit_features || []) + '</div>' +
+          '<div class="control-group"><h3>Unit features</h3>' + selectorGroup('unit-features', ['dishwasher', 'washer-dryer', 'storage', 'views'], apartment.unit_features || []) + '</div>' +
           '<div class="control-group"><h3>Amenities</h3>' + selectorGroup('amenities', ['doorman', 'highrise', 'new-construction', 'walkup', 'pool', 'sauna', 'laundry-room', 'suites'], apartment.amenities || []) + '</div>' +
         '</div>' +
-        '<button class="primary-btn" type="submit">Save Unit Setup</button>' +
+        '<div class="section-header"><h3 class="section-title">Listing notes</h3></div>' +
+        '<div class="form-grid">' +
+          '<label class="span-2">Notes<textarea data-notes rows="5" placeholder="Listing notes">' + escapeHtml(apartment.notes || '') + '</textarea></label>' +
+        '</div>' +
+        '<div class="button-row detail-unit-setup-actions">' +
+          '<button class="primary-btn" type="submit">Save Unit Setup</button>' +
+        '</div>' +
       '</form>' +
     '</section>';
   }
@@ -878,7 +921,7 @@
         var active = selected.has(value);
         return '<button type="button" class="selector-chip' + (active ? ' active' : '') + '" data-value="' + escapeAttr(value) + '" aria-pressed="' + (active ? 'true' : 'false') + '">' +
           checkIcon() +
-          '<span>' + escapeHtml(formatLabel(value)) + '</span>' +
+          '<span>' + escapeHtml(formatChipDisplayLabel(value)) + '</span>' +
         '</button>';
       }).join('') +
     '</div>';
@@ -886,6 +929,13 @@
 
   function haveUnitFormInDom() {
     return !!rootEl.querySelector('[data-apartment-form]');
+  }
+
+  function detailNumberOrNullFromInput(el) {
+    if (!el) return null;
+    var value = el.value;
+    var n = Number(value);
+    return Number.isFinite(n) && String(value).trim() !== '' ? n : null;
   }
 
   function buildApartmentPayload() {
@@ -897,20 +947,31 @@
     var addrEl = rootEl.querySelector('[data-detail-address]');
     var aptEl = rootEl.querySelector('[data-detail-apt]');
     var moveEl = rootEl.querySelector('[data-detail-move-in]');
+    var rentEl = rootEl.querySelector('[data-detail-rent]');
+    var netEffEl = rootEl.querySelector('[data-detail-net-effective]');
+    var brokerEl = rootEl.querySelector('[data-detail-broker-fee]');
+    var depositEl = rootEl.querySelector('[data-detail-deposit]');
+    var amenFeesEl = rootEl.querySelector('[data-detail-amenities-fees]');
+    var moveInAmtEl = rootEl.querySelector('[data-detail-total-move-in]');
+    var bedEl = rootEl.querySelector('[data-detail-bedrooms]');
+    var bathEl = rootEl.querySelector('[data-detail-bathrooms]');
+    var sqftEl = rootEl.querySelector('[data-detail-square-feet]');
+    var bedVal = uForm && bedEl ? detailNumberOrNullFromInput(bedEl) : null;
+    var bathVal = uForm && bathEl ? detailNumberOrNullFromInput(bathEl) : null;
     return {
       id: apartment.id,
       neighborhood: uForm && neighEl ? neighEl.value.trim() : apartment.neighborhood,
       address: uForm && addrEl ? addrEl.value.trim() : apartment.address,
       aptNumber: uForm && aptEl ? aptEl.value.trim() : apartment.apt_number,
-      rent: centsToDollars(apartment.rent_cents),
-      netEffective: centsToDollars(apartment.net_effective_cents),
-      brokerFee: centsToDollars(apartment.broker_fee_cents),
-      deposit: centsToDollars(apartment.deposit_cents),
-      amenitiesFees: centsToDollars(apartment.amenities_fees_cents),
-      totalMoveIn: centsToDollars(apartment.total_move_in_cents),
-      bedrooms: apartment.bedrooms,
-      bathrooms: apartment.bathrooms,
-      squareFeet: apartment.square_feet,
+      rent: uForm && rentEl ? detailNumberOrNullFromInput(rentEl) : centsToDollars(apartment.rent_cents),
+      netEffective: uForm && netEffEl ? detailNumberOrNullFromInput(netEffEl) : centsToDollars(apartment.net_effective_cents),
+      brokerFee: uForm && brokerEl ? detailNumberOrNullFromInput(brokerEl) : centsToDollars(apartment.broker_fee_cents),
+      deposit: uForm && depositEl ? detailNumberOrNullFromInput(depositEl) : centsToDollars(apartment.deposit_cents),
+      amenitiesFees: uForm && amenFeesEl ? detailNumberOrNullFromInput(amenFeesEl) : centsToDollars(apartment.amenities_fees_cents),
+      totalMoveIn: uForm && moveInAmtEl ? detailNumberOrNullFromInput(moveInAmtEl) : centsToDollars(apartment.total_move_in_cents),
+      bedrooms: uForm && bedEl ? (bedVal != null ? bedVal : 1) : apartment.bedrooms,
+      bathrooms: uForm && bathEl ? (bathVal != null ? bathVal : 1) : apartment.bathrooms,
+      squareFeet: uForm && sqftEl ? detailNumberOrNullFromInput(sqftEl) : apartment.square_feet,
       unitFeatures: uForm ? selectedValues('unit-features') : (apartment.unit_features || []),
       amenities: uForm ? selectedValues('amenities') : (apartment.amenities || []),
       moveInDate: uForm && moveEl && moveEl.value ? moveEl.value : apartment.move_in_date,
@@ -1060,6 +1121,13 @@
 
   function formatLabel(value) {
     return String(value).replace(/-/g, ' ').replace(/\b\w/g, function (char) { return char.toUpperCase(); });
+  }
+
+  function formatChipDisplayLabel(slug) {
+    if (Object.prototype.hasOwnProperty.call(LISTING_CHIP_LABELS, slug)) {
+      return LISTING_CHIP_LABELS[slug];
+    }
+    return formatLabel(slug);
   }
 
   function centsToDollars(cents) {

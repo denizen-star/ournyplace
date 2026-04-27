@@ -1126,8 +1126,6 @@
         '<span class="manager-row-metric manager-row-metric--unit" title="Unit">' + escapeHtml(unitSummary(apartment) || 'Unit TBD') + '</span>' +
         '<span class="manager-row-metric manager-row-metric--move" title="Move-in">' + escapeHtml(apartment.move_in_date ? 'Move-in ' + apartment.move_in_date : 'Move-in TBD') + '</span>' +
         '<div class="manager-row-actions" role="group" aria-label="Listing actions">' +
-          '<button type="button" class="row-action row-action--edit" data-action="edit">Edit</button>' +
-          '<a class="row-action row-action--details" href="/details/?id=' + encodeURIComponent(apartment.id) + '">Details</a>' +
           '<button type="button" class="row-action row-action--delete" data-action="delete">Delete</button>' +
         '</div>' +
       '</div>';
@@ -1170,14 +1168,6 @@
       });
     }
 
-    card.querySelector('[data-action="edit"]').addEventListener('click', function (e) {
-      e.stopPropagation();
-      if (form) {
-        fillApartmentForm(apartment);
-      } else {
-        window.location.href = '/admin/new?id=' + encodeURIComponent(apartment.id);
-      }
-    });
     card.querySelector('[data-action="delete"]').addEventListener('click', function () {
       if (!confirm('Delete this apartment?')) return;
       return NyhomeAPI.deleteApartment(apartment.id).then(load).catch(function (err) {

@@ -1016,6 +1016,40 @@ body.shortlist .link-button--no-listing {
   font-size: 1rem;
 }
 
+/* Details → Unit Setup: shorter inputs, smaller feature/amenity chips (global .form-grid is full-width) */
+.detail-unit-setup-form .form-grid {
+  grid-template-columns: repeat(auto-fill, minmax(132px, min(100%, 240px)));
+  justify-content: start;
+}
+
+.detail-unit-setup-form label.span-2 {
+  max-width: min(100%, 34rem);
+}
+
+.detail-unit-setup-form .control-group {
+  padding: 12px;
+}
+
+.detail-unit-setup-form .control-group h3 {
+  font-size: 0.9375rem;
+}
+
+.detail-unit-setup-form input:not([type="checkbox"]):not([type="radio"]),
+.detail-unit-setup-form textarea {
+  padding: 9px 11px;
+}
+
+/* Keep chip rows content-height: default two-column grid stretches short column to match tall one, which stretches flex lines and makes pills taller */
+.detail-unit-setup-form .two-column {
+  align-items: start;
+}
+
+.detail-unit-setup-form .detail-unit-setup-actions {
+  justify-content: flex-end;
+  width: 100%;
+  margin-top: 4px;
+}
+
 .admin-form-card {
   display: grid;
   gap: 20px;
@@ -1494,14 +1528,6 @@ body.shortlist .link-button--no-listing {
 
 .row-action:hover:not(:disabled) {
   text-decoration: underline;
-}
-
-.row-action--edit {
-  color: var(--accent-dark);
-}
-
-.row-action--details {
-  color: #047857;
 }
 
 .row-action--delete {
@@ -2378,6 +2404,34 @@ textarea {
 .selector-chip.active .check-icon {
   background: var(--good);
   fill: white;
+}
+
+/* Details → Unit Setup: same compact pill size for unit features + amenities (overrides global .selector-chip) */
+.detail-unit-setup-form .selector-group {
+  gap: 6px;
+  align-items: flex-start;
+  align-content: flex-start;
+}
+
+.detail-unit-setup-form .selector-chip {
+  min-height: 30px;
+  padding: 3px 9px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  gap: 5px;
+  line-height: 1.2;
+  align-self: flex-start;
+}
+
+.detail-unit-setup-form .selector-chip .check-icon {
+  width: 13px;
+  height: 13px;
+  padding: 2px;
+  flex-shrink: 0;
+}
+
+.detail-unit-setup-form .selector-chip span {
+  line-height: 1.2;
 }
 
 .empty-state {
@@ -3347,10 +3401,237 @@ body.shortlist .shortlist-next-actions-wrap {
   max-width: 100%;
 }
 
+body.shortlist .shortlist-next-actions-toolbar {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.02);
+}
+
+body.shortlist .shortlist-next-actions-toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px 20px;
+  justify-content: space-between;
+}
+
+body.shortlist .shortlist-na-toolbar-label {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9ca3af;
+  margin-bottom: 6px;
+}
+
+body.shortlist .shortlist-next-actions-layout {
+  min-width: 0;
+}
+
+body.shortlist .shortlist-na-segment {
+  margin-top: 0;
+}
+
+body.shortlist .shortlist-next-actions-omit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+body.shortlist .shortlist-na-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+body.shortlist .shortlist-na-check input {
+  margin: 0;
+  accent-color: var(--accent-dark, #6366f1);
+}
+
+body.shortlist .shortlist-na-print-title {
+  display: none;
+}
+
+body.shortlist .shortlist-na-calendar {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+}
+
+body.shortlist .shortlist-na-day {
+  margin-top: 18px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+body.shortlist .shortlist-na-day:first-of-type {
+  margin-top: 0;
+}
+
+body.shortlist .shortlist-na-day-heading {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+body.shortlist .shortlist-na-day-events {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+body.shortlist .shortlist-na-event-block.shortlist-next-actions-row {
+  padding: 10px 12px;
+}
+
+body.shortlist .shortlist-na-event-head {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+body.shortlist .shortlist-na-event-head-txt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  min-width: 0;
+}
+
+body.shortlist .shortlist-na-etype {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+body.shortlist .shortlist-na-etype--tour .shortlist-na-etype {
+  color: #0ea5e9;
+}
+
+body.shortlist .shortlist-na-etype--deadline .shortlist-na-etype {
+  color: #d946ef;
+}
+
+body.shortlist .shortlist-na-etype--movein .shortlist-na-etype {
+  color: #14b8a6;
+}
+
+body.shortlist .shortlist-na-time {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+body.shortlist .shortlist-na-event-body {
+  margin-bottom: 8px;
+}
+
+body.shortlist .shortlist-na-titlelink {
+  text-decoration: none;
+  color: inherit;
+}
+
+body.shortlist .shortlist-na-titlelink:hover .shortlist-na-etitle {
+  text-decoration: underline;
+}
+
+body.shortlist .shortlist-na-etitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+body.shortlist .shortlist-na-place {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+body.shortlist .shortlist-na-detail-facts {
+  margin: 6px 0 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+body.shortlist .shortlist-na-visit-note {
+  margin: 6px 0 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+body.shortlist .shortlist-na-event-actions .shortlist-next-actions-side {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
 body.shortlist .shortlist-next-actions-intro {
   margin: 0 0 12px;
   font-size: 0.82rem;
   line-height: 1.35;
+}
+
+@media print {
+  body.shortlist .app-header,
+  body.shortlist .summary-grid,
+  body.shortlist .filters-drawer-fab,
+  body.shortlist .filters-drawer,
+  body.shortlist .shortlist-next-actions-toolbar {
+    display: none !important;
+  }
+
+  body.shortlist .shortlist-na-print-title {
+    display: block;
+    margin: 0 0 16px;
+    font-size: 1.2rem;
+    font-weight: 600;
+  }
+
+  body.shortlist .page-shell {
+    padding: 12px 16px 24px;
+    max-width: 100%;
+  }
+
+  body.shortlist .card-list {
+    min-height: 0;
+  }
+
+  body.shortlist .shortlist-na-day {
+    page-break-before: always;
+    break-inside: avoid;
+    border-bottom: 0;
+    margin-top: 0;
+    padding-bottom: 12px;
+  }
+
+  body.shortlist .shortlist-na-calendar > .shortlist-na-day:first-of-type {
+    page-break-before: auto;
+  }
+
+  body.shortlist .shortlist-na-event-block.shortlist-next-actions-row {
+    break-inside: avoid;
+    border: 1px solid #ccc;
+  }
+
+  body.shortlist .shortlist-next-actions-row {
+    break-inside: avoid;
+  }
 }
 
 body.shortlist .shortlist-next-actions-list {
