@@ -90,8 +90,7 @@ textarea {
   border-radius: 0;
   font-weight: 500;
   color: var(--accent-dark);
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
+  text-decoration: none;
   box-shadow: none;
 }
 
@@ -99,9 +98,12 @@ textarea {
   background: none;
   border: 0;
   color: var(--accent);
+  text-decoration: none;
 }
 
 .app-header-actions-sep {
+  display: inline-block;
+  margin: 0 0.55em;
   color: var(--muted);
   user-select: none;
 }
@@ -3218,38 +3220,54 @@ body.shortlist .status-filter-hood-block .link-button {
 
 /* ── Shortlist (home) page: summary tiles + apartment cards ───────── */
 
-/* Tagline in first column; view/sort in second column, flush right of hero */
+/* View switcher in first column; sort + admin in second, flush right of hero */
 body.shortlist .shortlist-tagline-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  column-gap: 12px;
+  column-gap: 16px;
   row-gap: 10px;
   margin-top: 10px;
   width: 100%;
   box-sizing: border-box;
 }
 
-body.shortlist .shortlist-tagline-row .shortlist-tagline {
+body.shortlist .shortlist-tagline-row .shortlist-view {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
   margin: 0;
   min-width: 0;
   max-width: 100%;
-  font-size: 0.9rem;
-  color: #6b7280;
-  line-height: 1.45;
-  font-weight: 400;
+  justify-self: start;
 }
 
-body.shortlist .shortlist-tagline-row .shortlist-toolbar {
+body.shortlist .shortlist-hero-right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px 18px;
+  min-width: 0;
+  justify-self: end;
+  max-width: 100%;
+}
+
+body.shortlist .shortlist-hero-right .shortlist-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 10px 14px;
   margin: 0;
-  flex: none;
+  flex: 1 1 auto;
   min-width: 0;
-  justify-self: end;
+}
+
+body.shortlist .shortlist-hero-right .app-header-actions--in-hero {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 body.shortlist .shortlist-toolbar {
@@ -3257,15 +3275,7 @@ body.shortlist .shortlist-toolbar {
   flex-wrap: wrap;
   align-items: center;
   gap: 10px 14px;
-  margin-top: 14px;
-}
-
-body.shortlist .shortlist-view {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 14px;
-  margin-top: 0;
+  margin: 0;
 }
 
 body.shortlist .shortlist-view-label {
@@ -4305,7 +4315,16 @@ body.shortlist .empty-state {
     grid-template-columns: 1fr;
   }
 
-  body.shortlist .shortlist-tagline-row .shortlist-toolbar {
+  body.shortlist .shortlist-tagline-row .shortlist-view {
+    width: 100%;
+  }
+
+  body.shortlist .shortlist-hero-right {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  body.shortlist .shortlist-hero-right .shortlist-toolbar {
     width: 100%;
     justify-content: flex-end;
   }
@@ -4314,10 +4333,6 @@ body.shortlist .empty-state {
 @media (max-width: 640px) {
   body.shortlist .shortlist-tagline-row {
     margin-top: 8px;
-  }
-
-  body.shortlist .shortlist-tagline-row .shortlist-tagline {
-    font-size: 0.85rem;
   }
 
   body.shortlist .card-list {

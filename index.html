@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="/assets/css/app.css?v=68">
+  <link rel="stylesheet" href="/assets/css/app.css?v=73">
 </head>
 <body class="shortlist">
   <header class="app-header app-header--shortlist">
@@ -18,31 +18,32 @@
       <p class="eyebrow">nyhome</p>
       <h1>Apartment shortlist</h1>
       <div class="shortlist-tagline-row">
-        <p class="shortlist-tagline">Scores, status, and next steps at a glance.</p>
-        <div class="shortlist-toolbar" id="shortlist-toolbar">
-          <div class="shortlist-view" id="shortlist-view" role="tablist" aria-label="Shortlist view">
-            <span class="shortlist-view-label" id="shortlist-view-label">View</span>
-            <div class="shortlist-view-segment" role="presentation">
-              <button type="button" class="shortlist-view-btn" role="tab" id="shortlist-view-cards" data-shortlist-view="cards" aria-selected="true" aria-controls="apartment-list">Cards</button>
-              <button type="button" class="shortlist-view-btn" role="tab" id="shortlist-view-finalist" data-shortlist-view="finalist" aria-selected="false" aria-controls="apartment-list">Finalist</button>
-              <button type="button" class="shortlist-view-btn" role="tab" id="shortlist-view-next-actions" data-shortlist-view="next-actions" aria-selected="false" aria-controls="apartment-list">Next actions</button>
+        <div class="shortlist-view" id="shortlist-view" role="tablist" aria-label="Shortlist view">
+          <span class="shortlist-view-label" id="shortlist-view-label">View</span>
+          <div class="shortlist-view-segment" role="presentation">
+            <button type="button" class="shortlist-view-btn" role="tab" id="shortlist-view-cards" data-shortlist-view="cards" aria-selected="true" aria-controls="apartment-list">Cards</button>
+            <button type="button" class="shortlist-view-btn" role="tab" id="shortlist-view-finalist" data-shortlist-view="finalist" aria-selected="false" aria-controls="apartment-list">Finalist</button>
+            <button type="button" class="shortlist-view-btn" role="tab" id="shortlist-view-next-actions" data-shortlist-view="next-actions" aria-selected="false" aria-controls="apartment-list">Next actions</button>
+          </div>
+        </div>
+        <div class="shortlist-hero-right">
+          <div class="shortlist-toolbar" id="shortlist-toolbar">
+            <div class="shortlist-sort" id="shortlist-sort" role="group" aria-label="Sort apartment cards">
+              <span class="shortlist-sort-label" id="shortlist-sort-label">Sort by</span>
+              <div class="shortlist-sort-segment" role="radiogroup" aria-labelledby="shortlist-sort-label">
+                <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="workflow" aria-checked="true">Workflow</button>
+                <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="avg" aria-checked="false">Avg</button>
+                <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="peter" aria-checked="false">Peter</button>
+                <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="kerv" aria-checked="false">Kerv</button>
+                <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="updated" aria-checked="false">Last updated</button>
+              </div>
             </div>
           </div>
-          <div class="shortlist-sort" id="shortlist-sort" role="group" aria-label="Sort apartment cards">
-            <span class="shortlist-sort-label" id="shortlist-sort-label">Sort by</span>
-            <div class="shortlist-sort-segment" role="radiogroup" aria-labelledby="shortlist-sort-label">
-              <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="workflow" aria-checked="true">Workflow</button>
-              <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="avg" aria-checked="false">Avg</button>
-              <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="peter" aria-checked="false">Peter</button>
-              <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="kerv" aria-checked="false">Kerv</button>
-              <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="updated" aria-checked="false">Last updated</button>
-            </div>
+          <div class="app-header-actions app-header-actions--in-hero" aria-label="Listings">
+            <a class="link-button" href="/admin/new">New listing</a><span class="app-header-actions-sep" aria-hidden="true">|</span><a class="link-button" href="/admin">Manage</a>
           </div>
         </div>
       </div>
-    </div>
-    <div class="app-header-actions">
-      <a class="link-button" href="/admin/new">New listing</a><span class="app-header-actions-sep" aria-hidden="true">  |  </span><a class="link-button" href="/admin">Manage</a>
     </div>
   </header>
 
