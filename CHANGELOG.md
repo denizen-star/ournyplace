@@ -3,6 +3,14 @@
 ## Unreleased
 
 ### Added
+- **Shortlist — Ranked sort:** new **Sort by** option (Ranked) applies Star tier desc → Avg desc → Workflow desc. Works on both Cards and Table views; persisted in `nyhomeShortlistSort`.
+- **Shortlist Table view sort parity:** Table (née Finalist) now respects **Sort by** bar — any sort other than Ranked applies the same ordering as the card grid. Sort bar is visible when Table is active.
+- **`shortlistSort.js`** — `NyhomeShortlistSort` shared module: `sortForDisplay`, `sortForFinalist`, and comparators extracted from `app.js` and reused by `admin.js`.
+- **Admin Saved apartments sort:** Default | Workflow | Avg | Updated | Ranked control in the Saved apartments section header; persisted in `localStorage` (`nyhomeAdminApartmentSort`).
+
+### Changed
+- **Shortlist "Finalist" tab → "Table":** button label renamed; `data-shortlist-view` value and localStorage key (`finalist`) unchanged for backward compatibility.
+- **Mobile bottom nav:** reduced from Cards | Finalist | Next actions → **Cards | Next actions**; Table view is desktop-only.
 - **Mobile shortlist (≤720px):** fixed **bottom nav** (`#nyhome-mobile-bottom-nav`) — Cards | Finalist | Next actions; header **VIEW** segment hidden. **Sort by** collapsible row (`#shortlist-sort-mobile-toggle` + `#shortlist-sort-panel`, Cards only). **Next actions:** tap sets **Calendar** + **Summary**; reload on NA view forces **calendar** layout (`applyMobileNextActionsDefaults`). **Summary** calendar rows: **stacked** — TOUR/time strip above listing card (`.shortlist-next-actions-wrap[data-na-density="summary"] .shortlist-na-line` single column). Static refs: `PLAN-mobile.md`, `mobile-mockups/*.html`.
 - **Mobile `/details` (≤720px):** **accordion** sections + compact summary (`MOBILE_DETAIL_MAX` 720, `details.js`); optional `?tab=` in URL. Tab bodies that are also `.summary-tab-content` get `#detail-root` display overrides so accordion expand works.
 - **`nyp_apartments.listing_star`:** nullable tinyint (1 Peter, 2 Kerv, 3 both); `migrate.js` ALTER (required before star saves); full apartment `GET/POST/PUT` via `apartmentRepository` + `apartmentSavePayload`; **`listingStar.js`** (`NyhomeListingStar`): **Cards** = `buttonHtml` cycle; **Star** sort; read-only **`displayHtmlIfStarred`** (tier 1–3 only) elsewhere; SVG path paint = **inline hex** in JS. Shortlist **five pipeline KPI** tiles (`NyhomeStatusFilterGroups`). Client: merge row + **`NyhomeAPI.setApartmentsCache`** after star save (fixes stale GET/cache missing `listing_star`). Star PUT uses **`ignoreBlacklist: true`**. **`?v=`**/`sw.js` **`CACHE_VERSION`** bumped together (currently **96**).
