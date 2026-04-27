@@ -1,75 +1,101 @@
-# Feature Implementation Plan — Mobile Layout
+# Mobile layout plan — implementation status
 
-**Overall Progress:** `0%`
+**Overall progress:** ~**90%** shipped. Primary breakpoint in code/CSS is **`max-width: 720px`** (`MOBILE_WIDTH_MAX` / `MOBILE_DETAIL_MAX`), not 640px — treat “mobile” as **≤720px** below.
 
----
-
-## TLDR
-Add a mobile-first responsive layer to nyhome via media queries and targeted JS additions. No new pages or routes — all changes land in `app.css`, `app.js`, `details.js`. The result: a bottom-nav shortlist, condensed Finalist table with inline expand, collapsible Next Actions toolbar with a focused Tour Screen, accordion-style Details tabs, and a Duplicate button on every card.
+**Implementation order:** Steps 1→2→3 unlock bottom nav + cards. 4→5 duplicate + finalist. 6→7 next actions. 8 details. 9 cache (re-bump whenever shell assets change).
 
 ---
 
-## Critical Decisions
+## Critical decisions (as built)
 
-- **Media query breakpoint:** `≤ 640px` — matches the app's existing lowest breakpoint
-- **Bottom nav replaces view switcher on mobile:** The existing `.shortlist-view` segment is hidden; a new sticky `<nav>` is injected by `app.js` and mirrors the same view-switching logic
-- **`setView(mode)` extracted:** The existing inline view-switch logic is extracted to a named function, enabling the bottom nav and the existing segment control to share the same code path
-- **Finalist expand is pure JS:** Tap adds `.finalist-row--expanded` and injects a sibling `.finalist-mobile-expanded` block; one row open at a time
-- **Details accordion replaces tabs on mobile:** `render()` in `details.js` branches on `isMobile()`; all section content renders eagerly; all `bind*` functions are called at once via `bindAllMobilePanels()`
-- **Tour Screen is a `position:fixed` overlay:** Injected into `document.body`, removed on back/save
-- **Duplicate reuses existing POST `/api/apartments`:** Build payload with `apartmentToSavePayload`, delete `payload.id`, POST; redirect to `/details/?id=NEW&tab=unit`
-- **Prospect density hidden on mobile via CSS:** `[data-na-cal-density="prospect"]` gets `display:none` at ≤ 640px; JS falls back from stored `prospect` to `details` on mobile
+- **Breakpoint:** `720px` — `app.js` `isShortlistMobile()`, `details.js` `isDetailsMobile()`, main `@media` block in `app.css` (comment: “MOBILE LAYOUT (≤ 720 px)”).
+- **Bottom nav:** Injected on `document.body` (not strictly `.page-shell` parent); `syncShortlistViewUi()` updates header tabs (if visible) **and** `.m-nav-btn`.
+- **Sort (Cards):** Collapsible **Sort by** row + chip row (`#shortlist-sort-mobile-toggle`, `#shortlist-sort-panel`), not only a hidden label.
+- **Prospect (NA):** At mobile, **`[data-na-cal-density="prospect"]`** toolbar control **hidden** via CSS. **`initNextActionsPrefs()`** no longer forces `prospect` → `details` (stored density can stay `prospect`; UI may still hide the button — verify product intent).
+- **Tour worksheet:** Overlay saves **tour visit notes** via `NyhomeAPI.saveVisit`; body reuses `nextActionsListingSpecStrip(apt)` (not a full bespoke “all financials as `<input>`” form). Label on calendar: **“Tour worksheet”** (not “Open tour screen →”).
+- **Details accordion:** **Multi-open** — each section toggles independently (`bindMobileAccordion`).
 
 ---
 
 ## Tasks
 
-- [ ] 🟥 **Step 1: CSS foundation — mobile shell & bottom nav styles**
-  - [ ] 🟥 Append mobile CSS block to `app.css`: `.m-bottom-nav` fixed position + safe-area-inset
-  - [ ] 🟥 Hide `.shortlist-view` + `.app-header-actions--in-hero` on mobile
-  - [ ] 🟥 Sort segment → scrollable chips on mobile
-  - [ ] 🟥 Finalist column override: 3-col grid, `min-width:0`, hide specific columns
-  - [ ] 🟥 Duplicate button base style (hidden on desktop)
-  - [ ] 🟥 Next Actions toolbar collapsible + Tour Screen overlay styles
-  - [ ] 🟥 Mobile accordion + summary card styles for details page
+### Step 1: CSS foundation — mobile shell & bottom nav
 
-- [ ] 🟥 **Step 2: Bottom nav bar — JS injection & wiring**
-  - [ ] 🟥 Extract `setView(mode)` from `initShortlistView` in `app.js`
-  - [ ] 🟥 Add `syncMobileNav()` + call from `syncShortlistViewUi()`
-  - [ ] 🟥 Add `initMobileBottomNav()` + call from `boot()`
+- [x] **`@media (max-width: 720px)`** in `app.css`: `.m-bottom-nav` fixed bottom, `safe-area-inset-bottom`, 3-column grid, `.m-nav-btn--active`
+- [x] Hide **`.shortlist-view`** and **`.app-header-actions--in-hero`** on mobile
+- [x] Sort: horizontal chip row + mobile-only collapsible wrapper (see `shortlist-sort-mobile-toggle` / `shortlist-sort-panel`)
+- [x] **`body.shortlist .page-shell`** `padding-bottom` so list clears nav (~68px + safe area)
+- [x] Related: filters FAB position above nav, dup sheet + tour overlay styles
 
-- [ ] 🟥 **Step 3: Cards — duplicate button markup**
-  - [ ] 🟥 Add `apt-dup-btn` button to `renderActions()` in `app.js`
-  - [ ] 🟥 Add `wireCardActions()` + call after cards render in `applyFilters()`
+### Step 2: Bottom nav bar — JS injection & wiring
 
-- [ ] 🟥 **Step 4: Duplicate feature — modal + API**
-  - [ ] 🟥 Add `showDuplicateSheet()`, `renderDuplicateSheetHtml()`, `closeDuplicateSheet()`, `confirmDuplicate()` to `app.js`
-  - [ ] 🟥 Add duplicate sheet CSS (bottom sheet overlay)
-  - [ ] 🟥 Add duplicate button + sheet logic to `details.js` summary card
+- [x] `initMobileBottomNav()` on `DOMContentLoaded` (`boot()`): `<nav class="m-bottom-nav" id="nyhome-mobile-bottom-nav">` with Cards | Finalist | Next actions
+- [x] Clicks call **`setShortlistView`** (same as header segment)
+- [x] **`syncShortlistViewUi()`** updates `.shortlist-view-btn` **and** `.m-nav-btn` active / `aria-current`
 
-- [ ] 🟥 **Step 5: Finalist mobile — condensed table + inline expand**
-  - [ ] 🟥 Add `data-finalist-col` attributes to `buildFinalistRowInnerHtml()` and header in `renderFinalistList()`
-  - [ ] 🟥 Add `data-finalist-id` to row `<a>` elements
-  - [ ] 🟥 Add `wireFinalistMobileExpand()` + `buildFinalistExpandHtml()` to `app.js`
-  - [ ] 🟥 Call `wireFinalistMobileExpand()` from `renderFinalistList()`
+### Step 3: Cards view mobile styles
 
-- [ ] 🟥 **Step 6: Next Actions toolbar — collapsible + hide Prospect**
-  - [ ] 🟥 Add `.na-mobile-toolbar-toggle` button to `renderNextActionsToolbarHtml()`
-  - [ ] 🟥 Add `wireToolbarToggle()` + call from `wireNextActionsChrome()`
-  - [ ] 🟥 Fall back from `prospect` to `details` on mobile in `initNextActionsPrefs()`
+- [x] **`.card-list`** single column at **720px** (`@media (max-width: 720px)` block)
+- [x] **Duplicate** in **`renderActions()`** → `.apt-dup-btn`; **desktop:** `display: none` until mobile breakpoint CSS shows it
+- [x] **`wireCardDupButtons()`** after cards render; opens bottom sheet
 
-- [ ] 🟥 **Step 7: Tour Screen overlay**
-  - [ ] 🟥 Add `m-tour-screen-btn` to `renderNextActionsEventBlock()` (Details density only)
-  - [ ] 🟥 Add `showTourScreen()`, `closeTourScreen()`, `renderTourScreenHtml()`, `saveTourScreenData()` to `app.js`
-  - [ ] 🟥 Wire tour screen buttons in `wireNextActionsChrome()`
+### Step 4: Duplicate feature — modal + API
 
-- [ ] 🟥 **Step 8: Details page — accordion on mobile**
-  - [ ] 🟥 Add `isMobile()` and `getInitialTab()` helpers to `details.js`
-  - [ ] 🟥 Branch `render()` on `isMobile()` → `renderMobileAccordion()`
-  - [ ] 🟥 Add `renderMobileAccordion()` + `renderMobileSummaryCard()` to `details.js`
-  - [ ] 🟥 Add `bindMobileAccordion()`, `bindMobileSummaryExpand()`, `bindAllMobilePanels()` to `details.js`
-  - [ ] 🟥 Handle `?tab=` URL param via `getInitialTab()`
+- [x] **`showDuplicateSheet`**, sheet HTML, **`confirmDuplicateFromSheet`**: new unit via **`NyhomeApartmentPayload.apartmentToSavePayload(apt, { aptNumber })`**, **`delete payload.id`**, POST through **`NyhomeSaveWorkflow.saveApartmentRespectingBlacklist`**, redirect **`/details/?id=…&tab=unit`**
+- [ ] **Optional floor field** — not implemented (plan-only)
+- [x] **Details** mobile summary: **Duplicate** + **`showDetailsDuplicateSheet`** / **`confirmDetailsDuplicateFromSheet`**
+- [x] **`getTabFromUrl()`** + **`load()`** / **`renderMobileDetailPage`** respect **`?tab=unit`** (and other tabs)
 
-- [ ] 🟥 **Step 9: Cache version bump**
-  - [ ] 🟥 Increment `CACHE_VERSION` in `sw.js` (88 → 89)
-  - [ ] 🟥 Update `?v=88` → `?v=89` in all four HTML files
+### Step 5: Finalist mobile — condensed table + inline expand
+
+- [x] **≤720px:** `.shortlist-finalist-cols` → **3 columns** (ord · place · avg), **`min-width: 0`** (drops desktop `56rem` table width)
+- [x] Hide **rent, net, move, bed, kerv, peter, status** columns via **`[data-finalist-col]`**
+- [x] **`renderFinalistList`:** clusters + **`data-finalist-id`**, **`data-finalist-col`** on headers/cells
+- [x] **`wireFinalistMobileExpand()`:** toggles expand, injects **`.finalist-mobile-expanded`** with thumbs, stats, Details link
+
+### Step 6: Next Actions toolbar — collapsible + hide Prospect
+
+- [x] **`renderNextActionsToolbarHtml`:** **`.na-mobile-toolbar-toggle`** + collapsible **`.shortlist-next-actions-toolbar-row`**
+- [x] **`wireNAToolbarToggle()`** (mobile: row starts collapsed)
+- [x] **≤720px:** hide **Prospect** density control — **`body.shortlist [data-na-cal-density="prospect"] { display: none }`** (see `app.css`)
+- [ ] **`initNextActionsPrefs()`** `prospect` → `details` when ≤720 — **removed** in current code; reinstate if product wants density fallback
+
+### Step 7: Tour screen overlay
+
+- [x] **`renderNextActionsEventBlock`:** **`.m-tour-screen-btn`** for **calendar + Details + tour** rows (not “Notes section” wording; button after block content)
+- [x] **`showTourScreen`**, **`renderTourScreenHtml`**, **`closeTourScreen`**, **`saveTourScreenNotes`** (`saveVisit` + refresh + close)
+- [x] Back / Close and overlay backdrop wiring
+- [ ] **Escape** closes tour overlay — not wired globally (only Back / Close buttons)
+- [ ] Full spec: **editable financials as native inputs** + checklist toggles in overlay — **partial** (strip + notes; not full inline-edit apartment PUT from worksheet)
+
+### Step 8: Details page — accordion on mobile
+
+- [x] **`isDetailsMobile()`** / **`MOBILE_DETAIL_MAX = 720`**
+- [x] **`render()`** → **`renderMobileDetailPage`** when narrow
+- [x] **Accordion** sections: Scorecard, Images, Unit Setup, Peter, Kerv, Tour, Application, Activity; **`renderMobileAccordionSection`**
+- [x] **Multi-open** accordion toggles
+- [x] **Compact summary** + **Show more** / **Show less** expander; status progression + **Reject** + **Duplicate**
+- [x] **≤720px CSS:** hide tab header chrome where applicable; **`.mobile-accordion-*`** styles; **`#detail-root`** fixes for **`.summary-tab-content`** on accordion bodies
+
+### Step 9: Cache version bump
+
+- [x] Process in place: **`CACHE_VERSION`** in **`sw.js`** + matching **`?v=`** on shell **`index.html`**, **`details/index.html`**, **`admin/index.html`**, **`admin/new/index.html`**
+- [x] **Current** (as of last bump in repo): **91** — increment again whenever you change cached JS/CSS
+
+---
+
+## Follow-ups (not in original 9 steps)
+
+- Next actions **Summary** calendar: time strip **stacked above** listing card (all widths for Summary density).
+- **`listingStar.js`**: not part of this plan; see `docs/LISTING-STAR-AND-KPI-REIMPLEMENTATION-PLAN.md`.
+
+---
+
+## Quick verify checklist
+
+1. **≤720px:** bottom nav switches Cards / Finalist / Next actions; header VIEW hidden.
+2. **Cards:** Duplicate opens sheet; POST new id → details `?tab=unit`.
+3. **Finalist:** tap row expands inline card.
+4. **Next actions:** toolbar toggle; Prospect control hidden on mobile; tour **Tour worksheet** opens overlay; notes save.
+5. **Details:** accordion + `?tab=`; Duplicate from summary.
+6. After any shell change: **bump `CACHE_VERSION` + all `?v=`**.
