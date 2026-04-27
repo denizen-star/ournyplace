@@ -25,10 +25,11 @@ There is intentionally no auth while this is local-only. Add a password gate bef
 
 ## What It Does
 
-- Public shortlist at `/`: **View** **Cards** | **Finalist** | **Next actions** (`nyhomeShortlistView` in `localStorage`). **Cards:** responsive card grid, **KPI** strip, facts, **Avg** / Kerv / Peter, up to **3** listing thumbs under scores; hover → fixed preview. **Sort by** on Cards only. **Finalist:** table sorted by Avg then workflow; rent, net, move-in, scores, status pills. **Next actions:** one row per listing with **tour** and/or **app deadline**; status pill, **Next** / **Reject** (saves apartment), **?** prep toggle (same pattern as scoring definitions), strip links **Details**. **Details** / **Listing**; status filter + card glow (`listing-status-*`). Photos: **Admin** or **`/details` → Images** (up to 3).
-- Details at `/details/?id=…`: Hunter-style summary + tabs: **Scorecard**, **Images**, **Unit Setup**, **Peter** / **Kerv**, Tour, Application, **Activity Log** (includes **status** + **vote** history from `nyp_listing_events` after `npm run migrate`, plus tour/app milestones). Status auto-save; scoring: **N/A** + `0..5`, criterion **?** toggles definition panel when set.
-- Admin at `/admin`: tabs **Apartment Setup** | **Criteria** | **Building blacklist**. **Header** search filters **Saved apartments**; cleared when switching to **Criteria** (not blacklist). **Criteria:** add + click-to-edit, drag reorder; `PUT /api/criteria`. **Building blacklist:** add form + list (click street/notes to edit, blur saves); normalized key shown. **Saved Apartments:** compact rows; row click (not controls) → `/details`.
-- Manual apartment entry with sections: Location, Financials, The Unit, Amenities, Listing Notes, **Listing photos** (3 paste/drop slots, same encoding as on `/details` Images).
+- Public shortlist at `/`: **View** **Cards** | **Finalist** | **Next actions** (`nyhomeShortlistView`). Row under the title: **View** (left) + **Sort by** (Cards only) + **New listing** → `/admin/new` and **Manage** → `/admin` (plain links, `|`, right). **Status filter:** **Filters** FAB → glass **drawer** (grouped statuses, `statusFilterGroups.js`). **Cards:** grid, **KPI** strip, **Sort** (`nyhomeShortlistSort`), **Avg** / Kerv / Peter, up to **3** thumbs under scores; hover → fixed preview. **Finalist** / **Next actions** as in app. Card glow: `listing-status-*`. Shell cache: bump `sw.js` + HTML `?v=` together. Photos: `/admin/new` or **`/details` → Images** (up to 3).
+- Details at `/details/?id=…`: Hunter-style summary + tabs: **Scorecard**, **Images**, **Unit Setup**, **Peter** / **Kerv**, Tour, Application, **Activity Log** (includes `nyp_listing_events` after migrate). **Header:** **New listing** + **Back to shortlist**. Scoring: **N/A** + `0..5`, criterion **?** toggles definition.
+- **Manager** `/admin`: tabs **Saved apartments** | **Building blacklist** | **Criteria**. **Header** search filters the list on **Saved apartments**; cleared when switching to **Building blacklist** or **Criteria**. **New listing** in header → `/admin/new`. **Edit** on a row (when not using in-page form) → `/admin/new?id=…`. **Criteria** / **blacklist** same as before (click-edit, etc.). **Saved apartments:** `manager-row`; row click (not controls) → `/details`.
+- **New listing** `/admin/new`: full apartment form (Location … **Listing photos**) + same **Saved apartments** list; same header search; **View cards** / **Manager**.
+- Manual entry lives at `/admin/new` (sections above); **`?id=`** opens that listing for edit.
 - Apartment title is automatic: `Address #Apt`, e.g. `260 Gold Street #1117`.
 
 ## Listing status
@@ -39,8 +40,8 @@ Allow-list (also `ORDER BY` in DB): `new` through `signed`, then `rejected`, `bl
 new -> evaluating -> shortlisted -> tour_scheduled -> toured -> finalist -> applying -> applied -> approved -> lease_review -> signed; terminal: rejected, blacklisted, archived
 ```
 
-- **Blacklist / duplicates:** saving an apartment (admin form or `/details` Unit Setup) warns if the **building** is on the blacklist (modal: cancel or **Save anyway**). Duplicate **address + unit** (normalized) returns an error unless the only existing row is **`rejected`**. Setting status **`blacklisted`** upserts the building into the blacklist table.
-- **`/admin` form:** full status `<select>` + **Reject** (no Prev/Next on the form).
+- **Blacklist / duplicates:** saving an apartment (`/admin/new` form or `/details` Unit Setup) warns if the **building** is on the blacklist (modal: cancel or **Save anyway**). Duplicate **address + unit** (normalized) returns an error unless the only existing row is **`rejected`**. Setting status **`blacklisted`** upserts the building into the blacklist table.
+- **`/admin/new` form:** full status `<select>` + **Reject** (no Prev/Next on the form; use `/details` for arrows).
 - **Admin saved list:** one row per listing; **status** dropdown saves the apartment on change.
 - **`/details`:** status `<select>` + arrow buttons move within the first 11 steps (stops before `rejected`, `blacklisted`, `archived`); **Reject** next to the progression; listing link in the **meta** row (not in the title row). Status edits auto-save and refresh the **current** details tab (Unit Setup submit still returns to the Unit tab).
 
@@ -122,7 +123,7 @@ Unmapped lines are preserved under `Other:` in Notes.
 
 Mutating routes are intentionally open for local use. Before deploying publicly, add auth for:
 
-- `/admin`
+- `/admin` and `/admin/new`
 - `POST/PUT/DELETE /api/apartments`
 - `POST/PUT/DELETE /api/building-blacklist`
 - `POST/PUT/DELETE /api/criteria` (`PUT`: update fields or `{ orderedIds }` reorder)

@@ -18,9 +18,9 @@ Environment: copy `.env.example` to `.env.local` and set `DATABASE_URL` (PlanetS
 
 ### Routing (netlify.toml)
 
-- `/` → `index.html` — Public shortlist: **View** Cards | **Finalist** | **Next actions** (`nyhomeShortlistView`); **Sort by** when Cards only (Workflow, Avg, Peter, Kerv, Last updated — `nyhomeShortlistSort`). Status filter; card grid with optional listing **thumbs** (row under Avg/Kerv/Peter) + **Finalist** table (thumbs after address, columns incl. move-in) + **Next actions** (tour and/or app deadline: one-line row, status pill, **?** = `criterion-def-btn` + definition-style panel for prep text, **Next** / **Reject**, link to `/details`). Hover thumb → fixed **300px** flyout (`#nyhome-finalist-flyout`, no layout reflow)
+- `/` → `index.html` — Public shortlist: **View** Cards | **Finalist** | **Next actions** (`nyhomeShortlistView`); **Sort by** when Cards only (Workflow, Avg, Peter, Kerv, Last updated — `nyhomeShortlistSort`). **Status filter** in glass **drawer** (`#filters-drawer` + bottom FAB, `statusFilterGroups.js`); not inline in header. Row under the title: grid **View** (left) + **Sort** + **New listing** | **Manage** (right, `.shortlist-tagline-row` / `.shortlist-hero-right` / `.app-header-actions--in-hero`, plain links, `|`). No tagline sentence. Card grid with optional listing **thumbs** (row under Avg/Kerv/Peter) + **Finalist** table (thumbs after address, columns incl. move-in) + **Next actions** (tour and/or app deadline: one-line row, status pill, **?** = `criterion-def-btn` + definition-style panel for prep text, **Next** / **Reject**, link to `/details`). Hover thumb → fixed **300px** flyout (`#nyhome-finalist-flyout`, no layout reflow)
 - `/admin` → `admin/index.html` — **Saved apartments** (list + **header** search) | **Building blacklist** | **Criteria** (normalized building keys; click-to-edit rows like criteria)
-- `/admin/new` → `admin/new/index.html` — New listing form (apartment setup + same **Saved apartments** list as before); `?id=` pre-fills for edit
+- `/admin/new` → `admin/new/index.html` — New listing form (apartment setup + same **Saved apartments** list + **header** search as `/admin`); `?id=` pre-fills for edit
 - `/details/?id=…` → `details/index.html` — Full apartment view (scorecard, tour, application tracking)
 - `/api/*` → `/.netlify/functions/:splat`
 
@@ -31,7 +31,7 @@ Environment: copy `.env.example` to `.env.local` and set `DATABASE_URL` (PlanetS
 - **`apartmentSavePayload.js`** — `NyhomeApartmentPayload.apartmentToSavePayload(apartment, overrides?)` for consistent `PUT`/`POST` apartment bodies (admin manager status, shortlist Next actions)
 - **`listingTextParse.js`** — `NyhomeListingText.parseListingText` (StreetEasy, Google Maps comma lines, unit-first `#39M` lines); loaded before **`admin.js`** / used by Notes + blacklist paste
 - **`saveApartmentWorkflow.js`** — Shared modal + retry for blacklist / duplicate conflicts (`ignoreBlacklist` on second attempt)
-- **`admin.js`** — `/admin` + `/admin/new`: list + criteria + blacklist; **apartment form** and vibe slots only on `/admin/new`. **Header search** (on `/admin`) filters the saved list; cleared when leaving the **Saved apartments** tab. **Edit** on `/admin` goes to `/admin/new?id=…`. Manager rows: row click → `/details` except controls; Notes paste (new listing page) uses clipboard insert then parse
+- **`admin.js`** — `/admin` + `/admin/new`: list + criteria + blacklist; **apartment form** and vibe slots only on `/admin/new`. **Header search** (both pages, same DOM ids) filters `#admin-apartment-list`; on **`/admin` only**, cleared when leaving the **Saved apartments** top tab. **Edit** on `/admin` (no form) → `/admin/new?id=…`. Manager rows: row click → `/details` except controls; Notes paste (`/admin/new`) uses clipboard insert then parse
 - **`details.js`** — Details page tabs, status transitions, **Unit Setup** address/apt saves use same blacklist + duplicate checks as admin; per-partner scoring UI; **Activity Log** merges `listing_events` with tour/application milestones
 - **`vibeImages.js`** — Client-side image resize + JPEG compress for listing photos (used by `admin.js` and `details.js` Images tab)
 - **`apartmentStatus.js`** — Shared status enum and CSS class mapping (used by both client and `lib/`)
@@ -65,7 +65,7 @@ applying → applied → approved → lease_review → signed
 (Prev/Next nav stops before: rejected, blacklisted, archived)
 ```
 
-Each status has a corresponding PNG badge in `assets/img/` (incl. **`blacklisted.png`**) and a neon-border CSS class (`listing-status-*`). Favicon: `/assets/img/favicon1.png` in each page’s `<head>` and in `manifest.json` for PWA install icons. Service worker (`sw.js`) caches shell assets (HTML, CSS, JS, `manifest.json`, status badge images, favicon); **`CACHE_VERSION`** in `sw.js` must match `?v=` on cached assets in HTML (admin/details often bumped together). Local dev: `index.html` unregisters all service workers when `location.hostname` is `localhost`, `127.0.0.1`, or `::1`, so `npm run dev` is not held back by a stale worker.
+Each status has a corresponding PNG badge in `assets/img/` (incl. **`blacklisted.png`**) and a neon-border CSS class (`listing-status-*`). Favicon: `/assets/img/favicon1.png` in each page’s `<head>` and in `manifest.json` for PWA install icons. Service worker (`sw.js`) caches shell assets (HTML, CSS, JS, `manifest.json`, status badge images, favicon); **`CACHE_VERSION`** in `sw.js` must match `?v=` on cached assets in HTML (shortlist, admin, details often bumped together). Local dev: `index.html` unregisters all service workers when `location.hostname` is `localhost`, `127.0.0.1`, or `::1`, so `npm run dev` is not held back by a stale worker.
 
 ### Listing photos (vibe)
 

@@ -22,35 +22,27 @@ Public app:
 
 - Route: `/`
 - Responsive **card grid** (`body.shortlist`): KPI strip (glass + neon border per tile, neutral fill), fourth tile **top avg score**
-- **Sort by** (under `h1`): Workflow, Avg, Peter, Kerv, Last updated — `localStorage` `nyhomeShortlistSort` (`assets/js/app.js`)
+- **Sort by** (hero row, Cards only; right of **View**): Workflow, Avg, Peter, Kerv, Last updated — `localStorage` `nyhomeShortlistSort` (`assets/js/app.js`); **New listing | Manage** same row (right)
 - Summary + per-card row = **Avg** / Kerv / Peter %; label **Avg** (not “Combined”) in UI
 - Listing cards: glass panel + **`listing-status-<status>`** border/glow from normalized `status`
-- Cards omit photo gallery; up to 3 **listing photos** in Admin + `/details` **Images** (paste/drop, `vibeImages.js` → `nyp_apartment_images`)
+- Cards omit full gallery; up to 3 **listing photos** via `/admin/new` or `/details` **Images** (`vibeImages.js` → `nyp_apartment_images`)
 - `Details` / `Listing` on each card (Listing disabled when no URL)
-- `status` art: `/assets/img/<status>.png` on card + filter strip (no text pill on shortlist)
-- Optional tagline under page `h1`
+- `status` art: `/assets/img/<status>.png` on cards. Status **filter** = bottom **Filters** drawer + FAB (not a header strip; no text pill on cards)
+- **View** (Cards / Finalist / Next actions) in hero row under `h1` (no marketing tagline)
 
 Details:
 
 - Route: `/details/?id=<apartmentId>`
+- **Header:** **New listing** (→ `/admin/new`) and **Back to shortlist** (`.app-header-actions`, plain text + `|`)
 - Top **app-summary-card**: status progression `←` / `→` (first 11 `STATUS_NAV` values; excludes `rejected`, `blacklisted`, `archived`), `status` `<select>`, **Reject** (quiet, same row); meta row includes **View listing** when URL set; no inline photo strip. Auto-save on status change. Tabs: **Scorecard** (incl. photo strip when present), **Images** (3 paste/drop slots + **Save photos**, per-criterion score table, preview column; `vibeImages.js`), **Unit Setup** (address/apt changes use blacklist + duplicate validation + `saveApartmentWorkflow` modal), **Peter**, **Kerv** (scoring, one tab per partner; same gallery column as Images), Tour, Application, Activity Log (`assets/js/details.js`). Scoring: `detail-vote-list` table (zebra, bordered, 1px partner top), `detail-vote-line` two-column grid (aligned **N/A** + `0..5`); unselected/selected score hex in `app.css` (`--kerv-hex-faint` / `--kerv-hex-selected`, peter analogs)
 
 Admin:
 
-- Route: `/admin`
-- No password yet
-- Top nav: `summary-tabs-header` / `Apartment Setup` / `Criteria` / **Building blacklist** (Next actions digest lives on public `/` shortlist)
-- **Saved apartments** (below form): `manager-row` layout—per-row `status` `<select>` (PUT, preserves `imageUrls` on save), rent/unit/move-in metrics, **Edit** / **Details** / **Delete**; no inline voting or tour/app blocks (per-listing “progress” lives on `/details`). **Header search** (next to page title) filters the list; **suggestions** under **Apartment manager** (name + `neighborhood · address`); clear on other top tab; **×** in field; **Escape** / blur. Click row (not `select` / links / buttons) → `/details/?id=…`
-- **Criteria** tab: add form (label, definition, weight + submit on same row); list rows = click text to edit, blur → `PUT` update; drag handle → `PUT { orderedIds }` (matches order in `/details` scoring tabs); on success, `state.criteria` re-sorted and `renderApartments()`; `POST` create / `DELETE` soft-delete unchanged
-- **Building blacklist** tab: add street (manual + paste helper) + notes; list = click street/notes to edit, blur → `PUT /api/building-blacklist`; delete per row. Apartment save warns if normalized building key matches; user can **Save anyway** (`ignoreBlacklist`). Duplicate address+unit blocked unless existing listing is **`rejected`** only.
-- Load order: `apartmentStatus.js` → `listingTextParse.js` → `apartmentSavePayload.js` → `saveApartmentWorkflow.js` → `api.js` → `admin.js` for `NyhomeStatus` / `NyhomeListingText` helpers
-- Apartment form is organized into:
-  - Location
-  - Financials
-  - The Unit
-  - Amenities
-  - Listing Notes
-  - **Listing photos** (3 `vibe-slot` paste/drop, `vibeImages.js`); submit with main **Save apartment**
+- Routes: **`/admin`** (manager) and **`/admin/new`** (new listing + form). No password yet.
+- **`/admin`:** Top tabs **Saved apartments** | **Building blacklist** | **Criteria** (Next actions = public `/` only). **Saved apartments:** `manager-row` (status, metrics, **Edit** → `/admin/new?id=…` / **Details** / **Delete**). **Header search** (same on **`/admin/new`**) filters `#admin-apartment-list`, suggestions, **×**; on **`/admin`**, clear when leaving **Saved apartments** for another top tab. Row click (not controls) → `/details/?id=…`
+- **`/admin/new`:** Full apartment form + saved list; **Save apartment**; Notes + 3 `vibe-slot` photos (`vibeImages.js`); `?id=` pre-fill. Header: **View cards** / **Manager**
+- **Criteria** / **blacklist** tabs: add/edit/reorder/ paste flows unchanged vs repo `README`
+- **Shell load** on admin pages: `apartmentStatus.js` → `listingTextParse.js` → `apartmentSavePayload.js` → `saveApartmentWorkflow.js` → `api.js` → `vibeImages.js` → `admin.js`
 
 ## Apartment Form Behavior
 

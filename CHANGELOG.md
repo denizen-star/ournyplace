@@ -14,17 +14,18 @@
 - **N/A ratings** in `/details`; `NULL` in DB; migrate nullable `score` + legacy `0` → `NULL`.
 - **Listing photos (vibe):** Admin + `/details` Images; `vibeImages.js`; thumbnails on score tabs.
 - Favicon + `manifest` + `sw.js` precache.
-- **Admin saved-list search** (header); suggestions; clear on **Criteria** tab.
-- **Public shortlist sort** (`nyhomeShortlistSort`).
-- **Admin row → details** click (excluding controls).
+- **Saved-list search** in admin **header** (`/admin` + `/admin/new`): filters `#admin-apartment-list`; suggestions under title; **×** + Escape. On **`/admin`**, clear query when leaving **Saved apartments** for another top tab.
+- **Route `/admin/new`:** new listing form + same saved list + `?id=` edit; rewrites in `netlify.toml`.
+- **Header global nav:** `New listing` | `Manage` (and variants) as plain text links in `.app-header-actions` (no CTA box, no underline; **|** in `.app-header-actions-sep`). Shortlist: links in `shortlist-hero-right` (`.app-header-actions--in-hero`).
 
 ### Changed
+- **Public shortlist (`/`):** **View** (left) + **Sort by** (Cards) + `New listing` | `Manage` (right, `.shortlist-hero-right` / `.app-header-actions--in-hero`); no tagline. Status filter: **drawer** + **Filters** FAB (`statusFilterGroups.js`). Shell: **`?v=` + `sw.js`** **73** (f733139).
 - **`POST/PUT /api/apartments`:** `409` + `code` **`BLACKLISTED`** / **`DUPLICATE_LISTING`** (second = another **non-`rejected`** listing shares normalized address+unit). `/details` Unit Setup address/apt saves same checks.
-- **`/admin`:** removed **Next Actions** tab (moved to `/` **Next actions**). Search clears when leaving **Apartment Setup** for **Criteria** only.
+- **`/admin`:** tabs **Saved apartments** | **Building blacklist** | **Criteria**; setup form at **`/admin/new`**. **Next actions** only on public `/`. **Edit** on manager (no in-page form) → `/admin/new?id=…`.
 - **`NyhomeAPI.saveApartment`:** `PUT` if `Number(id) > 0`, else `POST`.
 - **Shortlist cards:** thumbs + hover preview (README).
 - **`POST /api/ratings`:** `score` required (`null` or `0–5`); weighted avg uses numeric rows only.
-- **Scoring UI:** hex buttons; cache `?v=` + `sw.js` **51** lockstep.
+- **Scoring UI:** hex buttons. Bump **`sw.js` `CACHE_VERSION`** and HTML `?v=` on shell assets together.
 - **`index.html`:** localhost unregisters service workers.
 
 ### Fixed
