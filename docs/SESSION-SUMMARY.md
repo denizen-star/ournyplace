@@ -21,8 +21,8 @@ It uses:
 Public app:
 
 - Route: `/`
-- Responsive **card grid** (`body.shortlist`): KPI strip (glass + neon border per tile, neutral fill), fourth tile **top avg score**
-- **Sort by** (hero row, Cards only; right of **View**): Workflow, Avg, Peter, Kerv, Last updated — `localStorage` `nyhomeShortlistSort` (`assets/js/app.js`); **New listing | Manage** same row (right)
+- Responsive **card grid** (`body.shortlist`): **five pipeline KPI** tiles aligned with **`NyhomeStatusFilterGroups`** (counts per stage: Discovery & shortlist … Closed); glass + neon border per tile, neutral fill
+- **Sort by** (hero row, Cards only; right of **View**): Workflow, Avg, Peter, Kerv, Last updated, **Star** — `localStorage` `nyhomeShortlistSort` (`assets/js/app.js`); **`listing_star`** on Cards via `listingStar.js` (click-to-cycle tiers; **`displayHtmlIfStarred`** read-only elsewhere when starred); **New listing | Manage** same row (right)
 - Summary + per-card row = **Avg** / Kerv / Peter %; label **Avg** (not “Combined”) in UI
 - Listing cards: glass panel + **`listing-status-<status>`** border/glow from normalized `status`
 - Cards omit full gallery; up to 3 **listing photos** via `/admin/new` or `/details` **Images** (`vibeImages.js` → `nyp_apartment_images`)
@@ -42,7 +42,7 @@ Admin:
 - **`/admin`:** Top tabs **Saved apartments** | **Building blacklist** | **Criteria** (Next actions = public `/` only). **Saved apartments:** `manager-row` (status, metrics, **Delete** only; no row **Edit** / **Details** links). **Header search** (same on **`/admin/new`**) filters `#admin-apartment-list`, suggestions, **×**; on **`/admin`**, clear when leaving **Saved apartments** for another top tab. Row click (not controls) → `/details/?id=…`. Full form: **`/admin/new`** + **`?id=`**
 - **`/admin/new`:** Full apartment form + saved list; **Save apartment**; Notes + 3 `vibe-slot` photos (`vibeImages.js`); `?id=` pre-fill. Header: **View cards** / **Manager**
 - **Criteria** / **blacklist** tabs: add/edit/reorder/ paste flows unchanged vs repo `README`
-- **Shell load** on admin pages: `apartmentStatus.js` → `listingTextParse.js` → `apartmentSavePayload.js` → `saveApartmentWorkflow.js` → `api.js` → `vibeImages.js` → `admin.js`
+- **Shell load** on admin pages: `apartmentStatus.js` → `listingTextParse.js` → **`listingStar.js`** → `apartmentSavePayload.js` → `saveApartmentWorkflow.js` → `api.js` → `vibeImages.js` → `admin.js`
 
 ## Apartment Form Behavior
 

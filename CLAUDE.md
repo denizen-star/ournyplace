@@ -26,7 +26,7 @@ Environment: copy `.env.example` to `.env.local` and set `DATABASE_URL` (PlanetS
 
 ### Frontend (`assets/js/`)
 
-- **`api.js`** — Fetch wrapper; apartment/criteria/ratings + **`GET/POST/PUT/DELETE /api/building-blacklist`**; `saveApartment` errors may include HTTP status + `code` (`BLACKLISTED`, `DUPLICATE_LISTING`)
+- **`api.js`** — Fetch wrapper; apartment/criteria/ratings + **`GET/POST/PUT/DELETE /api/building-blacklist`**; **`setApartmentsCache`** updates `localStorage` list in place (used after listing-star merges); `saveApartment` errors may include HTTP status + `code` (`BLACKLISTED`, `DUPLICATE_LISTING`); **500** + `code` **`MISSING_LISTING_STAR_COLUMN`** when the DB lacks `nyp_apartments.listing_star`
 - **`app.js`** — Shortlist: `MOBILE_WIDTH_MAX` **720** (`isShortlistMobile`), bottom nav, collapsible sort, mobile NA defaults; filter, **view** (Cards / Finalist / Next actions), **sort** (Cards only), `renderApartmentCard`, `renderFinalistList` (Avg→workflow; **URL** = external `listing_url` before **Avg**; `buildFinalistRowBeforeUrlHtml` / `buildFinalistRowAfterUrlHtml` + `finalistExternalListingCell`), `renderNextActionsList` (**List** / **Calendar**, `nyhomeNextActionsLayout`; calendar **Card view** Summary / Details / Prospect, `nyhomeNextActionsCalendarDensity`; **Only include with** tour/deadline/move-in checkboxes; status drawer shortcut; `collectNextActionEvents` + travel/tour/debrief rows; `nextActionsListingSpecStrip` = unit + financials w/ per-line `shortlist-na-fin-write-slot` + full checklist; `buildCalendarPrintTocHtml`; `qualifiesNextActions` / `passesNextActionsOmitFilters`), `listingThumbsMarkup` + `wireListingThumbHovers` (`.nyhome-listing-thumb-wrap`); fixed-position image preview
 - **`listingStar.js`** — `NyhomeListingStar`: `buttonHtml` (Cards only, always visible), `displayHtmlIfStarred` (read-only, only when tier 1–3: Finalist, Next actions, details, admin), `displayHtml` (any tier, rarely needed); path colors via inline hex in JS; include before dependent bundles
 - **`apartmentSavePayload.js`** — `NyhomeApartmentPayload.apartmentToSavePayload(apartment, overrides?)` for consistent `PUT`/`POST` apartment bodies (admin manager status, shortlist Next actions)
@@ -48,7 +48,7 @@ Data is fetched on load, cached to `localStorage`, and re-fetched after most mut
 - **`lib/listingTextParse.js`** — Server-side mirror of paste rules (tests / parity with client)
 - **`lib/apartmentRepository.js`** — High-level CRUD (title generation, saves); before create/update: **blacklisted building** (unless `ignoreBlacklist`) and **duplicate** same normalized address+unit (allowed only if existing row is **`rejected`**); **`status === blacklisted`** upserts blacklist; **`listing_star`** nullable tinyint on row map
 - **`lib/http.js`** — Response helpers (`json()`, body parsing, money conversion cents↔dollars)
-- **`netlify/functions/apartments.js`** — GET list, POST create, PUT update, DELETE; **`409`** + JSON `code` for blacklist / duplicate
+- **`netlify/functions/apartments.js`** — GET list, POST create, PUT update, DELETE; **`409`** + JSON `code` for blacklist / duplicate; **500** + **`MISSING_LISTING_STAR_COLUMN`** if `listing_star` column missing (migrate)
 - **`netlify/functions/building-blacklist.js`** — Blacklist CRUD
 - **`netlify/functions/criteria.js`** — POST new, PUT update fields or reorder via `orderedIds`
 - **`netlify/functions/ratings.js`** — `POST` partner vote: `score` key required; integer `0–5` or `null` (N/A)
