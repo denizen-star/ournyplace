@@ -11,15 +11,64 @@
   var NA_OMIT_TOUR_KEY = 'nyhomeNextActionsOmitTour';
   var NA_OMIT_DEADLINE_KEY = 'nyhomeNextActionsOmitDeadline';
   var NA_OMIT_MOVEIN_KEY = 'nyhomeNextActionsOmitMoveIn';
+  var NA_CAL_DENSITY_KEY = 'nyhomeNextActionsCalendarDensity';
   var VALID_SORTS = { workflow: 1, avg: 1, peter: 1, kerv: 1, updated: 1 };
   var VALID_VIEWS = { cards: 1, finalist: 1, 'next-actions': 1 };
   var VALID_NA_LAYOUTS = { list: 1, calendar: 1 };
+  var VALID_NA_CAL_DENSITY = { summary: 1, details: 1, prospect: 1 };
   /** Next actions: list vs calendar (calendar = day-grouped agenda). */
   var naLayoutMode = 'list';
-  /** When true, hide listings that have the corresponding date field set. */
+  /** Calendar card density: summary (title row only), details (+ spec & scores), prospect (+ notes). */
+  var naCalendarDensity = 'prospect';
+  /** When true, only include listings that have the corresponding date (AND when multiple checked). */
   var naOmitTour = false;
   var naOmitDeadline = false;
   var naOmitMoveIn = false;
+
+  var LISTING_CHIP_LABELS = {
+    dishwasher: 'Dishwasher',
+    'washer-dryer': 'W/D',
+    storage: 'Storage',
+    views: 'Views',
+    doorman: 'Doorman',
+    highrise: 'Highrise',
+    midrise: 'Midrise',
+    lowrise: 'Lowrise',
+    'new-construction': 'New construction',
+    renovated: 'Renovated',
+    walkup: 'Walkup',
+    pool: 'Pool',
+    sauna: 'Sauna',
+    'laundry-room': 'Laundry room',
+    suites: 'Suites',
+    'roof-deck': 'Roof deck',
+    'common-areas': 'Common areas',
+    'subway-lines': 'Subway lines',
+  };
+
+  /** Full checklist shown on every calendar listing (order = tour-day worksheet). */
+  var NA_UNIT_FEATURE_ORDER = ['dishwasher', 'washer-dryer', 'storage', 'views'];
+  var NA_AMENITY_ORDER = [
+    'doorman',
+    'highrise',
+    'midrise',
+    'lowrise',
+    'walkup',
+    'new-construction',
+    'renovated',
+    'pool',
+    'sauna',
+    'laundry-room',
+    'suites',
+    'roof-deck',
+    'common-areas',
+    'subway-lines',
+  ];
+
+  var CAL_TRAVEL_MS = 30 * 60 * 1000;
+  var CAL_TOUR_MS = 30 * 60 * 1000;
+  var CAL_DEBRIEF_MS = 30 * 60 * 1000;
+  var CAL_SLOT_MS = 30 * 60 * 1000;
   var activeFilters = new Set();
   /** When true, show only listings where at least one partner has no score rollup. */
   var extraFilterNotVoted = false;
@@ -214,6 +263,17 @@
     naOmitTour = loadStoredBool(NA_OMIT_TOUR_KEY);
     naOmitDeadline = loadStoredBool(NA_OMIT_DEADLINE_KEY);
     naOmitMoveIn = loadStoredBool(NA_OMIT_MOVEIN_KEY);
+    var d;
+    try {
+      d = localStorage.getItem(NA_CAL_DENSITY_KEY);
+    } catch (e) {
+      d = null;
+    }
+    if (d && VALID_NA_CAL_DENSITY[d]) {
+      naCalendarDensity = d;
+    } else {
+      naCalendarDensity = 'prospect';
+    }
   }
 
   function saveNextActionsPrefs() {
@@ -222,6 +282,7 @@
       localStorage.setItem(NA_OMIT_TOUR_KEY, naOmitTour ? '1' : '');
       localStorage.setItem(NA_OMIT_DEADLINE_KEY, naOmitDeadline ? '1' : '');
       localStorage.setItem(NA_OMIT_MOVEIN_KEY, naOmitMoveIn ? '1' : '');
+      localStorage.setItem(NA_CAL_DENSITY_KEY, naCalendarDensity);
     } catch (e) {}
   }
 
@@ -368,34 +429,389 @@
     return false;
   }
 
-  /** Apply “exclude if this date is set” toggles (each hides listings with that field populated). */
+  /** When any “only include” toggle is on, listing must satisfy every checked requirement. */
   function passesNextActionsOmitFilters(apartment) {
     if (!qualifiesNextActions(apartment)) return false;
-    if (naOmitTour && apartment.next_visit && apartment.next_visit.visit_at) return false;
-    if (naOmitDeadline && apartment.application && apartment.application.deadline_at) return false;
-    if (naOmitMoveIn && hasMoveInDate(apartment)) return false;
+    if (!naOmitTour && !naOmitDeadline && !naOmitMoveIn) return true;
+    if (naOmitTour && !(apartment.next_visit && apartment.next_visit.visit_at)) return false;
+    if (naOmitDeadline && !(apartment.application && apartment.application.deadline_at)) return false;
+    if (naOmitMoveIn && !hasMoveInDate(apartment)) return false;
     return true;
   }
 
-  var PREP_BY_STATUS = {
-    new: 'Capture listing basics, photos, and a first-pass score so you can compare apples to apples.',
-    evaluating: 'Align on deal-breakers and schedule tours for anything still in contention.',
-    shortlisted: 'Confirm tour times, route, and who is taking notes or video during each visit.',
-    tour_scheduled: 'Re-read the listing, prep questions for the broker, and plan travel plus a post-tour debrief.',
-    toured: 'Compare impressions while fresh; update scores and note follow-ups (board pack, comps, second visit).',
-    finalist: 'Gather net-effective math, move-in total, and timeline; decide if you are ready to apply.',
-    applying: 'Assemble pay stubs, references, and guarantor paperwork; track deadlines in Application.',
-    applied: 'Stay responsive to the landlord; keep a copy of everything submitted and note any open items.',
-    approved: 'Review the lease draft against your checklist; flag fees, renewal terms, and rider clauses early.',
-    lease_review: 'Run the numbers one last time (rent, concessions, move-in) before countersigning.',
-    signed: 'Plan move logistics: insurance, utilities, keys, and a final walkthrough if offered.',
-    rejected: 'Archive lessons learned so the next search stays sharper.',
-    archived: 'Listing is archived; no further prep needed here.',
-  };
+  function formatListingChipLabel(slug) {
+    var s = String(slug || '');
+    if (Object.prototype.hasOwnProperty.call(LISTING_CHIP_LABELS, s)) {
+      return LISTING_CHIP_LABELS[s];
+    }
+    return s.replace(/-/g, ' ').replace(/\b\w/g, function (ch) { return ch.toUpperCase(); });
+  }
 
-  function prepLineForStatus(status) {
-    var s = NyhomeStatus.normalizeStatus(status || 'new');
-    return PREP_BY_STATUS[s] || PREP_BY_STATUS.new;
+  function placeholderDash() {
+    return '—';
+  }
+
+  function formatMoneyOrDash(cents) {
+    if (cents == null || cents === '') return placeholderDash();
+    return formatMoney(cents);
+  }
+
+  function formatRentNetOrDash(cents) {
+    if (cents == null || cents === '') return placeholderDash();
+    return formatMoney(cents) + '/mo';
+  }
+
+  function nextActionsRatingBox(scores) {
+    var s = scores || {};
+    function pct(key) {
+      var v = s[key];
+      if (v == null || isNaN(Number(v))) return placeholderDash();
+      return Math.round(Number(v)) + '%';
+    }
+    return (
+      '<div class="shortlist-na-rating-box" aria-label="Listing scores">' +
+      '<span class="shortlist-na-rating-cell"><span class="shortlist-na-rating-lbl">Avg</span>' +
+      '<span class="shortlist-na-rating-val shortlist-na-rating-val--avg">' + escapeHtml(pct('combined')) + '</span></span>' +
+      '<span class="shortlist-na-rating-cell"><span class="shortlist-na-rating-lbl">Kerv</span>' +
+      '<span class="shortlist-na-rating-val shortlist-na-rating-val--kerv">' + escapeHtml(pct('kerv')) + '</span></span>' +
+      '<span class="shortlist-na-rating-cell"><span class="shortlist-na-rating-lbl">Peter</span>' +
+      '<span class="shortlist-na-rating-val shortlist-na-rating-val--peter">' + escapeHtml(pct('peter')) + '</span></span>' +
+      '</div>'
+    );
+  }
+
+  function nextActionsFeatureChecklist(apartment) {
+    var ufSet = new Set((apartment.unit_features || []).map(String));
+    var amSet = new Set((apartment.amenities || []).map(String));
+    function item(slug, set) {
+      var on = set.has(slug);
+      return (
+        '<span class="shortlist-na-check-item' +
+        (on ? ' shortlist-na-check-item--yes' : ' shortlist-na-check-item--no') +
+        '" title="' +
+        escapeAttr(on ? 'Marked yes on listing' : 'Not marked — confirm on visit') +
+        '">' +
+        '<span class="shortlist-na-check-bubble" aria-hidden="true">' +
+        (on ? '\u2713' : '') +
+        '</span>' +
+        '<span class="shortlist-na-check-lbl">' +
+        escapeHtml(formatListingChipLabel(slug)) +
+        '</span></span>'
+      );
+    }
+    var ufHtml = NA_UNIT_FEATURE_ORDER.map(function (s) {
+      return item(s, ufSet);
+    }).join('');
+    var amHtml = NA_AMENITY_ORDER.map(function (s) {
+      return item(s, amSet);
+    }).join('');
+    return (
+      '<div class="shortlist-na-checklist" aria-label="Unit features and building amenities">' +
+      '<div class="shortlist-na-checklist-col">' +
+      '<span class="shortlist-na-checklist-heading">Unit features</span>' +
+      '<div class="shortlist-na-check-grid">' +
+      ufHtml +
+      '</div></div>' +
+      '<div class="shortlist-na-checklist-col">' +
+      '<span class="shortlist-na-checklist-heading">Amenities</span>' +
+      '<div class="shortlist-na-check-grid">' +
+      amHtml +
+      '</div></div>' +
+      '</div>'
+    );
+  }
+
+  /** Unit + financials row, then full feature/amenity checklist (every field for every listing). */
+  function nextActionsListingSpecStrip(apartment) {
+    var unitVal = (apartment.apt_number && String(apartment.apt_number).trim()) || placeholderDash();
+    var finRows = [
+      { k: 'Rent', v: formatRentNetOrDash(apartment.rent_cents) },
+      { k: 'Net', v: formatRentNetOrDash(apartment.net_effective_cents) },
+      { k: 'Move-in', v: formatMoneyOrDash(apartment.total_move_in_cents) },
+      { k: 'Broker', v: formatMoneyOrDash(apartment.broker_fee_cents) },
+      { k: 'Deposit', v: formatMoneyOrDash(apartment.deposit_cents) },
+      { k: 'Amen. fee', v: formatMoneyOrDash(apartment.amenities_fees_cents) },
+    ];
+    var finHtml = finRows
+      .map(function (row) {
+        return (
+          '<div class="shortlist-na-fin-item">' +
+          '<span class="shortlist-na-fin-bit"><span class="shortlist-na-fin-k">' +
+          escapeHtml(row.k) +
+          '</span> ' +
+          escapeHtml(row.v) +
+          '</span>' +
+          '<div class="shortlist-na-fin-write-slot" role="presentation" aria-hidden="true"></div>' +
+          '</div>'
+        );
+      })
+      .join('');
+    return (
+      '<div class="shortlist-na-spec-wrap">' +
+      '<div class="shortlist-na-spec-strip">' +
+      '<div class="shortlist-na-spec-cell">' +
+      '<span class="shortlist-na-spec-label">Unit</span>' +
+      '<span class="shortlist-na-spec-value">' + escapeHtml(unitVal) + '</span></div>' +
+      '<div class="shortlist-na-spec-cell shortlist-na-spec-cell--financials">' +
+      '<span class="shortlist-na-spec-label">Financials</span>' +
+      '<span class="shortlist-na-spec-value shortlist-na-spec-value--financials">' +
+      finHtml +
+      '</span></div>' +
+      '</div>' +
+      nextActionsFeatureChecklist(apartment) +
+      '</div>'
+    );
+  }
+
+  function renderNotesDetailsCollapsible(apartment, ev, panelId) {
+    var parts = [];
+    var addr = apartment.address && String(apartment.address).trim();
+    if (addr) {
+      parts.push(
+        '<p class="shortlist-na-detail-line"><span class="shortlist-na-detail-k">Address</span> ' + escapeHtml(addr) + '</p>'
+      );
+    }
+    var listingUrl = apartment.listing_url && String(apartment.listing_url).trim();
+    if (listingUrl) {
+      parts.push(
+        '<p class="shortlist-na-detail-line"><span class="shortlist-na-detail-k">Listing</span> ' +
+        '<a href="' +
+        escapeAttr(listingUrl) +
+        '" target="_blank" rel="noreferrer" class="shortlist-na-detail-link">' +
+        escapeHtml(listingUrl) +
+        '</a></p>'
+      );
+    }
+    var notes = apartment.notes && String(apartment.notes).trim();
+    if (notes) {
+      parts.push(
+        '<div class="shortlist-na-detail-block"><span class="shortlist-na-detail-k">Listing notes</span>' +
+        '<pre class="shortlist-na-notes-pre">' +
+        escapeHtml(notes) +
+        '</pre></div>'
+      );
+    }
+    var tourNotes =
+      ev.kind === 'tour' && apartment.next_visit && apartment.next_visit.notes && String(apartment.next_visit.notes).trim();
+    if (tourNotes) {
+      parts.push(
+        '<div class="shortlist-na-detail-block"><span class="shortlist-na-detail-k">Tour notes</span>' +
+        '<pre class="shortlist-na-notes-pre">' +
+        escapeHtml(String(apartment.next_visit.notes)) +
+        '</pre></div>'
+      );
+    }
+    if (!parts.length) {
+      parts.push(
+        '<p class="shortlist-na-detail-empty muted">No address, listing link, or notes yet. Add them in Manage or Details.</p>'
+      );
+    }
+    var toggleLabel = 'Notes and details for ' + String(apartment.title || 'listing').trim();
+    return (
+      '<div class="shortlist-na-notes-card">' +
+      '<button type="button" class="shortlist-na-notes-toggle" data-def-toggle data-def-for="' +
+      escapeAttr(panelId) +
+      '" aria-expanded="false" aria-label="' +
+      escapeAttr(toggleLabel) +
+      '">' +
+      '<span class="shortlist-na-notes-toggle-label">Notes &amp; details</span>' +
+      '<span class="shortlist-na-notes-toggle-hint muted">Show</span>' +
+      '</button>' +
+      '<div class="vote-criterion-def-panel shortlist-na-notes-panel" id="' +
+      escapeAttr(panelId) +
+      '" hidden>' +
+      parts.join('') +
+      '</div></div>'
+    );
+  }
+
+  /** End of debrief after tour start T (30 min tour + 30 min debrief). */
+  function tourBlockEndAfterStart(tourStartMs) {
+    return tourStartMs + CAL_TOUR_MS + CAL_DEBRIEF_MS;
+  }
+
+  function freeSlotsBetweenMs(t0, t1) {
+    var out = [];
+    var gap = t1 - t0;
+    var n = Math.floor(gap / CAL_SLOT_MS);
+    for (var i = 0; i < n; i++) {
+      if (i > 0) out.push({ type: 'hr' });
+      var startMs = t0 + i * CAL_SLOT_MS;
+      out.push({ type: 'free', startMs: startMs, endMs: startMs + CAL_SLOT_MS });
+    }
+    return out;
+  }
+
+  /**
+   * Tours: 30 min travel (before visit_at) → 30 min tour (visit_at) → 30 min debrief.
+   * visit_at = tour start. Other events: point-in-time; gaps filled with open 30 min slots.
+   */
+  function buildCalendarDayRows(sortedEvents) {
+    var rows = [];
+    var prevEnd = null;
+    sortedEvents.forEach(function (ev) {
+      if (ev.kind === 'tour') {
+        var T = ev.sortTs;
+        var travelStart = T - CAL_TRAVEL_MS;
+        var blockEnd = tourBlockEndAfterStart(T);
+        if (prevEnd != null && travelStart > prevEnd) {
+          rows.push({ type: 'break' });
+          rows.push.apply(rows, freeSlotsBetweenMs(prevEnd, travelStart));
+        }
+        rows.push({ type: 'travel', startMs: travelStart, endMs: T });
+        rows.push({
+          type: 'event',
+          ev: ev,
+          tourTime: { startMs: T, endMs: T + CAL_TOUR_MS },
+        });
+        rows.push({
+          type: 'debrief',
+          startMs: T + CAL_TOUR_MS,
+          endMs: T + CAL_TOUR_MS + CAL_DEBRIEF_MS,
+        });
+        prevEnd = blockEnd;
+      } else {
+        if (prevEnd != null && ev.sortTs > prevEnd) {
+          rows.push({ type: 'break' });
+          rows.push.apply(rows, freeSlotsBetweenMs(prevEnd, ev.sortTs));
+        }
+        rows.push({ type: 'event', ev: ev });
+        prevEnd = ev.sortTs;
+      }
+    });
+    return rows;
+  }
+
+  function formatCalendarSlotRange(startMs, endMs) {
+    var a = new Date(startMs);
+    var b = new Date(endMs);
+    if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return '';
+    var opt = { hour: 'numeric', minute: '2-digit' };
+    return a.toLocaleString('en-US', opt) + ' – ' + b.toLocaleString('en-US', opt);
+  }
+
+  function renderCalendarFreeSlotRow(row) {
+    var range = formatCalendarSlotRange(row.startMs, row.endMs);
+    return (
+      '<div class="shortlist-na-slot-row shortlist-na-slot-row--free" role="presentation">' +
+      '<div class="shortlist-na-when shortlist-na-when--free">' +
+      '<span class="shortlist-na-etype">Open</span>' +
+      '<span class="shortlist-na-time">' + escapeHtml(range) + '</span></div>' +
+      '<div class="shortlist-na-what muted"><span class="shortlist-na-slot-free-label">30 min · not booked</span></div>' +
+      '</div>'
+    );
+  }
+
+  function renderCalendarTravelRow(row) {
+    var range = formatCalendarSlotRange(row.startMs, row.endMs);
+    return (
+      '<div class="shortlist-na-slot-row shortlist-na-slot-row--travel" role="presentation">' +
+      '<div class="shortlist-na-when shortlist-na-when--travel">' +
+      '<span class="shortlist-na-etype">Travel</span>' +
+      '<span class="shortlist-na-time">' + escapeHtml(range) + '</span></div>' +
+      '<div class="shortlist-na-what muted"><span class="shortlist-na-travel-label">En route (30 min)</span></div>' +
+      '</div>'
+    );
+  }
+
+  function renderCalendarDebriefRow(row) {
+    var range = formatCalendarSlotRange(row.startMs, row.endMs);
+    return (
+      '<div class="shortlist-na-slot-row shortlist-na-slot-row--debrief" role="presentation">' +
+      '<div class="shortlist-na-when shortlist-na-when--debrief">' +
+      '<span class="shortlist-na-etype">Debrief</span>' +
+      '<span class="shortlist-na-time">' + escapeHtml(range) + '</span></div>' +
+      '<div class="shortlist-na-what"><span class="shortlist-na-debrief-label">Post-tour debrief (30 min)</span></div>' +
+      '</div>'
+    );
+  }
+
+  function renderCalendarAgendaBreak() {
+    return '<div class="shortlist-na-agenda-break" role="separator" aria-hidden="true"></div>';
+  }
+
+  function buildCalendarPrintTocHtml(apartments) {
+    var events = collectNextActionEvents(apartments);
+    if (!events.length) return '';
+    var byDay = {};
+    events.forEach(function (ev) {
+      var k = ev.dayKey;
+      if (!byDay[k]) byDay[k] = [];
+      byDay[k].push(ev);
+    });
+    var dayKeys = Object.keys(byDay).sort();
+    var chunks = [];
+    var rowNum = 0;
+    dayKeys.forEach(function (dk) {
+      var list = byDay[dk].slice().sort(function (a, b) {
+        return a.sortTs - b.sortTs;
+      });
+      chunks.push(
+        '<section class="shortlist-na-toc-day-block">' +
+        '<h3 class="shortlist-na-toc-day-heading">' +
+        escapeHtml(formatCalendarDayHeading(dk)) +
+        '</h3>' +
+        '<table class="shortlist-na-toc-table">' +
+        '<thead><tr>' +
+        '<th class="shortlist-na-toc-th shortlist-na-toc-th--num" scope="col">#</th>' +
+        '<th class="shortlist-na-toc-th shortlist-na-toc-th--time" scope="col">When</th>' +
+        '<th class="shortlist-na-toc-th shortlist-na-toc-th--type" scope="col">Type</th>' +
+        '<th class="shortlist-na-toc-th shortlist-na-toc-th--listing" scope="col">Listing</th>' +
+        '</tr></thead><tbody>'
+      );
+      list.forEach(function (ev) {
+        rowNum += 1;
+        var apt = ev.apt;
+        var title = String(apt.title || 'Untitled apartment').trim();
+        var hood = (apt.neighborhood && String(apt.neighborhood).trim()) || '';
+        var kindLabel =
+          ev.kind === 'tour' ? 'Tour' : ev.kind === 'deadline' ? 'App deadline' : 'Move-in';
+        var kindClass =
+          ev.kind === 'tour' ? 'tour' : ev.kind === 'deadline' ? 'deadline' : 'movein';
+        var timeStr;
+        if (ev.kind === 'tour') {
+          var T = ev.sortTs;
+          timeStr = formatCalendarSlotRange(T - CAL_TRAVEL_MS, tourBlockEndAfterStart(T));
+        } else {
+          timeStr = formatEventTimeOrAllDay(ev);
+        }
+        chunks.push(
+          '<tr class="shortlist-na-toc-tr">' +
+          '<td class="shortlist-na-toc-td shortlist-na-toc-td--num">' +
+          escapeHtml(String(rowNum)) +
+          '</td>' +
+          '<td class="shortlist-na-toc-td shortlist-na-toc-td--time">' +
+          escapeHtml(timeStr) +
+          '</td>' +
+          '<td class="shortlist-na-toc-td shortlist-na-toc-td--type">' +
+          '<span class="shortlist-na-toc-badge shortlist-na-toc-badge--' +
+          escapeAttr(kindClass) +
+          '">' +
+          escapeHtml(kindLabel) +
+          '</span></td>' +
+          '<td class="shortlist-na-toc-td shortlist-na-toc-td--listing">' +
+          '<span class="shortlist-na-toc-titlecell">' +
+          escapeHtml(title) +
+          '</span>' +
+          (hood
+            ? '<span class="shortlist-na-toc-hoodcell">' + escapeHtml(hood) + '</span>'
+            : '') +
+          '</td></tr>'
+        );
+      });
+      chunks.push('</tbody></table></section>');
+    });
+    return (
+      '<nav class="shortlist-na-print-toc" aria-label="Itinerary overview">' +
+      '<header class="shortlist-na-print-toc-header">' +
+      '<p class="shortlist-na-print-toc-eyebrow">nyhome</p>' +
+      '<h2 class="shortlist-na-toc-heading">Itinerary overview</h2>' +
+      '<p class="shortlist-na-print-toc-lede">Tour rows include travel, visit, and debrief windows. Other rows show the scheduled time.</p>' +
+      '</header>' +
+      '<div class="shortlist-na-toc-sections">' +
+      chunks.join('') +
+      '</div></nav>'
+    );
   }
 
   function nextNavStatus(current) {
@@ -473,18 +889,34 @@
     return out;
   }
 
-  function nextActionsFactDetailLine(apartment) {
-    var parts = [];
-    if (apartment.rent_cents) parts.push(formatMoney(apartment.rent_cents) + '/mo');
-    if (apartment.net_effective_cents) parts.push('Net eff. ' + formatMoney(apartment.net_effective_cents) + '/mo');
-    if (apartment.total_move_in_cents != null) {
-      parts.push('Move-in ' + formatMoney(apartment.total_move_in_cents) + ' total');
+  /** Shared Next / Reject controls for next-actions list + calendar. */
+  function nextActionsAdvanceRejectHtml(apartment) {
+    var id = apartment.id;
+    var status = NyhomeStatus.normalizeStatus(apartment.status || 'new');
+    var nextS = nextNavStatus(status);
+    var isRejected = status === 'rejected';
+    var advanceBtn;
+    if (!isRejected && nextS) {
+      advanceBtn =
+        '<button type="button" class="secondary-btn shortlist-next-actions-advance" data-advance-status data-apartment-id="' +
+        escapeAttr(String(id)) +
+        '" aria-label="Move to next status">Next: ' +
+        escapeHtml(formatStatusLabel(nextS)) +
+        '</button>';
+    } else {
+      advanceBtn =
+        '<button type="button" class="secondary-btn shortlist-next-actions-advance" disabled data-apartment-id="' +
+        escapeAttr(String(id)) +
+        '">' +
+        escapeHtml(isRejected ? 'Rejected' : 'At pipeline end') +
+        '</button>';
     }
-    if (apartment.bedrooms != null) parts.push(apartment.bedrooms + ' bed');
-    if (apartment.bathrooms != null) parts.push(apartment.bathrooms + ' bath');
-    var line = parts.join(' · ');
-    if (!line) return '';
-    return '<p class="shortlist-na-detail-facts muted">' + escapeHtml(line) + '</p>';
+    var rejectCtrl = isRejected
+      ? '<span class="shortlist-next-actions-reject muted" aria-disabled="true">Rejected</span>'
+      : '<button type="button" class="shortlist-next-actions-reject link-button" data-reject-apartment data-apartment-id="' +
+        escapeAttr(String(id)) +
+        '">Reject</button>';
+    return advanceBtn + rejectCtrl;
   }
 
   function formatOneDecimal(n) {
@@ -975,6 +1407,10 @@
   }
 
   function renderNextActionsToolbarHtml() {
+    var statusFilterExtra =
+      activeFilters.size > 0
+        ? ' <span class="shortlist-na-filter-count">(' + activeFilters.size + ')</span>'
+        : '';
     return (
       '<div class="shortlist-next-actions-toolbar">' +
         '<div class="shortlist-next-actions-toolbar-row">' +
@@ -989,8 +1425,15 @@
               '">Calendar</button>' +
             '</div>' +
           '</div>' +
-          '<div class="shortlist-next-actions-omit" role="group" aria-label="Exclude listings that have these set">' +
-            '<span class="shortlist-na-toolbar-label">Exclude if set</span>' +
+          '<div class="shortlist-next-actions-status-filter">' +
+            '<span class="shortlist-na-toolbar-label">Status</span>' +
+            '<button type="button" class="secondary-btn shortlist-na-open-filters" data-open-status-filters>' +
+            'Filter by status' +
+            statusFilterExtra +
+            '</button>' +
+          '</div>' +
+          '<div class="shortlist-next-actions-omit" role="group" aria-label="Only include listings that have this date">' +
+            '<span class="shortlist-na-toolbar-label">Only include with</span>' +
             '<label class="shortlist-na-check">' +
               '<input type="checkbox" data-na-omit="tour"' +
               (naOmitTour ? ' checked' : '') +
@@ -1004,6 +1447,21 @@
               (naOmitMoveIn ? ' checked' : '') +
               '> Move-in</label>' +
           '</div>' +
+          (naLayoutMode === 'calendar'
+            ? '<div class="shortlist-next-actions-cal-density" role="group" aria-label="How much to show on each card">' +
+              '<span class="shortlist-na-toolbar-label">Card view</span>' +
+              '<div class="shortlist-view-segment shortlist-na-segment" role="presentation">' +
+              '<button type="button" class="shortlist-view-btn" data-na-cal-density="summary" aria-pressed="' +
+              (naCalendarDensity === 'summary' ? 'true' : 'false') +
+              '">Summary</button>' +
+              '<button type="button" class="shortlist-view-btn" data-na-cal-density="details" aria-pressed="' +
+              (naCalendarDensity === 'details' ? 'true' : 'false') +
+              '">Details</button>' +
+              '<button type="button" class="shortlist-view-btn" data-na-cal-density="prospect" aria-pressed="' +
+              (naCalendarDensity === 'prospect' ? 'true' : 'false') +
+              '">Prospect</button>' +
+              '</div></div>'
+            : '') +
         '</div>' +
       '</div>'
     );
@@ -1023,11 +1481,23 @@
     var dayKeys = Object.keys(byDay).sort();
     var html =
       '<div class="shortlist-na-calendar" role="region" aria-label="Next actions by day">';
-    dayKeys.forEach(function (dk) {
+      dayKeys.forEach(function (dk) {
       var list = byDay[dk].slice().sort(function (a, b) {
         return a.sortTs - b.sortTs;
       });
       var uid = 'na-day-' + dk.replace(/[^0-9a-z-]/gi, '');
+      var rows = buildCalendarDayRows(list);
+      var body = rows
+        .map(function (row) {
+          if (row.type === 'event') return renderNextActionsEventBlock(row.ev, row.tourTime || null);
+          if (row.type === 'travel') return renderCalendarTravelRow(row);
+          if (row.type === 'debrief') return renderCalendarDebriefRow(row);
+          if (row.type === 'free') return renderCalendarFreeSlotRow(row);
+          if (row.type === 'break') return renderCalendarAgendaBreak();
+          if (row.type === 'hr') return '<hr class="shortlist-na-timeline-hr" />';
+          return '';
+        })
+        .join('');
       html +=
         '<section class="shortlist-na-day" aria-labelledby="' +
         escapeAttr(uid) +
@@ -1038,9 +1508,7 @@
         escapeHtml(formatCalendarDayHeading(dk)) +
         '</h3>' +
         '<div class="shortlist-na-day-events">' +
-        list.map(function (ev) {
-          return renderNextActionsEventBlock(ev);
-        }).join('') +
+        body +
         '</div>' +
         '</section>';
     });
@@ -1048,99 +1516,63 @@
     return html;
   }
 
-  function renderNextActionsEventBlock(ev) {
+  function renderNextActionsEventBlock(ev, tourTimeRange) {
     var apartment = ev.apt;
     var id = apartment.id;
     var href = id != null ? '/details/?id=' + encodeURIComponent(id) : '#';
     var status = NyhomeStatus.normalizeStatus(apartment.status || 'new');
     var statusLabel = formatStatusLabel(status);
-    var nextS = nextNavStatus(status);
-    var isRejected = status === 'rejected';
     var kindClass = 'shortlist-na-etype--' + ev.kind;
     var kindLabel =
       ev.kind === 'tour' ? 'Tour' : ev.kind === 'deadline' ? 'App deadline' : 'Move-in';
-    var timeLine = formatEventTimeOrAllDay(ev);
-    var title = String(apartment.title || 'Untitled apartment');
-    var place = [apartment.neighborhood, apartment.address].filter(Boolean).join(' — ');
-    var visitNotes =
-      ev.kind === 'tour' && apartment.next_visit && apartment.next_visit.notes
-        ? '<p class="shortlist-na-visit-note muted"><strong>Notes</strong> · ' +
-          escapeHtml(String(apartment.next_visit.notes)) +
-          '</p>'
-        : '';
-    var advanceBtn;
-    if (!isRejected && nextS) {
-      advanceBtn =
-        '<button type="button" class="secondary-btn shortlist-next-actions-advance" data-advance-status data-apartment-id="' +
-        escapeAttr(String(id)) +
-        '" aria-label="Move to next status">Next: ' +
-        escapeHtml(formatStatusLabel(nextS)) +
-        '</button>';
-    } else {
-      advanceBtn =
-        '<button type="button" class="secondary-btn shortlist-next-actions-advance" disabled data-apartment-id="' +
-        escapeAttr(String(id)) +
-        '">' +
-        escapeHtml(isRejected ? 'Rejected' : 'At pipeline end') +
-        '</button>';
-    }
-    var rejectCtrl = isRejected
-      ? '<span class="shortlist-next-actions-reject muted" aria-disabled="true">Rejected</span>'
-      : '<button type="button" class="shortlist-next-actions-reject link-button" data-reject-apartment data-apartment-id="' +
-        escapeAttr(String(id)) +
-        '">Reject</button>';
-    var prep = prepLineForStatus(status);
-    var prepPanelId = 'shortlist-next-prep-' + String(id) + '-' + ev.kind;
-    var prepToggleLabel = 'Show prep tips for ' + title.trim();
+    var timeLine =
+      tourTimeRange && tourTimeRange.startMs != null && tourTimeRange.endMs != null
+        ? formatCalendarSlotRange(tourTimeRange.startMs, tourTimeRange.endMs)
+        : formatEventTimeOrAllDay(ev);
+    var title = String(apartment.title || 'Untitled apartment').trim();
+    var hood = (apartment.neighborhood && String(apartment.neighborhood).trim()) || '';
+    var hoodHtml = hood
+      ? '<span class="shortlist-na-hood-accent" title="' + escapeAttr('Neighborhood: ' + hood) + '">' + escapeHtml(hood) + '</span>'
+      : '<span class="shortlist-na-hood-accent shortlist-na-hood-accent--empty" title="Neighborhood not set">' + escapeHtml(placeholderDash()) + '</span>';
+    var notesPanelId = 'shortlist-na-notes-' + String(id) + '-' + ev.kind;
     return (
       '<article class="shortlist-next-actions-row shortlist-na-event-block ' +
       kindClass +
+      ' listing-status-' +
+      status.replace(/_/g, '-') +
       '" data-apartment-id="' +
       escapeAttr(String(id)) +
       '">' +
-      '<div class="shortlist-na-event-head">' +
-      '<div class="shortlist-na-event-head-txt">' +
+      '<div class="shortlist-na-line">' +
+      '<div class="shortlist-na-when">' +
       '<span class="shortlist-na-etype">' +
       escapeHtml(kindLabel) +
       '</span>' +
-      '<span class="shortlist-na-time muted" data-na-time>' +
+      '<span class="shortlist-na-time">' +
       escapeHtml(timeLine) +
-      '</span>' +
-      '</div>' +
+      '</span></div><div class="shortlist-na-what">' +
+      '<div class="shortlist-na-title-row">' +
+      '<a class="shortlist-na-titlelink" href="' +
+      escapeAttr(href) +
+      '"><strong class="shortlist-na-etitle">' +
+      escapeHtml(title) +
+      '</strong>' +
+      '<span class="shortlist-na-title-sep" aria-hidden="true"> — </span>' +
+      hoodHtml +
+      '</a>' +
       '<span class="status-pill ' +
       NyhomeStatus.statusClass(status) +
       ' shortlist-next-actions-pill">' +
       escapeHtml(statusLabel) +
       '</span>' +
+      '<div class="shortlist-na-title-actions">' +
+      nextActionsAdvanceRejectHtml(apartment) +
       '</div>' +
-      '<div class="shortlist-na-event-body">' +
-      '<a class="shortlist-na-titlelink" href="' +
-      escapeAttr(href) +
-      '"><strong class="shortlist-na-etitle">' +
-      escapeHtml(title) +
-      '</strong></a>' +
-      (place
-        ? '<p class="shortlist-na-place muted">' + escapeHtml(place) + '</p>'
-        : '') +
-      nextActionsFactDetailLine(apartment) +
-      visitNotes +
       '</div>' +
-      '<div class="shortlist-na-event-actions">' +
-      '<div class="shortlist-next-actions-side">' +
-      advanceBtn +
-      rejectCtrl +
-      '<button type="button" class="criterion-def-btn" data-def-toggle data-def-for="' +
-      escapeAttr(prepPanelId) +
-      '" aria-expanded="false" aria-label="' +
-      escapeAttr(prepToggleLabel) +
-      '">?</button>' +
-      '</div></div>' +
-      '<div class="vote-criterion-def-panel shortlist-next-actions-def" id="' +
-      escapeAttr(prepPanelId) +
-      '" hidden>' +
-      '<p class="vote-criterion-def-text">' +
-      escapeHtml(prep) +
-      '</p></div></article>'
+      nextActionsListingSpecStrip(apartment) +
+      nextActionsRatingBox(apartment.scores) +
+      renderNotesDetailsCollapsible(apartment, ev, notesPanelId) +
+      '</div></div></article>'
     );
   }
 
@@ -1153,16 +1585,23 @@
         '<div class="shortlist-next-actions-wrap">' +
         toolbar +
         printTitle +
-        '<div class="empty-state">No next actions match. Add a tour, app deadline, or move-in — or change the exclude filters.</div>' +
+        '<div class="empty-state">No next actions match. Add a tour, app deadline, or move-in — or widen the "only include" filters.</div>' +
         '</div>';
       wireNextActionsChrome();
       return;
     }
     if (naLayoutMode === 'calendar') {
+      var wrapCls =
+        'shortlist-next-actions-wrap shortlist-na-density-' + naCalendarDensity;
       listEl.innerHTML =
-        '<div class="shortlist-next-actions-wrap" role="region" aria-label="Next actions">' +
+        '<div class="' +
+        wrapCls +
+        '" role="region" aria-label="Next actions" data-na-density="' +
+        escapeAttr(naCalendarDensity) +
+        '">' +
         toolbar +
         printTitle +
+        buildCalendarPrintTocHtml(sorted) +
         renderNextActionsCalendarHtml(sorted) +
         '</div>';
     } else {
@@ -1170,7 +1609,7 @@
         '<div class="shortlist-next-actions-wrap" role="region" aria-label="Next actions">' +
         toolbar +
         printTitle +
-        '<p class="shortlist-next-actions-intro muted">Tours, deadlines, and move-in — advance, reject, or open a row for details.</p>' +
+        '<p class="shortlist-next-actions-intro muted">Open a row for full details. Use Calendar to see visits by day.</p>' +
         '<div class="shortlist-next-actions-list">' +
         sorted.map(function (apartment) {
           return renderNextActionsRow(apartment);
@@ -1183,6 +1622,12 @@
   function wireNextActionsChrome() {
     wireNextActionsListInteractions();
     if (!listEl) return;
+    listEl.querySelectorAll('[data-open-status-filters]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        setFiltersDrawerOpen(true);
+      });
+    });
     listEl.querySelectorAll('[data-na-layout]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var m = btn.getAttribute('data-na-layout');
@@ -1203,6 +1648,15 @@
         if (allApartments.length) applyFilters();
       });
     });
+    listEl.querySelectorAll('[data-na-cal-density]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var m = btn.getAttribute('data-na-cal-density');
+        if (!m || m === naCalendarDensity || !VALID_NA_CAL_DENSITY[m]) return;
+        naCalendarDensity = m;
+        saveNextActionsPrefs();
+        if (allApartments.length && viewMode === 'next-actions') applyFilters();
+      });
+    });
   }
 
   function renderNextActionsRow(apartment) {
@@ -1210,8 +1664,6 @@
     var href = id != null ? '/details/?id=' + encodeURIComponent(id) : '#';
     var status = NyhomeStatus.normalizeStatus(apartment.status || 'new');
     var statusLabel = formatStatusLabel(status);
-    var nextS = nextNavStatus(status);
-    var isRejected = status === 'rejected';
     var loc = [apartment.neighborhood, apartment.address].filter(Boolean).join(' · ');
     var metaBits = [];
     if (apartment.next_visit && apartment.next_visit.visit_at) {
@@ -1228,34 +1680,10 @@
         escapeHtml(metaBits.join(' · ')) +
         '</span>'
       : '';
-    var advanceBtn;
-    if (!isRejected && nextS) {
-      advanceBtn =
-        '<button type="button" class="secondary-btn shortlist-next-actions-advance" data-advance-status data-apartment-id="' +
-        escapeAttr(String(id)) +
-        '" aria-label="Move to next status">Next: ' +
-        escapeHtml(formatStatusLabel(nextS)) +
-        '</button>';
-    } else {
-      advanceBtn =
-        '<button type="button" class="secondary-btn shortlist-next-actions-advance" disabled data-apartment-id="' +
-        escapeAttr(String(id)) +
-        '">' +
-        escapeHtml(isRejected ? 'Rejected' : 'At pipeline end') +
-        '</button>';
-    }
-    var rejectCtrl = isRejected
-      ? '<span class="shortlist-next-actions-reject muted" aria-disabled="true">Rejected</span>'
-      : '<button type="button" class="shortlist-next-actions-reject link-button" data-reject-apartment data-apartment-id="' +
-        escapeAttr(String(id)) +
-        '">Reject</button>';
-    var prep = prepLineForStatus(status);
-    var prepPanelId = 'shortlist-next-prep-' + String(id);
-    var prepToggleLabel = 'Show prep tips for ' + String(apartment.title || 'this listing').trim();
     return (
       '<article class="shortlist-next-actions-row" data-apartment-id="' + escapeAttr(String(id)) + '">' +
         '<div class="shortlist-next-actions-row-top">' +
-          '<div class="shortlist-next-actions-scroll">' +
+          '<div class="shortlist-next-actions-line">' +
             '<a class="shortlist-next-actions-main" href="' + escapeAttr(href) + '">' +
               '<span class="shortlist-next-actions-title">' + escapeHtml(apartment.title || 'Untitled apartment') + '</span>' +
               '<span class="shortlist-next-actions-sep muted">·</span>' +
@@ -1264,15 +1692,10 @@
               '<span class="shortlist-next-actions-sep muted">·</span>' +
               '<span class="status-pill ' + NyhomeStatus.statusClass(status) + ' shortlist-next-actions-pill">' + escapeHtml(statusLabel) + '</span>' +
             '</a>' +
-            '<button type="button" class="criterion-def-btn" data-def-toggle data-def-for="' + escapeAttr(prepPanelId) + '" aria-expanded="false" aria-label="' + escapeAttr(prepToggleLabel) + '">?</button>' +
           '</div>' +
           '<div class="shortlist-next-actions-side">' +
-            advanceBtn +
-            rejectCtrl +
+            nextActionsAdvanceRejectHtml(apartment) +
           '</div>' +
-        '</div>' +
-        '<div class="vote-criterion-def-panel shortlist-next-actions-def" id="' + escapeAttr(prepPanelId) + '" hidden>' +
-          '<p class="vote-criterion-def-text">' + escapeHtml(prep) + '</p>' +
         '</div>' +
       '</article>'
     );
@@ -1294,6 +1717,10 @@
         } else {
           panel.setAttribute('hidden', '');
           button.setAttribute('aria-expanded', 'false');
+        }
+        var hint = button.querySelector('.shortlist-na-notes-toggle-hint');
+        if (hint) {
+          hint.textContent = panel.hasAttribute('hidden') ? 'Show' : 'Hide';
         }
       });
     });

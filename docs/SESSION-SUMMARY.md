@@ -28,18 +28,18 @@ Public app:
 - Cards omit full gallery; up to 3 **listing photos** via `/admin/new` or `/details` **Images** (`vibeImages.js` → `nyp_apartment_images`)
 - `Details` / `Listing` on each card (Listing disabled when no URL)
 - `status` art: `/assets/img/<status>.png` on cards. Status **filter** = bottom **Filters** drawer + FAB (not a header strip; no text pill on cards)
-- **View** (Cards / Finalist / Next actions) in hero row under `h1` (no marketing tagline)
+- **View** (Cards / Finalist / Next actions) in hero row under `h1` (no marketing tagline). **Next actions:** tour and/or deadline and/or move-in; **List** / **Calendar**; **Only include with** tour/deadline/move-in; calendar **Summary** / **Details** / **Prospect**; print TOC + density rules; financial line + empty pen box per field on Details/Prospect (`nyhomeNextActions*` + `nyhomeNextActionsCalendarDensity` in `app.js`)
 
 Details:
 
 - Route: `/details/?id=<apartmentId>`
 - **Header:** **New listing** (→ `/admin/new`) and **Back to shortlist** (`.app-header-actions`, plain text + `|`)
-- Top **app-summary-card**: status progression `←` / `→` (first 11 `STATUS_NAV` values; excludes `rejected`, `blacklisted`, `archived`), `status` `<select>`, **Reject** (quiet, same row); meta row includes **View listing** when URL set; no inline photo strip. Auto-save on status change. Tabs: **Scorecard** (incl. photo strip when present), **Images** (3 paste/drop slots + **Save photos**, per-criterion score table, preview column; `vibeImages.js`), **Unit Setup** (address/apt changes use blacklist + duplicate validation + `saveApartmentWorkflow` modal), **Peter**, **Kerv** (scoring, one tab per partner; same gallery column as Images), Tour, Application, Activity Log (`assets/js/details.js`). Scoring: `detail-vote-list` table (zebra, bordered, 1px partner top), `detail-vote-line` two-column grid (aligned **N/A** + `0..5`); unselected/selected score hex in `app.css` (`--kerv-hex-faint` / `--kerv-hex-selected`, peter analogs)
+- Top **app-summary-card**: status progression `←` / `→` (first 11 `STATUS_NAV` values; excludes `rejected`, `blacklisted`, `archived`), `status` `<select>`, **Reject** (quiet, same row); meta row includes **View listing** when URL set; no inline photo strip. Auto-save on status change. Tabs: **Scorecard** (incl. photo strip when present), **Images** (3 paste/drop slots + **Save photos**, per-criterion score table w/ `data-criterion-id` rows, preview column; `vibeImages.js`), **Unit Setup** (listing fields aligned with `/admin/new`: financials, unit size, chips, notes; save uses blacklist + duplicate checks + `saveApartmentWorkflow` modal; **Save Unit Setup** CTA), **Peter**, **Kerv** (scoring, one tab per partner; same gallery column as Images), Tour, Application, Activity Log (`assets/js/details.js`). Scoring: `detail-vote-list` table (zebra, bordered, 1px partner top), `detail-vote-line` two-column grid (aligned **N/A** + `0..5`); unselected/selected score hex in `app.css` (`--kerv-hex-faint` / `--kerv-hex-selected`, peter analogs). **Vote save:** optimistic hex, then `saveRating` + `finalizeRatingSave` (merge ratings, `calculateDetailScores`, patch meta score strip + table cell, `localStorage`); no full `load()` for votes (Activity vote lines = refresh to see).
 
 Admin:
 
 - Routes: **`/admin`** (manager) and **`/admin/new`** (new listing + form). No password yet.
-- **`/admin`:** Top tabs **Saved apartments** | **Building blacklist** | **Criteria** (Next actions = public `/` only). **Saved apartments:** `manager-row` (status, metrics, **Edit** → `/admin/new?id=…` / **Details** / **Delete**). **Header search** (same on **`/admin/new`**) filters `#admin-apartment-list`, suggestions, **×**; on **`/admin`**, clear when leaving **Saved apartments** for another top tab. Row click (not controls) → `/details/?id=…`
+- **`/admin`:** Top tabs **Saved apartments** | **Building blacklist** | **Criteria** (Next actions = public `/` only). **Saved apartments:** `manager-row` (status, metrics, **Delete** only; no row **Edit** / **Details** links). **Header search** (same on **`/admin/new`**) filters `#admin-apartment-list`, suggestions, **×**; on **`/admin`**, clear when leaving **Saved apartments** for another top tab. Row click (not controls) → `/details/?id=…`. Full form: **`/admin/new`** + **`?id=`**
 - **`/admin/new`:** Full apartment form + saved list; **Save apartment**; Notes + 3 `vibe-slot` photos (`vibeImages.js`); `?id=` pre-fill. Header: **View cards** / **Manager**
 - **Criteria** / **blacklist** tabs: add/edit/reorder/ paste flows unchanged vs repo `README`
 - **Shell load** on admin pages: `apartmentStatus.js` → `listingTextParse.js` → `apartmentSavePayload.js` → `saveApartmentWorkflow.js` → `api.js` → `vibeImages.js` → `admin.js`
@@ -145,7 +145,7 @@ Scoring is partner-based:
 
 Each criterion: integer `0..5` or **N/A** (stored as `NULL`; **not** in weighted sum—only lines with a numeric score use weight). Missing row and `NULL` behave the same for averages (skipped).
 
-**Scoring UI:** only on `/details` → **Peter** or **Kerv** tab: table-style list, optional **?** for definition, SVG **N/A** + `0..5` aligned columns; not on admin **Saved apartments** list. **Avg** / Kerv / Peter % on Scorecard, public cards, admin row metrics (`scores.combined` = mean of Kerv & Peter % when both exist; each partner % = `Σ(score×w)/Σw × 20` over **scored** criteria only in `lib/apartmentRepository` `calculateScores`).
+**Scoring UI:** only on `/details` → **Peter** or **Kerv** tab: table-style list, optional **?** for definition, SVG **N/A** + `0..5` aligned columns; not on admin **Saved apartments** list. **Avg** / Kerv / Peter % on Scorecard, public cards, admin row metrics (`scores.combined` = mean of Kerv & Peter % when both exist; each partner % = `Σ(score×w)/Σw × 20` over **scored** criteria only in `lib/apartmentRepository` `calculateScores`). After a vote, `details.js` recomputes the same rollup client-side and patches the summary + Images table without refetching the full apartment list.
 
 The rating API (`POST /api/ratings`):
 

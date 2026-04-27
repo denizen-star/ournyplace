@@ -6,7 +6,7 @@
 - **Building blacklist:** `nyp_building_blacklist` (unique `normalized_key`); admin tab **Building blacklist** (criteria-style click-to-edit); paste address block like Notes. Save apartment → modal if building blacklisted (**Save anyway** = `ignoreBlacklist`); status **blacklisted** upserts blacklist row.
 - **Listing status `blacklisted`:** terminal (no Prev/Next in nav); badge + shortlist `listing-status-blacklisted`.
 - **Paste parser:** `lib/listingTextParse.js` + client mirror — Google Maps one-liner, StreetEasy unit-first / gross rent lines; Notes paste inserts clipboard then parses (no race).
-- **Shortlist Next actions** (`nyhomeShortlistView` = `next-actions`): third **View** tab after **Finalist**. Rows = listings with **scheduled tour** and/or **application deadline** (one row per apt). One-line row: title · location · dates · status pill; **?** = same `criterion-def-btn` + `vote-criterion-def-panel` toggle as **Peter/Kerv** scoring (prep copy). **Next:** / **Reject** call `saveApartment`; main strip links `/details`. **Sort by** hidden (same as Finalist).
+- **Shortlist Next actions** (`nyhomeShortlistView` = `next-actions`): third **View** tab after **Finalist**. Rows = listings with **tour**, **application deadline**, and/or **move-in date**. Toolbar: **List** / **Calendar** (day-grouped); **Only include with** checkboxes (when on, row must have that date set; `localStorage`: `nyhomeNextActionsLayout`, `nyhomeNextActionsOmitTour`, `nyhomeNextActionsOmitDeadline`, `nyhomeNextActionsOmitMoveIn`). **Calendar** → **Card view** **Summary** | **Details** | **Prospect** (`nyhomeNextActionsCalendarDensity`). Per-listing **handwriting** boxes: empty dashed field under each financial line (Rent, Net, Move-in, Broker, Deposit, Amen. fee) on **Details** / **Prospect** cards. Row: title · location · dates · status; notes/details collapsible; **Next** / **Reject** + `/details`; **Sort by** hidden (same as Finalist).
 - **`nyp_listing_events`:** migration creates table; `saveApartment` logs status changes, `saveRating` logs vote when score changes; `GET /api/apartments` attaches `listing_events` (max 50/apt, newest first). **`/details` Activity Log** merges those events with Created / Tour / Application (dropped coarse “details updated” row).
 - **`assets/js/apartmentSavePayload.js`:** `NyhomeApartmentPayload.apartmentToSavePayload(apartment, overrides?)` for admin row status + shortlist Next actions saves.
 - **Shortlist Finalist view:** **View** = Cards | **Finalist** (`nyhomeShortlistView`). **Finalist** table: sort **Avg (desc)** then **workflow**; **Sort by** hidden. Columns incl. move-in, scores, status pill. Narrow = horizontal scroll.
@@ -19,16 +19,21 @@
 - **Header global nav:** `New listing` | `Manage` (and variants) as plain text links in `.app-header-actions` (no CTA box, no underline; **|** in `.app-header-actions-sep`). Shortlist: links in `shortlist-hero-right` (`.app-header-actions--in-hero`).
 
 ### Changed
-- **Public shortlist (`/`):** **View** (left) + **Sort by** (Cards) + `New listing` | `Manage` (right, `.shortlist-hero-right` / `.app-header-actions--in-hero`); no tagline. Status filter: **drawer** + **Filters** FAB (`statusFilterGroups.js`). Keep **`?v=`** on shell CSS/JS in lockstep with **`sw.js` `CACHE_VERSION`**.
+- **Public shortlist (`/`):** **View** (left) + **Sort by** (Cards) + `New listing` | `Manage` (right, `.shortlist-hero-right` / `.app-header-actions--in-hero`); no tagline. Status filter: **drawer** + **Filters** FAB (`statusFilterGroups.js`). **Next actions** calendar: day agenda (travel / tour / debrief from `visit_at`), unit + financials + full unit-feature/amenity checklist + scores, print TOC table + density-based print layout (e.g. **Summary** hides heavy blocks). Toolbar **Filter by status** opens same drawer. White card chrome + `shortlist-view-btn` active state for both `aria-selected` and `aria-pressed` (List/Calendar + Summary/Details/Prospect). Keep **`?v=`** on shell CSS/JS in lockstep with **`sw.js` `CACHE_VERSION`**.
 - **`POST/PUT /api/apartments`:** `409` + `code` **`BLACKLISTED`** / **`DUPLICATE_LISTING`** (second = another **non-`rejected`** listing shares normalized address+unit). `/details` Unit Setup address/apt saves same checks.
-- **`/admin`:** tabs **Saved apartments** | **Building blacklist** | **Criteria**; setup form at **`/admin/new`**. **Next actions** only on public `/`. **Edit** on manager (no in-page form) → `/admin/new?id=…`.
+- **`/admin`:** tabs **Saved apartments** | **Building blacklist** | **Criteria**; setup form at **`/admin/new`**. **Next actions** only on public `/`. **Saved apartments** list: no row **Edit** / **Details** links; row click (outside controls) → `/details`; full form + **`?id=`** edit only on **`/admin/new`**.
+- **`/details` → Unit Setup:** parity with **`/admin/new`** listing fields (financials, beds/baths/sq ft, chips, notes); admin-matching chip labels; compact chip layout; **Save Unit Setup** bottom-right.
 - **`NyhomeAPI.saveApartment`:** `PUT` if `Number(id) > 0`, else `POST`.
 - **Shortlist cards:** thumbs + hover preview (README).
 - **`POST /api/ratings`:** `score` required (`null` or `0–5`); weighted avg uses numeric rows only.
 - **Scoring UI:** hex buttons. Bump **`sw.js` `CACHE_VERSION`** and HTML `?v=` on shell assets together.
 - **`index.html`:** localhost unregisters service workers.
 
+### Removed
+- Admin **manager-row** **Edit** and **Details** links (navigation: row → `/details`; form: `/admin/new?id=`).
+
 ### Fixed
+- **`/details` voting (Peter / Kerv / Images hex scores):** optimistic button `active` on click; after successful `POST /api/ratings`, **no** full `load()` — merge vote into `state.apartment.ratings`, recompute Avg/Kerv/Peter with same weighted formula as `lib/apartmentRepository` `calculateScores`, patch summary **meta** score strip + **Images** per-criterion table (`tr[data-criterion-id]`), sync `nyhome-apartments-cache`. Avoids stale `localStorage` paint + whole-page `innerHTML` jank. **Activity Log** new vote rows still need a full refresh / `load()` to appear.
 - **Notes paste:** first paste could skip parse (textarea value not updated yet).
 - **Saves if `nyp_listing_events` missing:** try/catch on event write/read/delete; **admin** save fail → **alert** + `console.error`.
 - N/A vs **0** active state (`rating != null` for numeric chips).

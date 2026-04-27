@@ -16,12 +16,18 @@
     views: 'Views',
     doorman: 'Doorman',
     highrise: 'Highrise',
+    midrise: 'Midrise',
+    lowrise: 'Lowrise',
     'new-construction': 'New construction',
+    renovated: 'Renovated',
     walkup: 'Walkup',
     pool: 'Pool',
     sauna: 'Sauna',
     'laundry-room': 'Laundry room',
     suites: 'Suites',
+    'roof-deck': 'Roof deck',
+    'common-areas': 'Common areas',
+    'subway-lines': 'Subway lines',
   };
 
   function catchSaveApartment(err) {
@@ -462,7 +468,7 @@
         '</div>' +
         '<div class="two-column controls-columns">' +
           '<div class="control-group"><h3>Unit features</h3>' + selectorGroup('unit-features', ['dishwasher', 'washer-dryer', 'storage', 'views'], apartment.unit_features || []) + '</div>' +
-          '<div class="control-group"><h3>Amenities</h3>' + selectorGroup('amenities', ['doorman', 'highrise', 'new-construction', 'walkup', 'pool', 'sauna', 'laundry-room', 'suites'], apartment.amenities || []) + '</div>' +
+          '<div class="control-group"><h3>Amenities</h3>' + selectorGroup('amenities', ['doorman', 'highrise', 'midrise', 'lowrise', 'walkup', 'new-construction', 'renovated', 'pool', 'sauna', 'laundry-room', 'suites', 'roof-deck', 'common-areas', 'subway-lines'], apartment.amenities || []) + '</div>' +
         '</div>' +
         '<div class="section-header"><h3 class="section-title">Listing notes</h3></div>' +
         '<div class="form-grid">' +
