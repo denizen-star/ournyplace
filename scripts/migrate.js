@@ -263,6 +263,11 @@ async function migrate() {
   await execute('UPDATE nyp_ratings SET score = NULL WHERE score = 0');
   console.log('[MIGRATE] OK: historical score 0 converted to N/A (NULL)');
 
+  await safeAlter(
+    'ALTER TABLE nyp_apartments ADD COLUMN listing_star TINYINT NULL DEFAULT NULL',
+    'nyp_apartments.listing_star (1 Peter, 2 Kerv, 3 both)'
+  );
+
   console.log('[MIGRATE] Complete.');
 }
 

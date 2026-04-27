@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mobile Mockup — Finalist View</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+/* Condensed finalist table */
+.finalist-table {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 12px;
+}
+.finalist-table-header {
+  display: grid;
+  grid-template-columns: 28px 1fr 60px;
+  padding: 7px 12px;
+  background: var(--line-light);
+  border-bottom: 1px solid var(--line);
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  gap: 8px;
+}
+.finalist-row {
+  display: grid;
+  grid-template-columns: 28px 1fr 60px;
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--line-light);
+  gap: 8px;
+  align-items: center;
+  cursor: pointer;
+  transition: background .12s;
+  position: relative;
+}
+.finalist-row:last-child { border-bottom: none; }
+.finalist-row:hover { background: #f9fafb; }
+.finalist-row.expanded { background: var(--accent-soft); }
+.finalist-rank {
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+}
+.finalist-main { min-width: 0; }
+.finalist-name {
+  font-size: .88rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.finalist-sub {
+  font-size: .72rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.finalist-score-col {
+  text-align: right;
+}
+.finalist-avg {
+  font-size: .92rem;
+  font-weight: 700;
+  color: var(--vote-combined);
+}
+.finalist-expand-hint {
+  font-size: .62rem;
+  color: var(--muted);
+  text-align: right;
+}
+
+/* Expanded card that slides in below the row */
+.finalist-expanded-card {
+  background: var(--paper);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  margin: 0;
+  padding: 14px 12px;
+  display: none;
+}
+.finalist-expanded-card.open { display: block; }
+
+.expanded-thumb-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.exp-thumb {
+  flex: 1;
+  height: 60px;
+  border-radius: 7px;
+  background: #e0e7ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .65rem;
+  color: #6366f1;
+}
+
+.expanded-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.exp-stat {
+  background: var(--line-light);
+  border-radius: 8px;
+  padding: 7px 10px;
+}
+.exp-stat-label {
+  font-size: .66rem;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.exp-stat-value { font-size: .88rem; font-weight: 600; }
+
+.expanded-score-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.exp-score {
+  border-radius: 8px;
+  padding: 7px 10px;
+  text-align: center;
+  border: 1px solid var(--line);
+}
+.exp-score-label { font-size: .64rem; color: var(--muted); margin-bottom: 2px; }
+.exp-score-val { font-size: .95rem; font-weight: 700; }
+.exp-score--avg { border-color: var(--vote-combined-border); background: var(--vote-combined-soft); }
+.exp-score--avg .exp-score-val { color: var(--vote-combined); }
+.exp-score--kerv { border-color: var(--kerv-border); background: var(--kerv-soft); }
+.exp-score--kerv .exp-score-val { color: var(--kerv); }
+.exp-score--peter { border-color: var(--peter-border); background: var(--peter-soft); }
+.exp-score--peter .exp-score-val { color: var(--peter); }
+
+.expanded-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Status pill mini */
+.status-dot {
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  margin-right: 4px;
+}
+.dot-finalist { background: var(--vote-combined); }
+.dot-shortlisted { background: var(--accent); }
+.dot-toured { background: var(--kerv); }
+.dot-evaluating { background: #f59e0b; }
+
+.chevron {
+  font-size: .7rem;
+  color: var(--muted);
+  margin-left: auto;
+  transition: transform .2s;
+}
+.expanded .chevron { transform: rotate(180deg); }
+</style>
+</head>
+<body>
+
+<h1 class="page-title">Finalist View — Mobile</h1>
+<p class="page-subtitle">
+  Condensed 3-column table (rank · listing · avg score).<br>
+  Tap any row to expand a full card with images, financials, and all scores.<br>
+  Tap again to collapse. One expanded row at a time.
+</p>
+
+<div class="screens-row">
+
+  <!-- ─── COLLAPSED STATE ───────────────────────────── -->
+  <div class="screen-wrap">
+    <div class="screen-label">Default — All Collapsed</div>
+    <div class="screen-note">Quick scan: rank, name, neighborhood, rent, avg score. Status dot for color coding.</div>
+
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-status-bar">
+        <span class="phone-time">9:41</span>
+        <span class="phone-icons">▲ ◀ ■</span>
+      </div>
+
+      <div class="m-header">
+        <div class="m-eyebrow">nyhome</div>
+        <div class="m-h1" style="margin-bottom:8px">Finalist</div>
+        <div class="seg-ctrl">
+          <button class="seg-btn">Cards</button>
+          <button class="seg-btn active">Finalist</button>
+          <button class="seg-btn">Next actions</button>
+        </div>
+      </div>
+
+      <div class="phone-scroll">
+        <div style="padding:12px 0">
+          <div style="padding:0 12px;margin-bottom:8px;font-size:.75rem;color:var(--muted)">
+            5 finalists · sorted by Avg score
+          </div>
+          <div class="finalist-table">
+            <div class="finalist-table-header">
+              <div>#</div>
+              <div>Listing</div>
+              <div style="text-align:right">Avg</div>
+            </div>
+
+            <!-- Row 1 -->
+            <div class="finalist-row">
+              <div class="finalist-rank">1</div>
+              <div class="finalist-main">
+                <div class="finalist-name">
+                  <span class="status-dot dot-finalist"></span>345 E 57th #8A
+                </div>
+                <div class="finalist-sub">Sutton Place · $5,100/mo</div>
+              </div>
+              <div class="finalist-score-col">
+                <div class="finalist-avg">90%</div>
+                <div class="finalist-expand-hint">tap ↓</div>
+              </div>
+            </div>
+
+            <!-- Row 2 -->
+            <div class="finalist-row">
+              <div class="finalist-rank">2</div>
+              <div class="finalist-main">
+                <div class="finalist-name">
+                  <span class="status-dot dot-finalist"></span>250 W 50th #12B
+                </div>
+                <div class="finalist-sub">Hell's Kitchen · $4,200/mo</div>
+              </div>
+              <div class="finalist-score-col">
+                <div class="finalist-avg">80%</div>
+                <div class="finalist-expand-hint">tap ↓</div>
+              </div>
+            </div>
+
+            <!-- Row 3 -->
+            <div class="finalist-row">
+              <div class="finalist-rank">3</div>
+              <div class="finalist-main">
+                <div class="finalist-name">
+                  <span class="status-dot dot-toured"></span>110 Riverside #3C
+                </div>
+                <div class="finalist-sub">Upper West Side · $3,800/mo</div>
+              </div>
+              <div class="finalist-score-col">
+                <div class="finalist-avg">75%</div>
+                <div class="finalist-expand-hint">tap ↓</div>
+              </div>
+            </div>
+
+            <!-- Row 4 -->
+            <div class="finalist-row">
+              <div class="finalist-rank">4</div>
+              <div class="finalist-main">
+                <div class="finalist-name">
+                  <span class="status-dot dot-shortlisted"></span>88 Morningside #5E
+                </div>
+                <div class="finalist-sub">Morningside Hts · $3,200/mo</div>
+              </div>
+              <div class="finalist-score-col">
+                <div class="finalist-avg">68%</div>
+                <div class="finalist-expand-hint">tap ↓</div>
+              </div>
+            </div>
+
+            <!-- Row 5 -->
+            <div class="finalist-row">
+              <div class="finalist-rank">5</div>
+              <div class="finalist-main">
+                <div class="finalist-name">
+                  <span class="status-dot dot-evaluating"></span>15 Hudson Yards #22F
+                </div>
+                <div class="finalist-sub">Hudson Yards · $6,800/mo</div>
+              </div>
+              <div class="finalist-score-col">
+                <div class="finalist-avg">—</div>
+                <div class="finalist-expand-hint">tap ↓</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <div class="m-bottom-nav">
+        <div class="m-nav-item">
+          <div class="m-nav-icon">▦</div>
+          <div class="m-nav-label">Cards</div>
+        </div>
+        <div class="m-nav-item active">
+          <div class="m-nav-icon">☰</div>
+          <div class="m-nav-label" style="color:var(--accent-dark)">Finalist</div>
+        </div>
+        <div class="m-nav-item">
+          <div class="m-nav-icon">📅</div>
+          <div class="m-nav-label">Next Actions</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── ROW 1 EXPANDED ───────────────────────────── -->
+  <div class="screen-wrap">
+    <div class="screen-label">Row Expanded — Full Card</div>
+    <div class="screen-note">Tap a row to reveal full details in-place: images, financials, bed/bath, all three scores, and action buttons.</div>
+
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-status-bar">
+        <span class="phone-time">9:41</span>
+        <span class="phone-icons">▲ ◀ ■</span>
+      </div>
+
+      <div class="m-header">
+        <div class="m-eyebrow">nyhome</div>
+        <div class="m-h1" style="margin-bottom:8px">Finalist</div>
+        <div class="seg-ctrl">
+          <button class="seg-btn">Cards</button>
+          <button class="seg-btn active">Finalist</button>
+          <button class="seg-btn">Next actions</button>
+        </div>
+      </div>
+
+      <div class="phone-scroll">
+        <div style="padding:12px 0">
+          <div style="padding:0 12px;margin-bottom:8px;font-size:.75rem;color:var(--muted)">
+            5 finalists · sorted by Avg score
+          </div>
+          <div class="finalist-table">
+            <div class="finalist-table-header">
+              <div>#</div>
+              <div>Listing</div>
+              <div style="text-align:right">Avg</div>
+            </div>
+
+            <!-- Row 1 — EXPANDED -->
+            <div class="finalist-row expanded" style="background:var(--vote-combined-soft);border-bottom:none">
+              <div class="finalist-rank" style="color:var(--vote-combined)">1</div>
+              <div class="finalist-main">
+                <div class="finalist-name" style="color:var(--vote-combined)">
+                  <span class="status-dot dot-finalist"></span>345 E 57th #8A
+                </div>
+                <div class="finalist-sub">Sutton Place · $5,100/mo</div>
+              </div>
+              <div class="finalist-score-col">
+                <div class="finalist-avg">90%</div>
+                <div class="finalist-expand-hint">tap ↑</div>
+              </div>
+            </div>
+
+            <!-- Expanded content -->
+            <div class="finalist-expanded-card open" style="background:var(--vote-combined-soft);border-top:1px solid var(--vote-combined-border)">
+              <!-- Listing photos -->
+              <div class="expanded-thumb-row">
+                <div class="exp-thumb" style="background:#c7d2fe;color:#3730a3">Photo 1</div>
+                <div class="exp-thumb" style="background:#ddd6fe;color:#5b21b6">Photo 2</div>
+                <div class="exp-thumb" style="background:#ede9fe;color:#6d28d9">Photo 3</div>
+              </div>
+
+              <!-- Stats grid -->
+              <div class="expanded-stats">
+                <div class="exp-stat">
+                  <div class="exp-stat-label">Rent</div>
+                  <div class="exp-stat-value">$5,100/mo</div>
+                </div>
+                <div class="exp-stat">
+                  <div class="exp-stat-label">Net eff.</div>
+                  <div class="exp-stat-value">$4,800/mo</div>
+                </div>
+                <div class="exp-stat">
+                  <div class="exp-stat-label">Move-in total</div>
+                  <div class="exp-stat-value">$15,300</div>
+                </div>
+                <div class="exp-stat">
+                  <div class="exp-stat-label">Beds / Baths</div>
+                  <div class="exp-stat-value">2 bed · 2 bath</div>
+                </div>
+              </div>
+
+              <!-- Scores -->
+              <div class="expanded-score-row">
+                <div class="exp-score exp-score--avg">
+                  <div class="exp-score-label">Avg</div>
+                  <div class="exp-score-val">90%</div>
+                </div>
+                <div class="exp-score exp-score--kerv">
+                  <div class="exp-score-label">Kerv</div>
+                  <div class="exp-score-val">91%</div>
+                </div>
+                <div class="exp-score exp-score--peter">
+                  <div class="exp-score-label">Peter</div>
+                  <div class="exp-score-val">88%</div>
+                </div>
+              </div>
+
+              <!-- Status + actions -->
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                <span class="pill pill-finalist">Finalist</span>
+                <span style="font-size:.72rem;color:var(--muted)">Move-in Jun 15</span>
+              </div>
+              <div class="expanded-actions">
+                <a class="secondary-btn" href="#" style="flex:1;text-align:center;text-decoration:none;display:block">Listing ↗</a>
+                <a class="primary-btn" href="#" style="flex:2;text-align:center;text-decoration:none;display:block">Full details →</a>
+              </div>
+            </div>
+
+            <!-- Row 2 collapsed -->
+            <div class="finalist-row">
+              <div class="finalist-rank">2</div>
+              <div class="finalist-main">
+                <div class="finalist-name"><span class="status-dot dot-finalist"></span>250 W 50th #12B</div>
+                <div class="finalist-sub">Hell's Kitchen · $4,200/mo</div>
+              </div>
+              <div class="finalist-score-col">
+                <div class="finalist-avg">80%</div>
+                <div class="finalist-expand-hint">tap ↓</div>
+              </div>
+            </div>
+
+            <div class="finalist-row">
+              <div class="finalist-rank">3</div>
+              <div class="finalist-main">
+                <div class="finalist-name"><span class="status-dot dot-toured"></span>110 Riverside #3C</div>
+                <div class="finalist-sub">Upper West Side · $3,800/mo</div>
+              </div>
+              <div class="finalist-score-col">
+                <div class="finalist-avg">75%</div>
+                <div class="finalist-expand-hint">tap ↓</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <div class="m-bottom-nav">
+        <div class="m-nav-item">
+          <div class="m-nav-icon">▦</div>
+          <div class="m-nav-label">Cards</div>
+        </div>
+        <div class="m-nav-item active">
+          <div class="m-nav-icon">☰</div>
+          <div class="m-nav-label" style="color:var(--accent-dark)">Finalist</div>
+        </div>
+        <div class="m-nav-item">
+          <div class="m-nav-icon">📅</div>
+          <div class="m-nav-label">Next Actions</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

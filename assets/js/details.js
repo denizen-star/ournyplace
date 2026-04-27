@@ -30,6 +30,29 @@
     'subway-lines': 'Subway lines',
   };
 
+  /** `04-details.html` Nav Option B — accordion (≤720px, matches shortlist mobile shell). */
+  var MOBILE_DETAIL_MAX = 720;
+
+  function isDetailsMobile() {
+    return typeof window.matchMedia === 'function' && window.matchMedia('(max-width: ' + MOBILE_DETAIL_MAX + 'px)').matches;
+  }
+
+  function getTabFromUrl() {
+    var t = new URLSearchParams(window.location.search).get('tab');
+    var v = { scorecard: 1, images: 1, unit: 1, peter: 1, kerv: 1, tour: 1, application: 1, activity: 1 };
+    return t && v[t] ? t : null;
+  }
+
+  function extractTabSectionInner(html) {
+    try {
+      var doc = new DOMParser().parseFromString(html, 'text/html');
+      var sec = doc.querySelector('section.summary-tab-content');
+      return sec ? sec.innerHTML : html;
+    } catch (e) {
+      return html;
+    }
+  }
+
   function catchSaveApartment(err) {
     console.error('[nyhome-details] save apartment', err);
     if (err.status === 409) return;
@@ -55,7 +78,7 @@
       return;
     }
 
-    var tab = activeTab || (currentTab() || 'scorecard');
+    var tabForRender = activeTab != null ? activeTab : (getTabFromUrl() || 'scorecard');
     var cached = NyhomeAPI.getApartmentsCache();
     if (cached) {
       try {
@@ -66,7 +89,7 @@
           state.apartment = fromCache;
           state.criteria = cached.criteria || [];
           state.neighborhoods = cached.neighborhoods || [];
-          render(tab);
+          render(tabForRender);
         }
       } catch (e) {
         console.error('[nyhome-details] cache render', e);
@@ -87,7 +110,8 @@
         state.apartment = apartment;
         state.criteria = data.criteria || [];
         state.neighborhoods = data.neighborhoods || [];
-        render(activeTab || currentTab() || 'scorecard');
+        var tab = activeTab != null ? activeTab : (getTabFromUrl() || 'scorecard');
+        render(tab);
       })
       .catch(function () {
         if (state.apartment) {
@@ -100,8 +124,13 @@
   function render(activeTab) {
     var apartment = state.apartment;
     if (!apartment) return;
-    var tab = activeTab || 'scorecard';
+    var tab = activeTab != null ? activeTab : (getTabFromUrl() || 'scorecard');
     syncDetailVibeSlotsFromApartment(apartment);
+    if (isDetailsMobile()) {
+      rootEl.innerHTML = renderMobileDetailPage(apartment, tab);
+      bindMobileDetailPage();
+      return;
+    }
     rootEl.innerHTML =
       renderSummaryHeader(apartment) +
       '<div class="summary-tabs-container">' +
@@ -112,6 +141,246 @@
     bindTabs();
     bindStatusHeader();
     detailPanelBind(tab);
+  }
+
+  function renderMobileDetailPage(apartment, initialTab) {
+    var acc = '';
+    acc += renderMobileAccordionSection(apartment, 'scorecard', 'Scorecard', '\u2605', initialTab);
+    acc += renderMobileAccordionSection(apartment, 'images', 'Images', '\u25C6', initialTab);
+    acc += renderMobileAccordionSection(apartment, 'unit', 'Unit Setup', '\u2302', initialTab);
+    acc += renderMobileAccordionSection(apartment, 'peter', 'Peter\u2019s scores', 'P', initialTab);
+    acc += renderMobileAccordionSection(apartment, 'kerv', 'Kerv\u2019s scores', 'K', initialTab);
+    acc += renderMobileAccordionSection(apartment, 'tour', 'Tour', '\u27A4', initialTab);
+    acc += renderMobileAccordionSection(apartment, 'application', 'Application', '\u2712', initialTab);
+    acc += renderMobileAccordionSection(apartment, 'activity', 'Activity log', '\u231A', initialTab);
+    return (
+      renderMobileSummaryCard(apartment) +
+      '<div class="mobile-detail-layout">' +
+      '<div class="mobile-accordion">' +
+      acc +
+      '</div>' +
+      '<div class="mobile-accordion-dup-wrap">' +
+      '<button type="button" class="mobile-dup-btn" data-mobile-dup>\u29C9 Duplicate this listing</button>' +
+      '</div></div>'
+    );
+  }
+
+  function renderMobileAccordionSection(apartment, tabId, label, icon, initialTab) {
+    var open = initialTab === tabId;
+    var inner = extractTabSectionInner(tabPanelHtml(apartment, tabId));
+    return (
+      '<div class="mobile-accordion-section' + (open ? ' open' : '') + '" data-accordion-tab="' + tabId + '">' +
+      '<button type="button" class="mobile-accordion-toggle" aria-expanded="' + (open ? 'true' : 'false') + '">' +
+      '<span class="mobile-accordion-icon" aria-hidden="true">' +
+      escapeHtml(icon) +
+      '</span>' +
+      '<span class="mobile-accordion-label">' +
+      escapeHtml(label) +
+      '</span>' +
+      '<span class="mobile-accordion-arrow">\u2304</span>' +
+      '</button>' +
+      '<div class="mobile-accordion-body summary-tab-content"' + (open ? '' : ' hidden') + '>' +
+      inner +
+      '</div></div>'
+    );
+  }
+
+  function renderMobileSummaryCard(apartment) {
+    var status = NyhomeStatus.normalizeStatus(apartment.status || 'new');
+    var statusLabel = formatStatusLabel(status);
+    var s = apartment.scores || {};
+    var pills = [];
+    if (apartment.rent_cents) pills.push(formatMoney(apartment.rent_cents) + '/mo');
+    var us = unitSummary(apartment);
+    if (us) pills.push(us);
+    if (apartment.move_in_date) pills.push('Move-in ' + apartment.move_in_date);
+    var metaHtml = pills.map(function (p) {
+      return '<span class="pill">' + escapeHtml(p) + '</span>';
+    }).join('');
+    var listingRow =
+      apartment.listing_url && String(apartment.listing_url).trim()
+        ? '<a class="link-button" style="display:flex;justify-content:center;width:100%;margin-bottom:8px" href="' +
+          escapeAttr(apartment.listing_url) +
+          '" target="_blank" rel="noreferrer">View listing</a>'
+        : '';
+    return (
+      '<section class="mobile-summary-card">' +
+      '<div class="mobile-summary-topline">' +
+      '<div class="mobile-summary-title-block">' +
+      '<h2 class="mobile-summary-title">' +
+      escapeHtml(apartment.title || 'Untitled apartment') +
+      '</h2>' +
+      '<p class="mobile-summary-sub">' +
+      escapeHtml([apartment.neighborhood, statusLabel].filter(Boolean).join(' · ')) +
+      '</p></div>' +
+      '<span class="status-pill ' +
+      NyhomeStatus.statusClass(status) +
+      '">' +
+      escapeHtml(statusLabel) +
+      '</span></div>' +
+      '<div class="mobile-summary-scores">' +
+      '<div class="mobile-score-cell mobile-score-cell--avg"><span class="mobile-score-lbl">Avg</span>' +
+      '<span class="mobile-score-val">' +
+      scoreText(s.combined) +
+      '</span></div>' +
+      '<div class="mobile-score-cell mobile-score-cell--kerv"><span class="mobile-score-lbl">Kerv</span>' +
+      '<span class="mobile-score-val">' +
+      scoreText(s.kerv) +
+      '</span></div>' +
+      '<div class="mobile-score-cell mobile-score-cell--peter"><span class="mobile-score-lbl">Peter</span>' +
+      '<span class="mobile-score-val">' +
+      scoreText(s.peter) +
+      '</span></div></div>' +
+      (metaHtml ? '<div class="mobile-summary-meta">' + metaHtml + '</div>' : '') +
+      '<button type="button" class="mobile-summary-expand-toggle">Show more</button>' +
+      '<div class="mobile-summary-expanded-body" hidden>' +
+      '<div class="mobile-fin-grid">' +
+      '<div class="mobile-fin-item"><span class="mobile-fin-label">Net eff.</span><span class="mobile-fin-value">' +
+      escapeHtml(apartment.net_effective_cents ? formatMoney(apartment.net_effective_cents) : '—') +
+      '</span></div>' +
+      '<div class="mobile-fin-item"><span class="mobile-fin-label">Move-in total</span><span class="mobile-fin-value">' +
+      escapeHtml(apartment.total_move_in_cents != null ? formatMoney(apartment.total_move_in_cents) : '—') +
+      '</span></div>' +
+      '<div class="mobile-fin-item"><span class="mobile-fin-label">Broker fee</span><span class="mobile-fin-value">' +
+      escapeHtml(apartment.broker_fee_cents != null ? formatMoney(apartment.broker_fee_cents) : '—') +
+      '</span></div>' +
+      '<div class="mobile-fin-item"><span class="mobile-fin-label">Deposit</span><span class="mobile-fin-value">' +
+      escapeHtml(apartment.deposit_cents != null ? formatMoney(apartment.deposit_cents) : '—') +
+      '</span></div></div>' +
+      '<div class="mobile-status-prog">' +
+      statusProgressionControls(apartment.status || 'new') +
+      '</div>' +
+      listingRow +
+      '<button type="button" class="mobile-summary-reject" data-status-reject>Reject</button>' +
+      '</div></section>'
+    );
+  }
+
+  function bindMobileAccordion() {
+    rootEl.querySelectorAll('.mobile-accordion-toggle').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var section = btn.closest('.mobile-accordion-section');
+        if (!section) return;
+        var body = section.querySelector('.mobile-accordion-body');
+        if (!body) return;
+        var open = section.classList.toggle('open');
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (open) body.removeAttribute('hidden');
+        else body.setAttribute('hidden', '');
+      });
+    });
+  }
+
+  function bindMobileSummaryExpand() {
+    var tgl = rootEl.querySelector('.mobile-summary-expand-toggle');
+    var exp = rootEl.querySelector('.mobile-summary-expanded-body');
+    if (!tgl || !exp) return;
+    tgl.addEventListener('click', function () {
+      var hidden = exp.hasAttribute('hidden');
+      if (hidden) {
+        exp.removeAttribute('hidden');
+        tgl.textContent = 'Show less';
+      } else {
+        exp.setAttribute('hidden', '');
+        tgl.textContent = 'Show more';
+      }
+    });
+  }
+
+  function bindAllMobilePanels() {
+    for (var vi = 0; vi < 3; vi++) {
+      updateDetailVibeSlotUI(vi);
+    }
+    bindDetailVibePhotoSlots();
+    bindDetailVibeSave();
+    bindVoting();
+    bindDefinitionToggles();
+    bindUnitPanel();
+    bindVisitForm();
+    bindApplicationForm();
+  }
+
+  function closeDetailsDupSheet() {
+    var el = document.getElementById('m-dup-sheet-root');
+    if (el) el.remove();
+  }
+
+  function showDetailsDuplicateSheet(apt) {
+    if (!apt) return;
+    closeDetailsDupSheet();
+    var root = document.createElement('div');
+    root.id = 'm-dup-sheet-root';
+    root.className = 'm-dup-sheet-overlay';
+    root.innerHTML =
+      '<div class="m-dup-sheet" role="dialog" aria-modal="true" aria-labelledby="m-dup-sheet-title">' +
+      '<div class="m-dup-sheet-handle" aria-hidden="true"></div>' +
+      '<h2 class="m-dup-sheet-title" id="m-dup-sheet-title">Duplicate listing</h2>' +
+      '<p class="m-dup-sheet-desc">Copying: <strong>' +
+      escapeHtml(apt.title || 'Listing') +
+      '</strong>. All details pre-filled—set the new unit.</p>' +
+      '<label class="m-dup-label">New unit number' +
+      '<input type="text" class="m-dup-input" id="m-dup-apt-input" autocomplete="off" placeholder="e.g. 14D"></label>' +
+      '<div class="m-dup-actions">' +
+      '<button type="button" class="secondary-btn" data-dup-cancel>Cancel</button>' +
+      '<button type="button" class="primary-btn" data-dup-confirm>Duplicate and edit</button>' +
+      '</div></div>';
+    document.body.appendChild(root);
+    var input = root.querySelector('#m-dup-apt-input');
+    if (input) {
+      try {
+        input.focus();
+      } catch (err) { /* empty */ }
+    }
+    root.querySelector('[data-dup-cancel]').addEventListener('click', closeDetailsDupSheet);
+    root.querySelector('[data-dup-confirm]').addEventListener('click', confirmDetailsDuplicateFromSheet);
+    root.addEventListener('click', function (e) {
+      if (e.target === root) closeDetailsDupSheet();
+    });
+  }
+
+  function confirmDetailsDuplicateFromSheet() {
+    var apt = state.apartment;
+    if (!apt) return;
+    var input = document.getElementById('m-dup-apt-input');
+    var unit = input && input.value.trim();
+    if (!unit) {
+      if (window.alert) window.alert('Enter a unit number for the duplicate.');
+      return;
+    }
+    var payload = NyhomeApartmentPayload.apartmentToSavePayload(apt, { aptNumber: unit });
+    delete payload.id;
+    closeDetailsDupSheet();
+    NyhomeSaveWorkflow.saveApartmentRespectingBlacklist(NyhomeAPI.saveApartment, function (forRetry) {
+      if (forRetry) payload.ignoreBlacklist = true;
+      return payload;
+    })
+      .then(function (res) {
+        var newId = res && res.id != null ? res.id : null;
+        if (newId != null) {
+          window.location.href = '/details/?id=' + encodeURIComponent(newId) + '&tab=unit';
+        } else {
+          return NyhomeAPI.getApartments().then(function () {
+            load(getTabFromUrl() || 'unit');
+          });
+        }
+      })
+      .catch(function (err) {
+        console.error('[nyhome-details] duplicate', err);
+        if (window.alert) window.alert('Could not duplicate listing.');
+      });
+  }
+
+  function bindMobileDetailPage() {
+    bindMobileAccordion();
+    bindMobileSummaryExpand();
+    bindStatusHeader();
+    bindAllMobilePanels();
+    var dup = rootEl.querySelector('[data-mobile-dup]');
+    if (dup) {
+      dup.addEventListener('click', function () {
+        if (state.apartment) showDetailsDuplicateSheet(state.apartment);
+      });
+    }
   }
 
   function tabPanelHtml(apartment, activeTab) {
@@ -558,7 +827,9 @@
 
   function currentTab() {
     var active = rootEl.querySelector('.summary-tab.active');
-    return active ? active.getAttribute('data-tab-target') : '';
+    if (active) return active.getAttribute('data-tab-target') || '';
+    var acc = rootEl.querySelector('.mobile-accordion-section.open');
+    return acc ? acc.getAttribute('data-accordion-tab') || '' : '';
   }
 
   function bindStatusHeader() {
@@ -631,13 +902,22 @@
 
   function patchHeaderScoreGridFromState() {
     var grid = rootEl.querySelector('.score-grid--meta-inline');
-    if (!grid || !state.apartment || !state.apartment.scores) return;
-    var vals = grid.querySelectorAll('.score-box-value');
-    var s = state.apartment.scores;
-    if (vals.length < 3) return;
-    vals[0].textContent = scoreText(s.combined);
-    vals[1].textContent = scoreText(s.kerv);
-    vals[2].textContent = scoreText(s.peter);
+    if (grid && state.apartment && state.apartment.scores) {
+      var vals = grid.querySelectorAll('.score-box-value');
+      var s = state.apartment.scores;
+      if (vals.length >= 3) {
+        vals[0].textContent = scoreText(s.combined);
+        vals[1].textContent = scoreText(s.kerv);
+        vals[2].textContent = scoreText(s.peter);
+      }
+    }
+    var mob = rootEl.querySelectorAll('.mobile-summary-scores .mobile-score-val');
+    if (mob.length >= 3 && state.apartment && state.apartment.scores) {
+      var s2 = state.apartment.scores;
+      mob[0].textContent = scoreText(s2.combined);
+      mob[1].textContent = scoreText(s2.kerv);
+      mob[2].textContent = scoreText(s2.peter);
+    }
   }
 
   function patchVotingScoreTableCell(criterionId, partnerKey, rawVal) {

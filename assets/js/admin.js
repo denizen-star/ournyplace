@@ -804,8 +804,14 @@
   }
 
   function readApartmentForm() {
+    var id = numberOrNull(value('apartment-id'));
+    var fromState = id
+      ? state.apartments.find(function (a) {
+          return Number(a.id) === id;
+        })
+      : null;
     return {
-      id: numberOrNull(value('apartment-id')),
+      id: id,
       neighborhood: value('neighborhood'),
       address: value('address'),
       aptNumber: value('apt-number'),
@@ -825,6 +831,13 @@
       listingUrl: value('listing-url'),
       notes: value('notes'),
       imageUrls: getVibeImageUrls(),
+      listingStar: (function () {
+        if (!fromState) return null;
+        var ls = fromState.listing_star;
+        if (ls == null || ls === '' || ls === 0) return null;
+        var n = Number(ls);
+        return n >= 1 && n <= 3 ? n : null;
+      })(),
     };
   }
 
@@ -1112,7 +1125,11 @@
     card.innerHTML =
       '<div class="manager-row-line">' +
         '<div class="manager-row-identity">' +
-          '<h3 class="manager-row-title">' + escapeHtml(apartment.title) + '</h3>' +
+          '<h3 class="manager-row-title">' +
+          '<span class="manager-row-title-inner">' +
+          (window.NyhomeListingStar ? window.NyhomeListingStar.displayHtml(apartment) : '') +
+          '<span class="manager-row-title-text">' + escapeHtml(apartment.title) + '</span>' +
+          '</span></h3>' +
           '<div class="manager-row-sub muted">' + escapeHtml([apartment.neighborhood, apartment.address].filter(Boolean).join(' · ')) + '</div>' +
         '</div>' +
         '<select class="status-pill status-select manager-row-status ' + NyhomeStatus.statusClass(cur) + '" data-apartment-status>' +

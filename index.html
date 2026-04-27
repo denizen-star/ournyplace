@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="/assets/css/app.css?v=88">
+  <link rel="stylesheet" href="/assets/css/app.css?v=91">
 </head>
 <body class="shortlist">
   <header class="app-header app-header--shortlist">
@@ -29,13 +29,26 @@
         <div class="shortlist-hero-right">
           <div class="shortlist-toolbar" id="shortlist-toolbar">
             <div class="shortlist-sort" id="shortlist-sort" role="group" aria-label="Sort apartment cards">
-              <span class="shortlist-sort-label" id="shortlist-sort-label">Sort by</span>
-              <div class="shortlist-sort-segment" role="radiogroup" aria-labelledby="shortlist-sort-label">
-                <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="workflow" aria-checked="true">Workflow</button>
-                <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="avg" aria-checked="false">Avg</button>
-                <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="peter" aria-checked="false">Peter</button>
-                <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="kerv" aria-checked="false">Kerv</button>
-                <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="updated" aria-checked="false">Last updated</button>
+              <button
+                type="button"
+                class="shortlist-sort-mobile-toggle"
+                id="shortlist-sort-mobile-toggle"
+                hidden
+                aria-expanded="false"
+                aria-controls="shortlist-sort-panel"
+              >
+                <span class="shortlist-sort-mobile-toggle-label">Sort by</span>
+                <span class="shortlist-sort-mobile-toggle-hint muted" aria-hidden="true">Show</span>
+              </button>
+              <div class="shortlist-sort-panel" id="shortlist-sort-panel">
+                <span class="shortlist-sort-label" id="shortlist-sort-label">Sort by</span>
+                <div class="shortlist-sort-segment" role="radiogroup" aria-labelledby="shortlist-sort-label">
+                  <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="workflow" aria-checked="true">Workflow</button>
+                  <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="avg" aria-checked="false">Avg</button>
+                  <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="peter" aria-checked="false">Peter</button>
+                  <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="kerv" aria-checked="false">Kerv</button>
+                  <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="updated" aria-checked="false">Last updated</button>
+                </div>
               </div>
             </div>
           </div>
@@ -77,11 +90,23 @@
     </section>
   </main>
 
-  <script src="/assets/js/apartmentStatus.js?v=88"></script>
-  <script src="/assets/js/statusFilterGroups.js?v=88"></script>
-  <script src="/assets/js/apartmentSavePayload.js?v=88"></script>
-  <script src="/assets/js/api.js?v=88"></script>
-  <script src="/assets/js/app.js?v=88"></script>
+  <dialog id="nyhome-blacklist-dialog" class="nyhome-modal">
+    <div class="nyhome-modal-inner">
+      <h2 class="nyhome-modal-title">Blacklisted building</h2>
+      <p id="nyhome-blacklist-dialog-msg" class="nyhome-modal-msg muted"></p>
+      <div class="nyhome-modal-actions">
+        <button type="button" class="secondary-btn" id="nyhome-blacklist-cancel">Go back</button>
+        <button type="button" class="primary-btn" id="nyhome-blacklist-confirm">Save anyway</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="/assets/js/apartmentStatus.js?v=91"></script>
+  <script src="/assets/js/statusFilterGroups.js?v=91"></script>
+  <script src="/assets/js/apartmentSavePayload.js?v=91"></script>
+  <script src="/assets/js/saveApartmentWorkflow.js?v=91"></script>
+  <script src="/assets/js/api.js?v=91"></script>
+  <script src="/assets/js/app.js?v=91"></script>
   <script>
     (function () {
       var h = location.hostname;

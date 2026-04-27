@@ -82,7 +82,58 @@
   var finalistFlyoutEl = null;
   var finalistFlyoutHideTimer = null;
   var finalistFlyoutGlobalsBound = false;
+  /** Source row while duplicate bottom sheet is open (shortlist). */
+  var dupSheetSourceApartment = null;
+  /** Mobile Cards: Sort by panel stays open after user expands it until they leave Cards. */
+  var sortPanelUserOpened = false;
+  /** Apartment shown in tour worksheet overlay. */
+  var tourScreenApartment = null;
   document.addEventListener('DOMContentLoaded', boot);
+
+  /** Bottom nav + mobile shell — match Option A (header VIEW hidden, FAB + sort collapse). */
+  var MOBILE_WIDTH_MAX = 720;
+
+  function isShortlistMobile() {
+    return typeof window.matchMedia === 'function' && window.matchMedia('(max-width: ' + MOBILE_WIDTH_MAX + 'px)').matches;
+  }
+
+  /** PLAN-mobile Step 2 — shared by header segment + Option A bottom nav (`01-cards.html`). */
+  function setShortlistView(mode) {
+    if (!VALID_VIEWS[mode] || mode === viewMode) return;
+    if (mode === 'cards') sortPanelUserOpened = false;
+    viewMode = mode;
+    try {
+      localStorage.setItem(VIEW_STORAGE_KEY, viewMode);
+    } catch (e) {}
+    if (mode === 'next-actions' && isShortlistMobile()) {
+      naLayoutMode = 'calendar';
+      naCalendarDensity = 'summary';
+      saveNextActionsPrefs();
+    }
+    syncShortlistViewUi();
+    if (allApartments.length) applyFilters();
+  }
+
+  function initMobileBottomNav() {
+    if (document.getElementById('nyhome-mobile-bottom-nav')) return;
+    var nav = document.createElement('nav');
+    nav.id = 'nyhome-mobile-bottom-nav';
+    nav.className = 'm-bottom-nav';
+    nav.setAttribute('aria-label', 'Shortlist views');
+    nav.innerHTML =
+      '<button type="button" class="m-nav-btn" data-shortlist-view="cards" aria-controls="apartment-list">' +
+      '<span class="m-nav-icon" aria-hidden="true">▦</span><span class="m-nav-label">Cards</span></button>' +
+      '<button type="button" class="m-nav-btn" data-shortlist-view="finalist" aria-controls="apartment-list">' +
+      '<span class="m-nav-icon" aria-hidden="true">☰</span><span class="m-nav-label">Finalist</span></button>' +
+      '<button type="button" class="m-nav-btn" data-shortlist-view="next-actions" aria-controls="apartment-list">' +
+      '<span class="m-nav-icon" aria-hidden="true">\u25A3</span><span class="m-nav-label">Next actions</span></button>';
+    document.body.appendChild(nav);
+    nav.querySelectorAll('[data-shortlist-view]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        setShortlistView(btn.getAttribute('data-shortlist-view'));
+      });
+    });
+  }
 
   function isFiltersDrawerOpen() {
     var d = document.getElementById('filters-drawer');
@@ -134,9 +185,12 @@
       } catch (e) {}
     }
     initFiltersDrawer();
+    initMobileBottomNav();
     initShortlistView();
     initShortlistSort();
     initNextActionsPrefs();
+    applyMobileNextActionsDefaults();
+    initMobileSortCollapse();
     var cached = NyhomeAPI.getApartmentsCache();
     if (cached) {
       try {
@@ -174,25 +228,29 @@
     syncShortlistViewUi();
     viewRootEl.querySelectorAll('[data-shortlist-view]').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        var mode = btn.getAttribute('data-shortlist-view');
-        if (mode === viewMode || !VALID_VIEWS[mode]) return;
-        viewMode = mode;
-        try {
-          localStorage.setItem(VIEW_STORAGE_KEY, viewMode);
-        } catch (e) {}
-        syncShortlistViewUi();
-        if (allApartments.length) applyFilters();
+        setShortlistView(btn.getAttribute('data-shortlist-view'));
       });
     });
   }
 
   function syncShortlistViewUi() {
-    if (!viewRootEl) return;
-    viewRootEl.querySelectorAll('[data-shortlist-view]').forEach(function (btn) {
-      var mode = btn.getAttribute('data-shortlist-view');
-      var on = mode === viewMode;
-      btn.setAttribute('aria-selected', on ? 'true' : 'false');
-    });
+    if (viewRootEl) {
+      viewRootEl.querySelectorAll('[data-shortlist-view]').forEach(function (btn) {
+        var mode = btn.getAttribute('data-shortlist-view');
+        var on = mode === viewMode;
+        btn.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+    }
+    var mNav = document.getElementById('nyhome-mobile-bottom-nav');
+    if (mNav) {
+      mNav.querySelectorAll('.m-nav-btn[data-shortlist-view]').forEach(function (btn) {
+        var mode = btn.getAttribute('data-shortlist-view');
+        var on = mode === viewMode;
+        btn.classList.toggle('m-nav-btn--active', on);
+        if (on) btn.setAttribute('aria-current', 'page');
+        else btn.removeAttribute('aria-current');
+      });
+    }
     if (sortRootEl) {
       if (viewMode === 'finalist' || viewMode === 'next-actions') {
         sortRootEl.classList.add('shortlist-sort--hidden');
@@ -202,6 +260,7 @@
         sortRootEl.setAttribute('aria-hidden', 'false');
       }
     }
+    syncMobileSortPanel();
   }
 
   function initShortlistSort() {
@@ -274,6 +333,61 @@
     } else {
       naCalendarDensity = 'prospect';
     }
+  }
+
+  /** On mobile Next actions, prefer calendar layout after restore (per-row density stays in localStorage). */
+  function applyMobileNextActionsDefaults() {
+    if (!isShortlistMobile() || viewMode !== 'next-actions') return;
+    if (naLayoutMode !== 'calendar') {
+      naLayoutMode = 'calendar';
+      saveNextActionsPrefs();
+    }
+  }
+
+  function syncMobileSortPanel() {
+    var toggle = document.getElementById('shortlist-sort-mobile-toggle');
+    var panel = document.getElementById('shortlist-sort-panel');
+    if (!toggle || !panel) return;
+    var hint = toggle.querySelector('.shortlist-sort-mobile-toggle-hint');
+    var sortHidden = sortRootEl && sortRootEl.classList.contains('shortlist-sort--hidden');
+    if (!isShortlistMobile() || viewMode !== 'cards' || sortHidden) {
+      toggle.setAttribute('hidden', '');
+      panel.removeAttribute('hidden');
+      if (hint) hint.textContent = 'Show';
+      return;
+    }
+    toggle.removeAttribute('hidden');
+    if (!sortPanelUserOpened) {
+      panel.setAttribute('hidden', '');
+      toggle.setAttribute('aria-expanded', 'false');
+      if (hint) hint.textContent = 'Show';
+    } else {
+      panel.removeAttribute('hidden');
+      toggle.setAttribute('aria-expanded', 'true');
+      if (hint) hint.textContent = 'Hide';
+    }
+  }
+
+  function initMobileSortCollapse() {
+    var toggle = document.getElementById('shortlist-sort-mobile-toggle');
+    var panel = document.getElementById('shortlist-sort-panel');
+    if (!toggle || !panel) return;
+    toggle.addEventListener('click', function (e) {
+      e.preventDefault();
+      var willOpen = panel.hasAttribute('hidden');
+      if (willOpen) sortPanelUserOpened = true;
+      else sortPanelUserOpened = false;
+      var hint = toggle.querySelector('.shortlist-sort-mobile-toggle-hint');
+      if (willOpen) {
+        panel.removeAttribute('hidden');
+        toggle.setAttribute('aria-expanded', 'true');
+        if (hint) hint.textContent = 'Hide';
+      } else {
+        panel.setAttribute('hidden', '');
+        toggle.setAttribute('aria-expanded', 'false');
+        if (hint) hint.textContent = 'Show';
+      }
+    });
   }
 
   function saveNextActionsPrefs() {
@@ -1045,6 +1159,285 @@
     });
   }
 
+  function buildFinalistExpandHtml(apartment) {
+    var id = apartment.id;
+    var href = id != null ? '/details/?id=' + encodeURIComponent(id) : '#';
+    var s = apartment.scores || {};
+    var urls = (apartment.images || []).map(function (i) {
+      return i && i.image_url;
+    }).filter(Boolean).slice(0, 3);
+    var thumbs =
+      urls.length === 0
+        ? ''
+        : '<div class="finalist-mobile-expanded-thumbs">' +
+          urls.map(function (url) {
+            return (
+              '<div class="finalist-mobile-expanded-thumb"><img src="' +
+              escapeAttr(url) +
+              '" alt="" loading="lazy"></div>'
+            );
+          }).join('') +
+          '</div>';
+    var rentV = apartment.rent_cents ? formatMoney(apartment.rent_cents) + '/mo' : '—';
+    var netV = apartment.net_effective_cents ? formatMoney(apartment.net_effective_cents) + '/mo' : '—';
+    var moveV = apartment.total_move_in_cents != null ? formatMoney(apartment.total_move_in_cents) : '—';
+    var pct = function (v) {
+      return v != null && !isNaN(Number(v)) ? Math.round(Number(v)) + '%' : '—';
+    };
+    return (
+      thumbs +
+      '<div class="finalist-mobile-expanded-stats">' +
+      '<div class="finalist-mobile-stat"><span class="finalist-mobile-stat-label">Rent</span>' +
+      '<span class="finalist-mobile-stat-value">' + escapeHtml(rentV) + '</span></div>' +
+      '<div class="finalist-mobile-stat"><span class="finalist-mobile-stat-label">Net eff.</span>' +
+      '<span class="finalist-mobile-stat-value">' + escapeHtml(netV) + '</span></div>' +
+      '<div class="finalist-mobile-stat"><span class="finalist-mobile-stat-label">Move-in</span>' +
+      '<span class="finalist-mobile-stat-value">' + escapeHtml(moveV) + '</span></div>' +
+      '<div class="finalist-mobile-stat"><span class="finalist-mobile-stat-label">Beds</span>' +
+      '<span class="finalist-mobile-stat-value">' +
+      escapeHtml(apartment.bedrooms != null ? String(apartment.bedrooms) : '—') +
+      '</span></div>' +
+      '</div>' +
+      '<div class="finalist-mobile-expanded-scores">' +
+      '<div class="finalist-mobile-score finalist-mobile-score--avg"><span class="finalist-mobile-score-label">Avg</span>' +
+      '<span class="finalist-mobile-score-val">' + escapeHtml(pct(s.combined)) + '</span></div>' +
+      '<div class="finalist-mobile-score finalist-mobile-score--kerv"><span class="finalist-mobile-score-label">Kerv</span>' +
+      '<span class="finalist-mobile-score-val">' + escapeHtml(pct(s.kerv)) + '</span></div>' +
+      '<div class="finalist-mobile-score finalist-mobile-score--peter"><span class="finalist-mobile-score-label">Peter</span>' +
+      '<span class="finalist-mobile-score-val">' + escapeHtml(pct(s.peter)) + '</span></div>' +
+      '</div>' +
+      '<div class="finalist-mobile-expanded-actions">' +
+      '<a class="link-button" href="' + escapeAttr(href) + '">Details</a>' +
+      '</div>'
+    );
+  }
+
+  function wireFinalistMobileExpand() {
+    if (!listEl) return;
+    listEl.querySelectorAll('.shortlist-finalist-line[data-finalist-id]').forEach(function (anchor) {
+      anchor.addEventListener('click', function (e) {
+        if (!isShortlistMobile()) return;
+        e.preventDefault();
+        e.stopPropagation();
+        var cluster = anchor.closest('.shortlist-finalist-cluster');
+        if (!cluster) return;
+        var id = anchor.getAttribute('data-finalist-id');
+        var existing = cluster.querySelector('.finalist-mobile-expanded');
+        if (existing) {
+          existing.remove();
+          anchor.classList.remove('finalist-row--expanded');
+          return;
+        }
+        listEl.querySelectorAll('.finalist-mobile-expanded').forEach(function (n) {
+          n.remove();
+        });
+        listEl.querySelectorAll('.shortlist-finalist-line').forEach(function (a) {
+          a.classList.remove('finalist-row--expanded');
+        });
+        var apt = allApartments.find(function (a) {
+          return String(a.id) === String(id);
+        });
+        if (!apt) return;
+        anchor.classList.add('finalist-row--expanded');
+        var exp = document.createElement('div');
+        exp.className = 'finalist-mobile-expanded';
+        exp.innerHTML = buildFinalistExpandHtml(apt);
+        cluster.appendChild(exp);
+      });
+    });
+  }
+
+  function wireCardDupButtons() {
+    if (!listEl) return;
+    listEl.querySelectorAll('.apt-dup-btn').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var id = btn.getAttribute('data-apartment-id');
+        var apt = allApartments.find(function (a) {
+          return String(a.id) === String(id);
+        });
+        if (apt) showDuplicateSheet(apt);
+      });
+    });
+  }
+
+  function closeDuplicateSheet() {
+    dupSheetSourceApartment = null;
+    var el = document.getElementById('m-dup-sheet-root');
+    if (el) el.remove();
+  }
+
+  function showDuplicateSheet(apt) {
+    var prev = document.getElementById('m-dup-sheet-root');
+    if (prev) prev.remove();
+    dupSheetSourceApartment = apt;
+    var root = document.createElement('div');
+    root.id = 'm-dup-sheet-root';
+    root.className = 'm-dup-sheet-overlay';
+    root.innerHTML =
+      '<div class="m-dup-sheet" role="dialog" aria-modal="true" aria-labelledby="m-dup-sheet-title">' +
+      '<div class="m-dup-sheet-handle" aria-hidden="true"></div>' +
+      '<h2 class="m-dup-sheet-title" id="m-dup-sheet-title">Duplicate listing</h2>' +
+      '<p class="m-dup-sheet-desc">Copying: <strong>' +
+      escapeHtml(apt.title || 'Listing') +
+      '</strong>. All details pre-filled—set the new unit.</p>' +
+      '<label class="m-dup-label">New unit number' +
+      '<input type="text" class="m-dup-input" id="m-dup-apt-input" autocomplete="off" placeholder="e.g. 14D"></label>' +
+      '<div class="m-dup-actions">' +
+      '<button type="button" class="secondary-btn" data-dup-cancel>Cancel</button>' +
+      '<button type="button" class="primary-btn" data-dup-confirm>Duplicate and edit</button>' +
+      '</div></div>';
+    document.body.appendChild(root);
+    var input = root.querySelector('#m-dup-apt-input');
+    if (input) {
+      try {
+        input.focus();
+      } catch (err) { /* empty */ }
+    }
+    root.querySelector('[data-dup-cancel]').addEventListener('click', closeDuplicateSheet);
+    root.querySelector('[data-dup-confirm]').addEventListener('click', confirmDuplicateFromSheet);
+    root.addEventListener('click', function (e) {
+      if (e.target === root) closeDuplicateSheet();
+    });
+  }
+
+  function confirmDuplicateFromSheet() {
+    var apt = dupSheetSourceApartment;
+    if (!apt) return;
+    var input = document.getElementById('m-dup-apt-input');
+    var unit = input && input.value.trim();
+    if (!unit) {
+      if (window.alert) window.alert('Enter a unit number for the duplicate.');
+      return;
+    }
+    var payload = NyhomeApartmentPayload.apartmentToSavePayload(apt, { aptNumber: unit });
+    delete payload.id;
+    closeDuplicateSheet();
+    NyhomeSaveWorkflow.saveApartmentRespectingBlacklist(NyhomeAPI.saveApartment, function (forRetry) {
+      if (forRetry) payload.ignoreBlacklist = true;
+      return payload;
+    })
+      .then(function (res) {
+        var newId = res && res.id != null ? res.id : null;
+        if (newId != null) {
+          window.location.href = '/details/?id=' + encodeURIComponent(newId) + '&tab=unit';
+        } else {
+          return NyhomeAPI.getApartments().then(render);
+        }
+      })
+      .catch(function (err) {
+        console.error('[nyhome-shortlist] duplicate', err);
+        if (window.alert) window.alert('Could not duplicate listing.');
+      });
+  }
+
+  function closeTourScreen() {
+    tourScreenApartment = null;
+    var el = document.getElementById('m-tour-overlay');
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+  }
+
+  function renderTourScreenHtml(apt) {
+    var visit = apt.next_visit || {};
+    return (
+      '<div id="m-tour-overlay" role="dialog" aria-modal="true" aria-label="Tour worksheet">' +
+      '<div class="m-tour-header">' +
+      '<div class="m-tour-header-nav">' +
+      '<button type="button" class="m-tour-back-btn" data-tour-close>Back</button>' +
+      '</div>' +
+      '<h2 class="m-tour-title">' +
+      escapeHtml(apt.title || 'Listing') +
+      '</h2>' +
+      '<p class="m-tour-sub">' +
+      escapeHtml((apt.neighborhood && String(apt.neighborhood).trim()) || 'Neighborhood TBD') +
+      '</p>' +
+      '</div>' +
+      '<div class="m-tour-content">' +
+      nextActionsListingSpecStrip(apt) +
+      '<div class="m-tour-section">' +
+      '<div class="m-tour-section-title">Tour notes</div>' +
+      '<div class="m-tour-section-body">' +
+      '<textarea class="m-tour-notes-area" id="m-tour-notes" rows="5" placeholder="Notes from the tour">' +
+      escapeHtml(visit.notes || '') +
+      '</textarea>' +
+      '</div></div></div>' +
+      '<div class="m-tour-action-bar">' +
+      '<button type="button" class="secondary-btn" data-tour-close>Close</button>' +
+      '<button type="button" class="primary-btn" data-tour-save>Save notes</button>' +
+      '</div></div>'
+    );
+  }
+
+  function showTourScreen(apt) {
+    closeTourScreen();
+    tourScreenApartment = apt;
+    var wrap = document.createElement('div');
+    wrap.innerHTML = renderTourScreenHtml(apt);
+    var overlay = wrap.firstElementChild;
+    document.body.appendChild(overlay);
+    overlay.querySelectorAll('[data-tour-close]').forEach(function (b) {
+      b.addEventListener('click', closeTourScreen);
+    });
+    var saveBtn = overlay.querySelector('[data-tour-save]');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', function () {
+        saveTourScreenNotes();
+      });
+    }
+  }
+
+  function saveTourScreenNotes() {
+    var apt = tourScreenApartment;
+    if (!apt || !apt.id) return;
+    var ta = document.getElementById('m-tour-notes');
+    var notes = ta ? ta.value : '';
+    var visit = apt.next_visit || {};
+    NyhomeAPI.saveVisit({
+      apartmentId: apt.id,
+      visitAt: visit.visit_at || '',
+      notes: notes,
+    })
+      .then(function () {
+        return NyhomeAPI.getApartments();
+      })
+      .then(render)
+      .then(function () {
+        closeTourScreen();
+      })
+      .catch(function (err) {
+        console.error('[nyhome-shortlist] tour worksheet save', err);
+        if (window.alert) window.alert('Could not save tour notes.');
+      });
+  }
+
+  function wireNAToolbarToggle() {
+    if (!listEl) return;
+    var toggle = listEl.querySelector('.na-mobile-toolbar-toggle');
+    var row = listEl.querySelector('.shortlist-next-actions-toolbar-row');
+    if (!toggle || !row) return;
+    if (!isShortlistMobile()) {
+      row.removeAttribute('hidden');
+      return;
+    }
+    row.setAttribute('hidden', '');
+    toggle.setAttribute('aria-expanded', 'false');
+    var hint = toggle.querySelector('.na-mobile-toolbar-hint');
+    if (hint) hint.textContent = 'Show';
+    toggle.addEventListener('click', function () {
+      var open = row.hasAttribute('hidden');
+      if (open) {
+        row.removeAttribute('hidden');
+        toggle.setAttribute('aria-expanded', 'true');
+        if (hint) hint.textContent = 'Hide';
+      } else {
+        row.setAttribute('hidden', '');
+        toggle.setAttribute('aria-expanded', 'false');
+        if (hint) hint.textContent = 'Show';
+      }
+    });
+  }
+
   /** Shared markup for shortlist cards + Finalist table (hover flyout uses .nyhome-listing-thumb-wrap). */
   function listingThumbsMarkup(apartment) {
     var urls = (apartment.images || []).map(function (i) {
@@ -1066,9 +1459,10 @@
     var pct = formatScorePctForLine(value);
     var empty = value == null || isNaN(Number(value));
     var cls = 'shortlist-finalist-c shortlist-finalist-c--score shortlist-finalist-c--right';
+    var colAttr = scoreKey === 'combined' ? '' : ' data-finalist-col="' + escapeAttr(scoreKey) + '"';
     var inner = '<span class="shortlist-finalist-pct shortlist-finalist-pct--' + escapeAttr(scoreKey) +
       (empty ? ' shortlist-finalist-pct--empty' : '') + '">' + escapeHtml(pct) + '</span>';
-    return '<span class="' + cls + '">' + inner + '</span>';
+    return '<span class="' + cls + '"' + colAttr + '>' + inner + '</span>';
   }
 
   function buildFinalistRowInnerHtml(apartment, ord) {
@@ -1097,14 +1491,14 @@
         '<span class="shortlist-finalist-place-txt">' + escapeHtml(place) + '</span>' +
         listingThumbsMarkup(apartment) +
         '</span></span>' +
-      '<span class="shortlist-finalist-c shortlist-finalist-c--money shortlist-finalist-c--right">' + escapeHtml(rentCell) + '</span>' +
-      '<span class="shortlist-finalist-c shortlist-finalist-c--money shortlist-finalist-c--right">' + escapeHtml(netCell) + '</span>' +
-      '<span class="shortlist-finalist-c shortlist-finalist-c--money shortlist-finalist-c--right">' + escapeHtml(moveInCell) + '</span>' +
-      '<span class="shortlist-finalist-c shortlist-finalist-c--bed">' + escapeHtml(bedBath) + '</span>' +
+      '<span class="shortlist-finalist-c shortlist-finalist-c--money shortlist-finalist-c--right" data-finalist-col="rent">' + escapeHtml(rentCell) + '</span>' +
+      '<span class="shortlist-finalist-c shortlist-finalist-c--money shortlist-finalist-c--right" data-finalist-col="net">' + escapeHtml(netCell) + '</span>' +
+      '<span class="shortlist-finalist-c shortlist-finalist-c--money shortlist-finalist-c--right" data-finalist-col="move">' + escapeHtml(moveInCell) + '</span>' +
+      '<span class="shortlist-finalist-c shortlist-finalist-c--bed" data-finalist-col="bed">' + escapeHtml(bedBath) + '</span>' +
       finalistScoreSpan('combined', s.combined) +
       finalistScoreSpan('kerv', s.kerv) +
       finalistScoreSpan('peter', s.peter) +
-      '<span class="shortlist-finalist-c shortlist-finalist-c--status">' +
+      '<span class="shortlist-finalist-c shortlist-finalist-c--status" data-finalist-col="status">' +
         '<span class="status-pill ' + NyhomeStatus.statusClass(status) + ' shortlist-finalist-pill">' + escapeHtml(label) + '</span>' +
       '</span>'
     );
@@ -1377,6 +1771,8 @@
       listEl.appendChild(renderApartmentCard(apartment));
     });
     wireListingThumbHovers();
+    wireCardDupButtons();
+    syncMobileSortPanel();
   }
 
   function renderFinalistList(visible) {
@@ -1384,19 +1780,27 @@
     var h =
       '<div class="shortlist-finalist-c shortlist-finalist-c--ord shortlist-finalist-c--h">#</div>' +
       '<div class="shortlist-finalist-c shortlist-finalist-c--h">Listing</div>' +
-      '<div class="shortlist-finalist-c shortlist-finalist-c--h shortlist-finalist-c--right">Rent</div>' +
-      '<div class="shortlist-finalist-c shortlist-finalist-c--h shortlist-finalist-c--right">Net eff.</div>' +
-      '<div class="shortlist-finalist-c shortlist-finalist-c--h shortlist-finalist-c--right shortlist-finalist-c--h-move" title="Total move-in amount">Move-in</div>' +
-      '<div class="shortlist-finalist-c shortlist-finalist-c--h">Beds / baths</div>' +
+      '<div class="shortlist-finalist-c shortlist-finalist-c--h shortlist-finalist-c--right" data-finalist-col="rent">Rent</div>' +
+      '<div class="shortlist-finalist-c shortlist-finalist-c--h shortlist-finalist-c--right" data-finalist-col="net">Net eff.</div>' +
+      '<div class="shortlist-finalist-c shortlist-finalist-c--h shortlist-finalist-c--right shortlist-finalist-c--h-move" data-finalist-col="move" title="Total move-in amount">Move-in</div>' +
+      '<div class="shortlist-finalist-c shortlist-finalist-c--h" data-finalist-col="bed">Beds / baths</div>' +
       '<div class="shortlist-finalist-c shortlist-finalist-c--h shortlist-finalist-c--right">Avg</div>' +
-      '<div class="shortlist-finalist-c shortlist-finalist-c--h shortlist-finalist-c--right">Kerv</div>' +
-      '<div class="shortlist-finalist-c shortlist-finalist-c--h shortlist-finalist-c--right">Peter</div>' +
-      '<div class="shortlist-finalist-c shortlist-finalist-c--h">Status</div>';
+      '<div class="shortlist-finalist-c shortlist-finalist-c--h shortlist-finalist-c--right" data-finalist-col="kerv">Kerv</div>' +
+      '<div class="shortlist-finalist-c shortlist-finalist-c--h shortlist-finalist-c--right" data-finalist-col="peter">Peter</div>' +
+      '<div class="shortlist-finalist-c shortlist-finalist-c--h" data-finalist-col="status">Status</div>';
     var body = sorted.map(function (apartment, i) {
       var ord = i + 1;
       var href = apartment.id != null ? '/details/?id=' + encodeURIComponent(apartment.id) : '#';
-      return '<a class="shortlist-finalist-line shortlist-finalist-cols" href="' + escapeAttr(href) + '">' +
-        buildFinalistRowInnerHtml(apartment, ord) + '</a>';
+      return (
+        '<div class="shortlist-finalist-cluster">' +
+        '<a class="shortlist-finalist-line shortlist-finalist-cols" href="' +
+        escapeAttr(href) +
+        '" data-finalist-id="' +
+        escapeAttr(String(apartment.id)) +
+        '">' +
+        buildFinalistRowInnerHtml(apartment, ord) +
+        '</a></div>'
+      );
     }).join('');
     listEl.innerHTML =
       '<div class="shortlist-finalist-wrap" role="region" aria-label="Finalist list, sorted by Avg then workflow">' +
@@ -1404,6 +1808,7 @@
         '<div class="shortlist-finalist-body">' + body + '</div>' +
       '</div>';
     wireListingThumbHovers();
+    wireFinalistMobileExpand();
   }
 
   function renderNextActionsToolbarHtml() {
@@ -1413,6 +1818,10 @@
         : '';
     return (
       '<div class="shortlist-next-actions-toolbar">' +
+        '<button type="button" class="na-mobile-toolbar-toggle" aria-expanded="false">' +
+        '<span class="na-mobile-toolbar-title">Filters and layout</span>' +
+        '<span class="na-mobile-toolbar-hint">Show</span>' +
+        '</button>' +
         '<div class="shortlist-next-actions-toolbar-row">' +
           '<div class="shortlist-next-actions-layout" role="group" aria-label="Next actions layout">' +
             '<span class="shortlist-na-toolbar-label">Layout</span>' +
@@ -1572,6 +1981,11 @@
       nextActionsListingSpecStrip(apartment) +
       nextActionsRatingBox(apartment.scores) +
       renderNotesDetailsCollapsible(apartment, ev, notesPanelId) +
+      (naLayoutMode === 'calendar' && naCalendarDensity === 'details' && ev.kind === 'tour'
+        ? '<button type="button" class="m-tour-screen-btn" data-tour-screen-apartment-id="' +
+          escapeAttr(String(id)) +
+          '">Tour worksheet</button>'
+        : '') +
       '</div></div></article>'
     );
   }
@@ -1657,6 +2071,18 @@
         if (allApartments.length && viewMode === 'next-actions') applyFilters();
       });
     });
+    listEl.querySelectorAll('[data-tour-screen-apartment-id]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var id = btn.getAttribute('data-tour-screen-apartment-id');
+        var apt = allApartments.find(function (a) {
+          return String(a.id) === String(id);
+        });
+        if (apt) showTourScreen(apt);
+      });
+    });
+    wireNAToolbarToggle();
   }
 
   function renderNextActionsRow(apartment) {
@@ -1867,9 +2293,16 @@
   }
 
   function renderActions(apartment) {
+    var dup =
+      apartment.id != null
+        ? '<button type="button" class="apt-dup-btn" data-apartment-id="' +
+          escapeAttr(String(apartment.id)) +
+          '" aria-label="Duplicate listing">⧉ Duplicate</button>'
+        : '';
     return '<div class="card-actions">' +
       actionLink('Details', apartment.id ? '/details/?id=' + encodeURIComponent(apartment.id) : '') +
       actionLink('Listing', apartment.listing_url, true) +
+      dup +
     '</div>';
   }
 

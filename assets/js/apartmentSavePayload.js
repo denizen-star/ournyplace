@@ -44,6 +44,17 @@
           : (apartment.images || []).map(function (img) {
               return img.image_url;
             }).filter(Boolean),
+      listingStar: (function () {
+        if (Object.prototype.hasOwnProperty.call(o, 'listingStar')) {
+          if (o.listingStar == null || o.listingStar === '' || o.listingStar === 0) return null;
+          var on = Number(o.listingStar);
+          return on >= 1 && on <= 3 ? on : null;
+        }
+        var ls = apartment.listing_star;
+        if (ls == null || ls === '' || ls === 0) return null;
+        var n = Number(ls);
+        return n >= 1 && n <= 3 ? n : null;
+      })(),
     };
     if (o.ignoreBlacklist === true) payload.ignoreBlacklist = true;
     return payload;

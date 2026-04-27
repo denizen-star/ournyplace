@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mobile Mockup — Cards View</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+.m-content { padding: 12px; display: flex; flex-direction: column; gap: 12px; flex: 1; }
+
+/* Apartment card mobile */
+.apt-card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  position: relative;
+}
+.apt-card-body { padding: 14px 14px 12px; }
+.apt-card-topline {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.apt-title {
+  font-size: .95rem;
+  font-weight: 600;
+  line-height: 1.3;
+  flex: 1;
+}
+.apt-hood {
+  font-size: .75rem;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.apt-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+.apt-scores {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.score-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  font-size: .8rem;
+}
+.score-box--kerv { border-color: var(--kerv-border); background: #f0fdfa; }
+.score-box--peter { border-color: var(--peter-border); background: #fff0f6; }
+.apt-thumbs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.apt-thumb {
+  width: 56px; height: 42px;
+  border-radius: 6px;
+  background: #e5e7eb;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .6rem;
+  color: var(--muted);
+  overflow: hidden;
+}
+.apt-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.apt-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--line-light);
+  padding-top: 10px;
+  gap: 6px;
+}
+.action-link {
+  font-size: .8rem;
+  font-weight: 500;
+  color: var(--accent-dark);
+  text-decoration: none;
+}
+.dup-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: .75rem;
+  font-weight: 500;
+  color: var(--muted);
+  background: var(--line-light);
+  border: none;
+  border-radius: 7px;
+  padding: 5px 9px;
+  cursor: pointer;
+}
+.card-status-bar {
+  height: 3px;
+  background: var(--line-light);
+}
+.card-status-bar.shortlisted { background: var(--accent); }
+.card-status-bar.finalist { background: var(--vote-combined); }
+.card-status-bar.toured { background: var(--kerv); }
+.card-status-bar.evaluating { background: #f59e0b; }
+
+/* Sort row */
+.m-sort-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+.m-sort-row::-webkit-scrollbar { display: none; }
+.sort-chip {
+  display: flex;
+  align-items: center;
+  padding: 5px 11px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  font-size: .74rem;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.sort-chip.active {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+
+/* FAB */
+.filter-fab {
+  position: absolute;
+  bottom: 84px;
+  right: 16px;
+  background: var(--ink);
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  padding: 10px 16px;
+  font-size: .8rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  z-index: 30;
+}
+
+/* Header A variant */
+.m-header-a .header-row-1 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.header-a-titles { }
+
+/* Header B variant — no bottom nav, view ctrl in header */
+.m-header-b .view-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.header-badge {
+  background: var(--ink);
+  color: #fff;
+  font-size: .68rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+</style>
+</head>
+<body>
+
+<h1 class="page-title">Cards View — Mobile</h1>
+<p class="page-subtitle">
+  Option A uses a <strong>bottom nav bar</strong> for view switching (recommended for thumb reach).<br>
+  Option B keeps controls in the header — simpler but more cramped.<br>
+  Both show the new <strong>Duplicate</strong> button on each card.
+</p>
+
+<div class="screens-row">
+
+  <!-- ─── OPTION A: Bottom Nav ─────────────────────────────────── -->
+  <div class="screen-wrap">
+    <div class="screen-label">Option A — Bottom Nav</div>
+    <div class="screen-note">Cards / Finalist / Next Actions live in the bottom bar. Header stays clean. Sort chips scroll horizontally.</div>
+
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-status-bar">
+        <span class="phone-time">9:41</span>
+        <span class="phone-icons">▲ ◀ ■</span>
+      </div>
+
+      <!-- Header A -->
+      <div class="m-header m-header-a">
+        <div class="header-row-1">
+          <div class="header-a-titles">
+            <div class="m-eyebrow">nyhome</div>
+            <div class="m-h1" style="margin-bottom:0">Shortlist</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <!-- No New/Manage on mobile -->
+          </div>
+        </div>
+        <!-- Horizontal sort chips — scroll offscreen -->
+        <div class="m-sort-row">
+          <span style="font-size:.7rem;color:var(--muted);white-space:nowrap;flex-shrink:0">Sort</span>
+          <button class="sort-chip active">Workflow</button>
+          <button class="sort-chip">Avg</button>
+          <button class="sort-chip">Kerv</button>
+          <button class="sort-chip">Peter</button>
+          <button class="sort-chip">Updated</button>
+        </div>
+      </div>
+
+      <div class="phone-scroll" style="padding-bottom:0">
+        <div class="m-content">
+
+          <!-- Card 1 -->
+          <div class="apt-card">
+            <div class="card-status-bar shortlisted"></div>
+            <div class="apt-card-body">
+              <div class="apt-card-topline">
+                <div>
+                  <div class="apt-title">250 W 50th St #12B</div>
+                  <div class="apt-hood">Hell's Kitchen</div>
+                </div>
+                <span class="pill pill-shortlisted">Shortlisted</span>
+              </div>
+              <div class="apt-pills">
+                <span class="pill">$4,200/mo</span>
+                <span class="pill">2 bed · 1 bath</span>
+                <span class="pill">Move-in Jun 1</span>
+              </div>
+              <div class="apt-scores">
+                <div class="score-box score-box--kerv">
+                  <span style="font-size:.72rem;color:var(--muted)">Kerv</span>
+                  <span class="score-kerv">78%</span>
+                </div>
+                <div class="score-box score-box--peter">
+                  <span style="font-size:.72rem;color:var(--muted)">Peter</span>
+                  <span class="score-peter">82%</span>
+                </div>
+              </div>
+              <div class="apt-thumbs">
+                <div class="apt-thumb" style="background:#c7d2fe;color:#3730a3;font-size:.65rem">Photo 1</div>
+                <div class="apt-thumb" style="background:#ddd6fe;color:#5b21b6;font-size:.65rem">Photo 2</div>
+                <div class="apt-thumb"></div>
+              </div>
+              <div class="apt-actions">
+                <a class="action-link" href="#">Details →</a>
+                <a class="action-link" href="#" style="color:var(--muted)">Listing ↗</a>
+                <button class="dup-btn">⧉ Duplicate</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2 -->
+          <div class="apt-card">
+            <div class="card-status-bar finalist"></div>
+            <div class="apt-card-body">
+              <div class="apt-card-topline">
+                <div>
+                  <div class="apt-title">345 E 57th St #8A</div>
+                  <div class="apt-hood">Sutton Place</div>
+                </div>
+                <span class="pill pill-finalist">Finalist</span>
+              </div>
+              <div class="apt-pills">
+                <span class="pill">$5,100/mo</span>
+                <span class="pill">2 bed · 2 bath</span>
+              </div>
+              <div class="apt-scores">
+                <div class="score-box score-box--kerv">
+                  <span style="font-size:.72rem;color:var(--muted)">Kerv</span>
+                  <span class="score-kerv">91%</span>
+                </div>
+                <div class="score-box score-box--peter">
+                  <span style="font-size:.72rem;color:var(--muted)">Peter</span>
+                  <span class="score-peter">88%</span>
+                </div>
+              </div>
+              <div class="apt-thumbs">
+                <div class="apt-thumb" style="background:#d1fae5;color:#065f46;font-size:.65rem">Photo 1</div>
+                <div class="apt-thumb" style="background:#a7f3d0;color:#047857;font-size:.65rem">Photo 2</div>
+                <div class="apt-thumb" style="background:#6ee7b7;color:#065f46;font-size:.65rem">Photo 3</div>
+              </div>
+              <div class="apt-actions">
+                <a class="action-link" href="#">Details →</a>
+                <a class="action-link" href="#" style="color:var(--muted)">Listing ↗</a>
+                <button class="dup-btn">⧉ Duplicate</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 3 -->
+          <div class="apt-card">
+            <div class="card-status-bar evaluating"></div>
+            <div class="apt-card-body">
+              <div class="apt-card-topline">
+                <div>
+                  <div class="apt-title">110 Riverside Dr #3C</div>
+                  <div class="apt-hood">Upper West Side</div>
+                </div>
+                <span class="pill pill-evaluating">Evaluating</span>
+              </div>
+              <div class="apt-pills">
+                <span class="pill">$3,800/mo</span>
+                <span class="pill">1 bed · 1 bath</span>
+              </div>
+              <div class="apt-scores">
+                <div class="score-box score-box--kerv">
+                  <span style="font-size:.72rem;color:var(--muted)">Kerv</span>
+                  <span class="score-kerv">—</span>
+                </div>
+                <div class="score-box score-box--peter">
+                  <span style="font-size:.72rem;color:var(--muted)">Peter</span>
+                  <span class="score-peter">—</span>
+                </div>
+              </div>
+              <div class="apt-actions">
+                <a class="action-link" href="#">Details →</a>
+                <a class="action-link" href="#" style="color:var(--muted)">Listing ↗</a>
+                <button class="dup-btn">⧉ Duplicate</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="height:12px"></div>
+        </div>
+      </div>
+
+      <!-- Filters FAB -->
+      <button class="filter-fab" style="position:absolute;bottom:84px">⚙ Filters</button>
+
+      <!-- Bottom Nav -->
+      <div class="m-bottom-nav">
+        <div class="m-nav-item active">
+          <div class="m-nav-icon">▦</div>
+          <div class="m-nav-label" style="color:var(--accent-dark)">Cards</div>
+        </div>
+        <div class="m-nav-item">
+          <div class="m-nav-icon">☰</div>
+          <div class="m-nav-label">Finalist</div>
+        </div>
+        <div class="m-nav-item">
+          <div class="m-nav-icon">📅</div>
+          <div class="m-nav-label">Next Actions</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="screen-note">
+      ✅ Recommended: bottom nav keeps thumb in reach.<br>
+      Sort chips scroll right. Filter FAB stays above nav.
+    </div>
+  </div>
+
+  <!-- ─── OPTION B: Compact Header ────────────────────────────── -->
+  <div class="screen-wrap">
+    <div class="screen-label">Option B — Header Controls</div>
+    <div class="screen-note">All controls stay in the header. More compact but busier. No bottom nav bar.</div>
+
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-status-bar">
+        <span class="phone-time">9:41</span>
+        <span class="phone-icons">▲ ◀ ■</span>
+      </div>
+
+      <!-- Header B -->
+      <div class="m-header m-header-b">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div>
+            <div class="m-eyebrow">nyhome</div>
+            <div class="m-h1" style="margin-bottom:0;font-size:1.1rem">Shortlist</div>
+          </div>
+        </div>
+        <!-- Segmented view control — full width -->
+        <div class="seg-ctrl" style="margin-bottom:8px">
+          <button class="seg-btn active">Cards</button>
+          <button class="seg-btn">Finalist</button>
+          <button class="seg-btn">Next actions</button>
+        </div>
+        <!-- Sort chips scroll -->
+        <div class="m-sort-row">
+          <span style="font-size:.7rem;color:var(--muted);flex-shrink:0">Sort</span>
+          <button class="sort-chip active">Workflow</button>
+          <button class="sort-chip">Avg</button>
+          <button class="sort-chip">Kerv</button>
+          <button class="sort-chip">Peter</button>
+          <button class="sort-chip">Updated</button>
+        </div>
+      </div>
+
+      <div class="phone-scroll">
+        <div class="m-content">
+          <div class="apt-card">
+            <div class="card-status-bar shortlisted"></div>
+            <div class="apt-card-body">
+              <div class="apt-card-topline">
+                <div>
+                  <div class="apt-title">250 W 50th St #12B</div>
+                  <div class="apt-hood">Hell's Kitchen</div>
+                </div>
+                <span class="pill pill-shortlisted">Shortlisted</span>
+              </div>
+              <div class="apt-pills">
+                <span class="pill">$4,200/mo</span>
+                <span class="pill">2 bed · 1 bath</span>
+              </div>
+              <div class="apt-scores">
+                <div class="score-box score-box--kerv">
+                  <span style="font-size:.72rem;color:var(--muted)">Kerv</span>
+                  <span class="score-kerv">78%</span>
+                </div>
+                <div class="score-box score-box--peter">
+                  <span style="font-size:.72rem;color:var(--muted)">Peter</span>
+                  <span class="score-peter">82%</span>
+                </div>
+              </div>
+              <div class="apt-actions">
+                <a class="action-link" href="#">Details →</a>
+                <a class="action-link" href="#" style="color:var(--muted)">Listing ↗</a>
+                <button class="dup-btn">⧉ Duplicate</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="apt-card">
+            <div class="card-status-bar finalist"></div>
+            <div class="apt-card-body">
+              <div class="apt-card-topline">
+                <div>
+                  <div class="apt-title">345 E 57th St #8A</div>
+                  <div class="apt-hood">Sutton Place</div>
+                </div>
+                <span class="pill pill-finalist">Finalist</span>
+              </div>
+              <div class="apt-pills">
+                <span class="pill">$5,100/mo</span>
+                <span class="pill">2 bed · 2 bath</span>
+              </div>
+              <div class="apt-scores">
+                <div class="score-box score-box--kerv">
+                  <span style="font-size:.72rem;color:var(--muted)">Kerv</span>
+                  <span class="score-kerv">91%</span>
+                </div>
+                <div class="score-box score-box--peter">
+                  <span style="font-size:.72rem;color:var(--muted)">Peter</span>
+                  <span class="score-peter">88%</span>
+                </div>
+              </div>
+              <div class="apt-actions">
+                <a class="action-link" href="#">Details →</a>
+                <a class="action-link" href="#" style="color:var(--muted)">Listing ↗</a>
+                <button class="dup-btn">⧉ Duplicate</button>
+              </div>
+            </div>
+          </div>
+          <div style="height:80px"></div>
+        </div>
+      </div>
+
+      <!-- Filter FAB lower (no bottom nav) -->
+      <button class="filter-fab" style="position:absolute;bottom:24px">⚙ Filters</button>
+    </div>
+
+    <div class="screen-note">
+      View switcher is a 3-segment pill in the header.<br>
+      Simpler — but header is taller and busier.
+    </div>
+  </div>
+
+  <!-- ─── DUPLICATE MODAL ──────────────────────────── -->
+  <div class="screen-wrap">
+    <div class="screen-label">Duplicate Flow</div>
+    <div class="screen-note">Tap "Duplicate" on any card → quick modal to set the new unit number. All other fields pre-filled.</div>
+
+    <div class="phone phone--short">
+      <div class="phone-notch"></div>
+      <div class="phone-status-bar">
+        <span class="phone-time">9:41</span>
+        <span class="phone-icons">▲ ◀ ■</span>
+      </div>
+
+      <!-- Dimmed background -->
+      <div style="flex:1;background:rgba(0,0,0,.4);display:flex;align-items:flex-end;padding:0">
+        <!-- Bottom sheet modal -->
+        <div style="background:var(--paper);border-radius:20px 20px 0 0;width:100%;padding:24px 20px 40px">
+          <div style="width:40px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 20px"></div>
+          <div style="font-size:1rem;font-weight:700;margin-bottom:4px">Duplicate listing</div>
+          <div style="font-size:.8rem;color:var(--muted);margin-bottom:20px">
+            Copying: <strong>250 W 50th St #12B</strong><br>
+            All details pre-filled. Just update the unit.
+          </div>
+
+          <label style="display:block;font-size:.8rem;font-weight:600;margin-bottom:6px">New unit number</label>
+          <input type="text" placeholder="e.g. 14D" value=""
+            style="width:100%;border:1.5px solid var(--accent);border-radius:10px;padding:11px 14px;font-size:.95rem;margin-bottom:16px;outline:none">
+
+          <label style="display:block;font-size:.8rem;font-weight:600;margin-bottom:6px">Floor (optional)</label>
+          <input type="text" placeholder="e.g. 14"
+            style="width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 14px;font-size:.95rem;margin-bottom:20px">
+
+          <div style="display:flex;gap:10px">
+            <button class="secondary-btn" style="flex:1">Cancel</button>
+            <button class="primary-btn" style="flex:2">Duplicate &amp; edit →</button>
+          </div>
+          <div style="font-size:.72rem;color:var(--muted);text-align:center;margin-top:10px">
+            Opens in Unit Setup with all fields copied
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="screen-note">
+      Duplicate lands on Unit Setup tab in Details.<br>
+      User updates apt number, rent, any diffs, then saves.
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

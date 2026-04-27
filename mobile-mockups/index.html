@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>nyhome — Mobile Mockups</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+.nav-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.nav-card {
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 14px;
+  padding: 20px 22px;
+  text-decoration: none;
+  color: #fff;
+  transition: background .15s;
+}
+.nav-card:hover { background: rgba(255,255,255,.12); }
+.nav-card-num {
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: rgba(255,255,255,.4);
+  margin-bottom: 6px;
+}
+.nav-card-title { font-size: 1rem; font-weight: 700; margin-bottom: 5px; }
+.nav-card-desc { font-size: .8rem; color: rgba(255,255,255,.6); line-height: 1.5; }
+.nav-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 10px;
+}
+.nav-tag {
+  background: rgba(255,255,255,.1);
+  color: rgba(255,255,255,.7);
+  font-size: .68rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+</style>
+</head>
+<body>
+<h1 class="page-title" style="font-size:1.4rem">nyhome Mobile Mockups</h1>
+<p class="page-subtitle" style="margin-bottom:40px">
+  First-pass mobile UX designs for the shortlist and details pages.<br>
+  Open each on your phone or resize the browser to ~390px to feel the layout.
+</p>
+
+<div class="nav-grid">
+  <a class="nav-card" href="01-cards.html">
+    <div class="nav-card-num">01</div>
+    <div class="nav-card-title">Cards View</div>
+    <div class="nav-card-desc">
+      Two header options (bottom nav vs header controls). Single-column cards with score boxes, thumbnails, and the new Duplicate button. Duplicate modal bottom sheet.
+    </div>
+    <div class="nav-card-tags">
+      <span class="nav-tag">Bottom Nav A</span>
+      <span class="nav-tag">Header Nav B</span>
+      <span class="nav-tag">Duplicate flow</span>
+    </div>
+  </a>
+
+  <a class="nav-card" href="02-finalist.html">
+    <div class="nav-card-num">02</div>
+    <div class="nav-card-title">Finalist View</div>
+    <div class="nav-card-desc">
+      Condensed 3-column table (rank · listing · avg). Tap any row to expand a full card with images, all financials, Kerv/Peter/Avg scores, and action buttons.
+    </div>
+    <div class="nav-card-tags">
+      <span class="nav-tag">Collapsed rows</span>
+      <span class="nav-tag">Expanded card</span>
+    </div>
+  </a>
+
+  <a class="nav-card" href="03-next-actions.html">
+    <div class="nav-card-num">03</div>
+    <div class="nav-card-title">Next Actions — Calendar</div>
+    <div class="nav-card-desc">
+      Collapsible toolbar. Summary density for quick scan. Details density with financial write slots for tour notes. Tour Screen — a distraction-free full-page note-taking view.
+    </div>
+    <div class="nav-card-tags">
+      <span class="nav-tag">Collapsible toolbar</span>
+      <span class="nav-tag">Summary density</span>
+      <span class="nav-tag">Details density</span>
+      <span class="nav-tag">Tour Screen</span>
+    </div>
+  </a>
+
+  <a class="nav-card" href="04-details.html">
+    <div class="nav-card-num">04</div>
+    <div class="nav-card-title">Details Page</div>
+    <div class="nav-card-desc">
+      Collapsible at-a-glance summary card. Three tab nav patterns: scroll tabs, accordion sections, and bottom sheet. Duplicate button on the summary card.
+    </div>
+    <div class="nav-card-tags">
+      <span class="nav-tag">Summary card</span>
+      <span class="nav-tag">Scroll tabs</span>
+      <span class="nav-tag">Accordion</span>
+      <span class="nav-tag">Bottom sheet</span>
+    </div>
+  </a>
+</div>
+
+<div style="margin-top:40px;text-align:center;color:rgba(255,255,255,.3);font-size:.75rem;line-height:1.8">
+  These are static HTML mockups — not wired to the app.<br>
+  Next step: pick preferred patterns, then implement as media queries in app.css.
+</div>
+</body>
+</html>

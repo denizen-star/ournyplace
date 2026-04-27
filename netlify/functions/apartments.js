@@ -39,6 +39,13 @@ exports.handler = async (event) => {
         importStatus: stringOrNull(body.importStatus) || 'manual',
         status: normalizeStatus(stringOrNull(body.status)),
         notes: stringOrNull(body.notes),
+        listingStar: (() => {
+          const raw = body.listingStar;
+          if (raw === null || raw === undefined || raw === '') return null;
+          const n = Number(raw);
+          if (!Number.isFinite(n) || n < 1 || n > 3) return null;
+          return n;
+        })(),
         imageUrls: Array.isArray(body.imageUrls) ? body.imageUrls.map(stringOrNull).filter(Boolean) : [],
         ignoreBlacklist,
       });

@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mobile Mockup — Next Actions / Calendar</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+/* Collapsible toolbar */
+.na-toolbar {
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  overflow: hidden;
+}
+.na-toolbar-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+}
+.na-toolbar-toggle-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.na-toolbar-badge {
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  font-size: .64rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+.na-toolbar-arrow {
+  font-size: .8rem;
+  color: var(--muted);
+  transition: transform .2s;
+}
+.na-toolbar-body {
+  padding: 0 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.na-toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.na-toolbar-label {
+  font-size: .7rem;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+  min-width: 60px;
+}
+.na-check-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.na-check-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  font-size: .74rem;
+  background: var(--line-light);
+  color: var(--muted);
+  cursor: pointer;
+}
+.na-check-chip.checked {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+
+/* Calendar */
+.na-calendar { padding: 12px; display: flex; flex-direction: column; gap: 16px; }
+
+.na-day-section { }
+.na-day-heading {
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 0 6px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 8px;
+}
+.na-day-heading span {
+  color: var(--ink);
+  font-size: .88rem;
+}
+
+/* Summary density: just the essentials */
+.na-event-summary {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  position: relative;
+  overflow: hidden;
+}
+.na-event-summary::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+}
+.na-event-tour::before { background: var(--accent); }
+.na-event-deadline::before { background: #f59e0b; }
+.na-event-movein::before { background: var(--good); }
+
+.na-event-topline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.na-etype-badge {
+  font-size: .64rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--accent-dark);
+  background: var(--accent-soft);
+  padding: 2px 7px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.na-etype-badge.deadline { background: #fef3c7; color: #92400e; }
+.na-etype-badge.movein { background: var(--good-soft); color: var(--good); }
+.na-event-title {
+  font-size: .9rem;
+  font-weight: 600;
+  flex: 1;
+  line-height: 1.25;
+}
+.na-event-meta {
+  font-size: .74rem;
+  color: var(--muted);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.na-event-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.na-next-btn {
+  font-size: .74rem;
+  font-weight: 600;
+  color: var(--accent-dark);
+  background: var(--accent-soft);
+  border: none;
+  border-radius: 7px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.na-reject-btn {
+  font-size: .74rem;
+  color: #ef4444;
+  background: #fef2f2;
+  border: none;
+  border-radius: 7px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.na-details-link {
+  font-size: .74rem;
+  color: var(--muted);
+  text-decoration: none;
+  margin-left: auto;
+}
+
+/* Details density event block */
+.na-event-details {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.na-event-details-header {
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--line-light);
+  position: relative;
+}
+.na-event-details-header::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--accent);
+  border-radius: 3px 0 0 3px;
+}
+
+/* Spec strip */
+.na-spec-strip {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line-light);
+  background: var(--line-light);
+}
+.na-spec-strip-title {
+  font-size: .66rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.na-fin-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+.na-fin-item {
+  display: flex;
+  flex-direction: column;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line);
+}
+.na-fin-item:nth-child(odd) { padding-right: 8px; border-right: 1px solid var(--line); }
+.na-fin-item:nth-child(even) { padding-left: 8px; }
+.na-fin-label { font-size: .66rem; color: var(--muted); font-weight: 600; }
+.na-fin-value { font-size: .82rem; font-weight: 600; color: var(--ink); }
+.na-write-slot {
+  height: 22px;
+  background: rgba(255,255,255,.8);
+  border: 1px dashed #d1d5db;
+  border-radius: 4px;
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+}
+.na-write-slot-hint {
+  font-size: .58rem;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+/* Rating box */
+.na-rating-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line-light);
+  gap: 0;
+}
+.na-rating-cell { text-align: center; }
+.na-rating-cell + .na-rating-cell { border-left: 1px solid var(--line-light); }
+.na-rating-lbl { font-size: .62rem; color: var(--muted); font-weight: 600; display: block; margin-bottom: 2px; }
+.na-rating-val { font-size: .92rem; font-weight: 700; }
+
+/* Notes toggle */
+.na-notes-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 14px;
+  width: 100%;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: .8rem;
+  color: var(--muted);
+}
+
+/* Feature checklist (compact for mobile) */
+.na-checklist {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line-light);
+}
+.na-checklist-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+.na-check-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: .68rem;
+}
+.na-check-bubble {
+  width: 14px; height: 14px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .55rem;
+  flex-shrink: 0;
+}
+.na-check-yes .na-check-bubble { background: var(--good-soft); color: var(--good); }
+.na-check-no .na-check-bubble { background: var(--line-light); color: var(--muted); }
+.na-check-yes .na-check-lbl { color: var(--ink); }
+.na-check-no .na-check-lbl { color: #9ca3af; }
+
+/* Tour screen (full-screen focused view) */
+.tour-screen {
+  background: var(--bg);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.tour-header {
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  padding: 12px 14px;
+}
+.tour-header-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.back-btn {
+  font-size: .8rem;
+  color: var(--accent-dark);
+  background: none;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+.tour-header-title { font-size: .88rem; font-weight: 700; }
+.tour-header-sub { font-size: .72rem; color: var(--muted); }
+.tour-header-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.tour-time-badge {
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  font-size: .72rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+.tour-content { flex: 1; overflow-y: auto; padding: 12px; }
+.tour-section {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.tour-section-title {
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 8px 12px;
+  background: var(--line-light);
+  border-bottom: 1px solid var(--line);
+}
+.tour-section-body { padding: 10px 12px; }
+.tour-notes-area {
+  width: 100%;
+  min-height: 80px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 10px;
+  font: inherit;
+  font-size: .85rem;
+  resize: none;
+  background: var(--bg);
+}
+.tour-fin-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line-light);
+  gap: 8px;
+}
+.tour-fin-item:last-child { border-bottom: none; }
+.tour-fin-label { font-size: .78rem; color: var(--muted); font-weight: 600; width: 80px; flex-shrink: 0; }
+.tour-fin-value { font-size: .88rem; font-weight: 600; }
+.tour-fin-note {
+  flex: 1;
+  border: 1px dashed #d1d5db;
+  border-radius: 5px;
+  padding: 3px 7px;
+  font: inherit;
+  font-size: .78rem;
+  background: transparent;
+  min-width: 0;
+}
+.tour-action-bar {
+  padding: 12px 14px;
+  background: var(--paper);
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 8px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+}
+</style>
+</head>
+<body>
+
+<h1 class="page-title">Next Actions — Calendar View Mobile</h1>
+<p class="page-subtitle">
+  Four screens: toolbar collapsed · toolbar open · Summary density · Details density.<br>
+  Plus the <strong>Tour Screen</strong> — a focused full-page view for taking notes on-site.
+</p>
+
+<div class="screens-row">
+
+  <!-- ─── 1: TOOLBAR COLLAPSED / SUMMARY ──────────────── -->
+  <div class="screen-wrap">
+    <div class="screen-label">Summary — Toolbar Collapsed</div>
+    <div class="screen-note">Default state. Toolbar shows only a summary line with active filter count. Tap to open.</div>
+
+    <div class="phone phone--tall">
+      <div class="phone-notch"></div>
+      <div class="phone-status-bar">
+        <span class="phone-time">9:41</span>
+        <span class="phone-icons">▲ ◀ ■</span>
+      </div>
+
+      <div class="m-header">
+        <div class="m-eyebrow">nyhome</div>
+        <div class="m-h1" style="margin-bottom:0">Next actions</div>
+      </div>
+
+      <!-- Collapsed toolbar -->
+      <div class="na-toolbar">
+        <button class="na-toolbar-toggle">
+          <div class="na-toolbar-toggle-left">
+            <span>📅 Calendar</span>
+            <span class="na-toolbar-badge">Summary</span>
+          </div>
+          <span class="na-toolbar-arrow">⌄ Options</span>
+        </button>
+      </div>
+
+      <div class="phone-scroll">
+        <div class="na-calendar">
+
+          <!-- Day 1 -->
+          <div class="na-day-section">
+            <div class="na-day-heading">Thu · <span>May 1</span></div>
+
+            <div class="na-event-summary na-event-tour">
+              <div class="na-event-topline">
+                <span class="na-etype-badge">Tour</span>
+                <div class="na-event-title">250 W 50th St #12B</div>
+              </div>
+              <div class="na-event-meta">
+                <span>10:30–11:00 AM</span>·<span>Hell's Kitchen</span>
+              </div>
+              <div class="na-event-actions">
+                <span class="pill pill-shortlisted">Shortlisted</span>
+                <button class="na-next-btn">→ Next</button>
+                <button class="na-reject-btn">✕</button>
+                <a href="#" class="na-details-link">Details ↗</a>
+              </div>
+            </div>
+
+            <div class="na-event-summary na-event-tour">
+              <div class="na-event-topline">
+                <span class="na-etype-badge">Tour</span>
+                <div class="na-event-title">345 E 57th St #8A</div>
+              </div>
+              <div class="na-event-meta">
+                <span>2:00–2:30 PM</span>·<span>Sutton Place</span>
+              </div>
+              <div class="na-event-actions">
+                <span class="pill pill-finalist">Finalist</span>
+                <button class="na-next-btn">→ Next</button>
+                <button class="na-reject-btn">✕</button>
+                <a href="#" class="na-details-link">Details ↗</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Day 2 -->
+          <div class="na-day-section">
+            <div class="na-day-heading">Fri · <span>May 9</span></div>
+
+            <div class="na-event-summary na-event-deadline">
+              <div class="na-event-topline">
+                <span class="na-etype-badge deadline">App deadline</span>
+                <div class="na-event-title">345 E 57th St #8A</div>
+              </div>
+              <div class="na-event-meta">
+                <span>5:00 PM</span>·<span>Sutton Place</span>
+              </div>
+              <div class="na-event-actions">
+                <span class="pill pill-finalist">Finalist</span>
+                <button class="na-next-btn">→ Apply</button>
+                <button class="na-reject-btn">✕</button>
+                <a href="#" class="na-details-link">Details ↗</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Day 3 -->
+          <div class="na-day-section">
+            <div class="na-day-heading">Tue · <span>Jun 1</span></div>
+
+            <div class="na-event-summary na-event-movein">
+              <div class="na-event-topline">
+                <span class="na-etype-badge movein">Move-in</span>
+                <div class="na-event-title">250 W 50th St #12B</div>
+              </div>
+              <div class="na-event-meta">
+                <span>All day</span>·<span>Hell's Kitchen</span>
+              </div>
+              <div class="na-event-actions">
+                <span class="pill pill-applying">Applying</span>
+                <a href="#" class="na-details-link">Details ↗</a>
+              </div>
+            </div>
+          </div>
+
+          <div style="height:12px"></div>
+        </div>
+      </div>
+
+      <div class="m-bottom-nav">
+        <div class="m-nav-item">
+          <div class="m-nav-icon">▦</div>
+          <div class="m-nav-label">Cards</div>
+        </div>
+        <div class="m-nav-item">
+          <div class="m-nav-icon">☰</div>
+          <div class="m-nav-label">Finalist</div>
+        </div>
+        <div class="m-nav-item active">
+          <div class="m-nav-icon">📅</div>
+          <div class="m-nav-label" style="color:var(--accent-dark)">Next Actions</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── 2: TOOLBAR EXPANDED ────────────────────────── -->
+  <div class="screen-wrap">
+    <div class="screen-label">Toolbar Open</div>
+    <div class="screen-note">Tap the toolbar toggle to reveal all controls: layout, density, "only include" filters, and status filter.</div>
+
+    <div class="phone phone--tall">
+      <div class="phone-notch"></div>
+      <div class="phone-status-bar">
+        <span class="phone-time">9:41</span>
+        <span class="phone-icons">▲ ◀ ■</span>
+      </div>
+
+      <div class="m-header">
+        <div class="m-eyebrow">nyhome</div>
+        <div class="m-h1" style="margin-bottom:0">Next actions</div>
+      </div>
+
+      <!-- Expanded toolbar -->
+      <div class="na-toolbar">
+        <button class="na-toolbar-toggle" style="background:var(--accent-soft)">
+          <div class="na-toolbar-toggle-left">
+            <span>📅 Calendar</span>
+            <span class="na-toolbar-badge">Summary</span>
+          </div>
+          <span class="na-toolbar-arrow" style="transform:rotate(180deg)">⌄ Close</span>
+        </button>
+
+        <div class="na-toolbar-body">
+          <!-- Layout -->
+          <div class="na-toolbar-row">
+            <div class="na-toolbar-label">Layout</div>
+            <div class="seg-ctrl" style="flex:1">
+              <button class="seg-btn">List</button>
+              <button class="seg-btn active">Calendar</button>
+            </div>
+          </div>
+
+          <!-- Density (only Summary + Details on mobile) -->
+          <div class="na-toolbar-row">
+            <div class="na-toolbar-label">Card view</div>
+            <div class="seg-ctrl" style="flex:1">
+              <button class="seg-btn active">Summary</button>
+              <button class="seg-btn">Details</button>
+            </div>
+          </div>
+
+          <!-- Only include -->
+          <div>
+            <div class="na-toolbar-label" style="margin-bottom:5px">Only include with</div>
+            <div class="na-check-group">
+              <button class="na-check-chip">☐ Tour date</button>
+              <button class="na-check-chip checked">☑ App deadline</button>
+              <button class="na-check-chip">☐ Move-in</button>
+            </div>
+          </div>
+
+          <!-- Status filter -->
+          <div class="na-toolbar-row">
+            <button class="secondary-btn" style="font-size:.78rem;padding:7px 12px;width:100%">
+              ⚙ Filter by status (all shown)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="phone-scroll">
+        <div class="na-calendar">
+          <div class="na-day-section">
+            <div class="na-day-heading">Fri · <span>May 9</span> <span style="color:#92400e;background:#fef3c7;padding:1px 6px;border-radius:4px;font-size:.68rem">deadline</span></div>
+            <div class="na-event-summary na-event-deadline">
+              <div class="na-event-topline">
+                <span class="na-etype-badge deadline">App deadline</span>
+                <div class="na-event-title">345 E 57th St #8A</div>
+              </div>
+              <div class="na-event-meta"><span>5:00 PM</span>·<span>Sutton Place</span></div>
+              <div class="na-event-actions">
+                <span class="pill pill-finalist">Finalist</span>
+                <button class="na-next-btn">→ Apply</button>
+                <a href="#" class="na-details-link">Details ↗</a>
+              </div>
+            </div>
+          </div>
+          <div style="height:12px"></div>
+        </div>
+      </div>
+
+      <div class="m-bottom-nav">
+        <div class="m-nav-item"><div class="m-nav-icon">▦</div><div class="m-nav-label">Cards</div></div>
+        <div class="m-nav-item"><div class="m-nav-icon">☰</div><div class="m-nav-label">Finalist</div></div>
+        <div class="m-nav-item active"><div class="m-nav-icon">📅</div><div class="m-nav-label" style="color:var(--accent-dark)">Next Actions</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── 3: DETAILS DENSITY ────────────────────────── -->
+  <div class="screen-wrap">
+    <div class="screen-label">Details Density</div>
+    <div class="screen-note">Full spec strip with writable note slots next to each financial field. Checklist + rating box. Tap "Tour notes →" to open the focused Tour Screen.</div>
+
+    <div class="phone phone--tall">
+      <div class="phone-notch"></div>
+      <div class="phone-status-bar">
+        <span class="phone-time">9:41</span>
+        <span class="phone-icons">▲ ◀ ■</span>
+      </div>
+
+      <div class="m-header">
+        <div class="m-eyebrow">nyhome</div>
+        <div class="m-h1" style="margin-bottom:0">Next actions</div>
+      </div>
+
+      <div class="na-toolbar">
+        <button class="na-toolbar-toggle">
+          <div class="na-toolbar-toggle-left">
+            <span>📅 Calendar</span>
+            <span class="na-toolbar-badge" style="background:var(--good-soft);color:var(--good)">Details</span>
+          </div>
+          <span class="na-toolbar-arrow">⌄ Options</span>
+        </button>
+      </div>
+
+      <div class="phone-scroll">
+        <div class="na-calendar">
+          <div class="na-day-section">
+            <div class="na-day-heading">Thu · <span>May 1</span></div>
+
+            <!-- Full details event block -->
+            <div class="na-event-details">
+              <!-- Header -->
+              <div class="na-event-details-header">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                  <span class="na-etype-badge">Tour</span>
+                  <span style="font-size:.72rem;color:var(--muted)">10:30–11:00 AM</span>
+                </div>
+                <div style="font-size:.95rem;font-weight:700;margin-bottom:2px">250 W 50th St #12B</div>
+                <div style="display:flex;align-items:center;justify-content:space-between">
+                  <div style="font-size:.75rem;color:var(--muted)">Hell's Kitchen</div>
+                  <span class="pill pill-shortlisted" style="font-size:.64rem">Shortlisted</span>
+                </div>
+                <div style="display:flex;gap:6px;margin-top:8px">
+                  <button class="na-next-btn">→ Next status</button>
+                  <button class="na-reject-btn">✕ Reject</button>
+                  <a href="#" style="margin-left:auto;font-size:.74rem;color:var(--muted);text-decoration:none">Details ↗</a>
+                </div>
+              </div>
+
+              <!-- Financials with write slots -->
+              <div class="na-spec-strip">
+                <div class="na-spec-strip-title">Financials — fill in during tour</div>
+                <div class="na-fin-grid">
+                  <div class="na-fin-item">
+                    <div class="na-fin-label">Rent</div>
+                    <div class="na-fin-value">$4,200/mo</div>
+                    <div class="na-write-slot"><span class="na-write-slot-hint">note…</span></div>
+                  </div>
+                  <div class="na-fin-item">
+                    <div class="na-fin-label">Net eff.</div>
+                    <div class="na-fin-value">$3,950/mo</div>
+                    <div class="na-write-slot"><span class="na-write-slot-hint">note…</span></div>
+                  </div>
+                  <div class="na-fin-item">
+                    <div class="na-fin-label">Move-in</div>
+                    <div class="na-fin-value">$12,600</div>
+                    <div class="na-write-slot"><span class="na-write-slot-hint">note…</span></div>
+                  </div>
+                  <div class="na-fin-item">
+                    <div class="na-fin-label">Broker</div>
+                    <div class="na-fin-value">$4,200</div>
+                    <div class="na-write-slot"><span class="na-write-slot-hint">note…</span></div>
+                  </div>
+                  <div class="na-fin-item">
+                    <div class="na-fin-label">Deposit</div>
+                    <div class="na-fin-value">$4,200</div>
+                    <div class="na-write-slot"><span class="na-write-slot-hint">note…</span></div>
+                  </div>
+                  <div class="na-fin-item">
+                    <div class="na-fin-label">Amen. fee</div>
+                    <div class="na-fin-value">—</div>
+                    <div class="na-write-slot"><span class="na-write-slot-hint">note…</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Feature checklist compact -->
+              <div class="na-checklist">
+                <div class="na-spec-strip-title" style="padding:0;margin-bottom:5px">Unit features</div>
+                <div class="na-checklist-grid">
+                  <div class="na-check-item na-check-yes">
+                    <div class="na-check-bubble">✓</div>
+                    <span class="na-check-lbl">Dishwasher</span>
+                  </div>
+                  <div class="na-check-item na-check-no">
+                    <div class="na-check-bubble"></div>
+                    <span class="na-check-lbl">W/D</span>
+                  </div>
+                  <div class="na-check-item na-check-no">
+                    <div class="na-check-bubble"></div>
+                    <span class="na-check-lbl">Storage</span>
+                  </div>
+                  <div class="na-check-item na-check-yes">
+                    <div class="na-check-bubble">✓</div>
+                    <span class="na-check-lbl">Views</span>
+                  </div>
+                  <div class="na-check-item na-check-yes">
+                    <div class="na-check-bubble">✓</div>
+                    <span class="na-check-lbl">Doorman</span>
+                  </div>
+                  <div class="na-check-item na-check-no">
+                    <div class="na-check-bubble"></div>
+                    <span class="na-check-lbl">Walkup</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Ratings -->
+              <div class="na-rating-row">
+                <div class="na-rating-cell">
+                  <span class="na-rating-lbl">Avg</span>
+                  <span class="na-rating-val score-avg">80%</span>
+                </div>
+                <div class="na-rating-cell">
+                  <span class="na-rating-lbl">Kerv</span>
+                  <span class="na-rating-val score-kerv">78%</span>
+                </div>
+                <div class="na-rating-cell">
+                  <span class="na-rating-lbl">Peter</span>
+                  <span class="na-rating-val score-peter">82%</span>
+                </div>
+              </div>
+
+              <!-- Notes toggle + tour screen entry point -->
+              <div style="border-top:1px solid var(--line-light)">
+                <button class="na-notes-toggle">
+                  <span>Tour notes</span>
+                  <span style="background:var(--accent-dark);color:#fff;font-size:.72rem;font-weight:600;padding:4px 10px;border-radius:7px">
+                    Open tour screen →
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div style="height:12px"></div>
+        </div>
+      </div>
+
+      <div class="m-bottom-nav">
+        <div class="m-nav-item"><div class="m-nav-icon">▦</div><div class="m-nav-label">Cards</div></div>
+        <div class="m-nav-item"><div class="m-nav-icon">☰</div><div class="m-nav-label">Finalist</div></div>
+        <div class="m-nav-item active"><div class="m-nav-icon">📅</div><div class="m-nav-label" style="color:var(--accent-dark)">Next Actions</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── 4: TOUR SCREEN ────────────────────────── -->
+  <div class="screen-wrap">
+    <div class="screen-label">Tour Screen (focused)</div>
+    <div class="screen-note">Opens from "Open tour screen →" on a Details event. Full-page, distraction-free. All fields live-edit and save to the listing.</div>
+
+    <div class="phone phone--tall">
+      <div class="phone-notch"></div>
+      <div class="phone-status-bar">
+        <span class="phone-time">9:41</span>
+        <span class="phone-icons">▲ ◀ ■</span>
+      </div>
+
+      <div class="tour-screen">
+        <!-- Tour header -->
+        <div class="tour-header">
+          <div class="tour-header-nav">
+            <button class="back-btn">← Calendar</button>
+          </div>
+          <div class="tour-header-title">250 W 50th St #12B</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+            <div class="tour-header-sub">Hell's Kitchen · Shortlisted</div>
+            <span class="tour-time-badge">Tour: 10:30 AM</span>
+          </div>
+        </div>
+
+        <div class="tour-content">
+          <!-- Financials: editable note inline -->
+          <div class="tour-section">
+            <div class="tour-section-title">Financials</div>
+            <div class="tour-section-body">
+              <div class="tour-fin-item">
+                <div class="tour-fin-label">Rent</div>
+                <div class="tour-fin-value">$4,200/mo</div>
+                <input class="tour-fin-note" placeholder="note on rent…" type="text">
+              </div>
+              <div class="tour-fin-item">
+                <div class="tour-fin-label">Net eff.</div>
+                <div class="tour-fin-value">$3,950/mo</div>
+                <input class="tour-fin-note" placeholder="note…" type="text">
+              </div>
+              <div class="tour-fin-item">
+                <div class="tour-fin-label">Move-in</div>
+                <div class="tour-fin-value">$12,600</div>
+                <input class="tour-fin-note" placeholder="note…" type="text">
+              </div>
+              <div class="tour-fin-item">
+                <div class="tour-fin-label">Broker fee</div>
+                <div class="tour-fin-value">$4,200</div>
+                <input class="tour-fin-note" placeholder="note…" type="text">
+              </div>
+              <div class="tour-fin-item">
+                <div class="tour-fin-label">Deposit</div>
+                <div class="tour-fin-value">$4,200</div>
+                <input class="tour-fin-note" placeholder="note…" type="text">
+              </div>
+            </div>
+          </div>
+
+          <!-- Features: toggleable checklist -->
+          <div class="tour-section">
+            <div class="tour-section-title">Unit features — confirm on visit</div>
+            <div class="tour-section-body">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+                <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;padding:6px;border:1px solid var(--line);border-radius:7px;background:var(--good-soft)">
+                  <input type="checkbox" checked> Dishwasher
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;padding:6px;border:1px solid var(--line);border-radius:7px">
+                  <input type="checkbox"> W/D in unit
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;padding:6px;border:1px solid var(--line);border-radius:7px">
+                  <input type="checkbox"> Storage
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;padding:6px;border:1px solid var(--line);border-radius:7px;background:var(--good-soft)">
+                  <input type="checkbox" checked> Views
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;padding:6px;border:1px solid var(--line);border-radius:7px;background:var(--good-soft)">
+                  <input type="checkbox" checked> Doorman
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;padding:6px;border:1px solid var(--line);border-radius:7px">
+                  <input type="checkbox"> Laundry room
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tour notes text area -->
+          <div class="tour-section">
+            <div class="tour-section-title">Tour notes</div>
+            <div class="tour-section-body">
+              <textarea class="tour-notes-area" placeholder="Add notes during the tour…">Great natural light. Kitchen smaller than expected. Ask about storage locker availability.</textarea>
+            </div>
+          </div>
+
+          <div style="height:12px"></div>
+        </div>
+
+        <!-- Save bar -->
+        <div class="tour-action-bar">
+          <button class="secondary-btn" style="flex:1">← Back</button>
+          <button class="primary-btn" style="flex:2">Save changes</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="screen-note">
+      Financial notes update the listing's notes field on save.<br>
+      Checklist changes update unit_features/amenities on save.<br>
+      This is the full Details tab distilled for on-site use.
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mobile Mockup — Details Page</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+/* At-a-glance summary card */
+.summary-card {
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  padding: 14px 16px;
+}
+.summary-card-topline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.summary-badge {
+  width: 44px; height: 44px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+.summary-title-block { flex: 1; min-width: 0; }
+.summary-main-title {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.summary-sub {
+  font-size: .74rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.summary-score-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.summary-score-cell {
+  text-align: center;
+  padding: 7px 4px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+.summary-score-lbl { font-size: .62rem; color: var(--muted); display: block; margin-bottom: 1px; }
+.summary-score-val { font-size: .9rem; font-weight: 700; }
+.summary-score-cell--avg { border-color: var(--vote-combined-border); background: var(--vote-combined-soft); }
+.summary-score-cell--avg .summary-score-val { color: var(--vote-combined); }
+.summary-score-cell--kerv { border-color: var(--kerv-border); background: var(--kerv-soft); }
+.summary-score-cell--kerv .summary-score-val { color: var(--kerv); }
+.summary-score-cell--peter { border-color: var(--peter-border); background: var(--peter-soft); }
+.summary-score-cell--peter .summary-score-val { color: var(--peter); }
+
+.summary-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.summary-expand-toggle {
+  width: 100%;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--line-light);
+  padding: 7px 0 0;
+  font-size: .74rem;
+  color: var(--accent-dark);
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+}
+
+/* Expanded summary extras */
+.summary-expanded {
+  padding-top: 10px;
+  border-top: 1px solid var(--line-light);
+  margin-top: 6px;
+}
+.summary-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.summary-detail-item {
+  background: var(--line-light);
+  border-radius: 7px;
+  padding: 6px 10px;
+}
+.summary-detail-label { font-size: .62rem; color: var(--muted); font-weight: 600; display: block; margin-bottom: 2px; }
+.summary-detail-value { font-size: .84rem; font-weight: 600; }
+
+/* Status progression */
+.status-prog {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.status-prog-prev, .status-prog-next {
+  background: var(--line-light);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: .78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.status-prog-next { background: var(--accent-dark); color: #fff; border-color: transparent; flex: 1; text-align: center; }
+.status-current {
+  font-size: .78rem;
+  font-weight: 600;
+  flex: 1;
+  text-align: center;
+}
+
+/* Duplicate button */
+.dup-summary-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px;
+  background: none;
+  border: 1.5px dashed var(--line);
+  border-radius: 9px;
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+.dup-summary-btn:hover { border-color: var(--accent); color: var(--accent-dark); }
+
+/* ── OPTION A: Horizontal scroll tabs ─── */
+.tabs-scroll {
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+  gap: 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+}
+.tabs-scroll::-webkit-scrollbar { display: none; }
+.tab-btn {
+  flex-shrink: 0;
+  padding: 10px 14px;
+  font-size: .78rem;
+  font-weight: 500;
+  color: var(--muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tab-btn.active {
+  color: var(--accent-dark);
+  border-bottom-color: var(--accent-dark);
+  font-weight: 700;
+}
+
+/* Tab panel content */
+.tab-panel {
+  padding: 14px 16px;
+  background: var(--bg);
+  flex: 1;
+}
+
+/* ── OPTION B: Accordion sections ─── */
+.accordion-section {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  margin: 8px 12px;
+  overflow: hidden;
+}
+.accordion-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 14px;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+}
+.accordion-toggle-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: .88rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.accordion-icon {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .9rem;
+  flex-shrink: 0;
+}
+.accordion-arrow { color: var(--muted); font-size: .8rem; transition: transform .2s; }
+.accordion-body {
+  padding: 0 14px 14px;
+  border-top: 1px solid var(--line-light);
+  padding-top: 12px;
+  font-size: .85rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.accordion-section.open .accordion-arrow { transform: rotate(180deg); }
+
+/* ── OPTION C: Bottom sheet nav ─── */
+.bottom-sheet-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,.4);
+  display: flex;
+  align-items: flex-end;
+  z-index: 50;
+}
+.bottom-sheet {
+  background: var(--paper);
+  border-radius: 20px 20px 0 0;
+  width: 100%;
+  padding: 0 0 env(safe-area-inset-bottom, 16px);
+}
+.bottom-sheet-handle {
+  width: 40px; height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin: 12px auto 16px;
+}
+.bottom-sheet-title {
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 20px 10px;
+}
+.bottom-sheet-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 20px;
+  border-top: 1px solid var(--line-light);
+  cursor: pointer;
+  font-size: .9rem;
+  font-weight: 500;
+}
+.bottom-sheet-item.active { color: var(--accent-dark); font-weight: 700; }
+.bsi-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .9rem;
+}
+
+/* Scorecard sample content */
+.score-hex-row {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.hex {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .8rem;
+  font-weight: 700;
+  border: 1.5px solid var(--line);
+  cursor: pointer;
+}
+.hex.active-kerv { background: #0a5c55; color: #fff; border-color: #0a5c55; }
+.hex.active-peter { background: #9a144f; color: #fff; border-color: #9a144f; }
+.criterion-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line-light);
+  font-size: .85rem;
+}
+.criterion-name { font-weight: 500; }
+</style>
+</head>
+<body>
+
+<h1 class="page-title">Details Page — Mobile</h1>
+<p class="page-subtitle">
+  Three tab navigation patterns + the at-a-glance summary card redesign.<br>
+  Duplicate button is always visible on the summary card.
+</p>
+
+<div class="screens-row">
+
+  <!-- ─── SUMMARY CARD: Collapsed ──────────────────────── -->
+  <div class="screen-wrap">
+    <div class="screen-label">Summary Card — Collapsed</div>
+    <div class="screen-note">Key info at a glance: title, status, scores, top meta pills. Expand to see financials, status progression, and duplicate.</div>
+
+    <div class="phone phone--short">
+      <div class="phone-notch"></div>
+      <div class="phone-status-bar">
+        <span class="phone-time">9:41</span>
+        <span class="phone-icons">▲ ◀ ■</span>
+      </div>
+
+      <div class="m-header" style="padding:8px 16px 8px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <button class="back-btn" style="font-size:.8rem;color:var(--accent-dark);background:none;border:none;font-weight:600;cursor:pointer">← Back</button>
+          <div class="m-eyebrow" style="margin:0">Apartment details</div>
+        </div>
+      </div>
+
+      <!-- Summary card collapsed -->
+      <div class="summary-card">
+        <div class="summary-card-topline">
+          <div class="summary-badge">🏠</div>
+          <div class="summary-title-block">
+            <div class="summary-main-title">250 W 50th St #12B</div>
+            <div class="summary-sub">Hell's Kitchen · Shortlisted</div>
+          </div>
+          <span class="pill pill-shortlisted">78%</span>
+        </div>
+
+        <!-- Scores -->
+        <div class="summary-score-row">
+          <div class="summary-score-cell summary-score-cell--avg">
+            <span class="summary-score-lbl">Avg</span>
+            <span class="summary-score-val">80%</span>
+          </div>
+          <div class="summary-score-cell summary-score-cell--kerv">
+            <span class="summary-score-lbl">Kerv</span>
+            <span class="summary-score-val">78%</span>
+          </div>
+          <div class="summary-score-cell summary-score-cell--peter">
+            <span class="summary-score-lbl">Peter</span>
+            <span class="summary-score-val">82%</span>
+          </div>
+        </div>
+
+        <!-- Key meta pills -->
+        <div class="summary-meta-row">
+          <span class="pill">$4,200/mo</span>
+          <span class="pill">2 bed · 1 bath</span>
+          <span class="pill">Move-in Jun 1</span>
+        </div>
+
+        <button class="summary-expand-toggle">Show more ⌄</button>
+      </div>
+
+      <!-- Tabs below -->
+      <div class="tabs-scroll">
+        <button class="tab-btn active">Scorecard</button>
+        <button class="tab-btn">Images</button>
+        <button class="tab-btn">Unit</button>
+        <button class="tab-btn">Peter</button>
+        <button class="tab-btn">Kerv</button>
+        <button class="tab-btn">Tour</button>
+        <button class="tab-btn">App</button>
+        <button class="tab-btn">Activity</button>
+      </div>
+
+      <div class="phone-scroll">
+        <div class="tab-panel">
+          <div style="font-size:.78rem;color:var(--muted);margin-bottom:10px">Criterion scores · Kerv view</div>
+          <div class="criterion-row">
+            <span class="criterion-name">Layout &amp; space</span>
+            <div class="score-hex-row" style="margin:0">
+              <div class="hex">1</div><div class="hex">2</div><div class="hex">3</div>
+              <div class="hex active-kerv">4</div><div class="hex">5</div>
+            </div>
+          </div>
+          <div class="criterion-row">
+            <span class="criterion-name">Natural light</span>
+            <div class="score-hex-row" style="margin:0">
+              <div class="hex">1</div><div class="hex">2</div><div class="hex">3</div><div class="hex">4</div>
+              <div class="hex active-kerv">5</div>
+            </div>
+          </div>
+          <div class="criterion-row">
+            <span class="criterion-name">Neighborhood</span>
+            <div class="score-hex-row" style="margin:0">
+              <div class="hex">1</div><div class="hex">2</div>
+              <div class="hex active-kerv">3</div>
+              <div class="hex">4</div><div class="hex">5</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── SUMMARY CARD: Expanded ─────────────────────── -->
+  <div class="screen-wrap">
+    <div class="screen-label">Summary Card — Expanded</div>
+    <div class="screen-note">Tap "Show more" to reveal financials, status progression controls, and the Duplicate button.</div>
+
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-status-bar">
+        <span class="phone-time">9:41</span>
+        <span class="phone-icons">▲ ◀ ■</span>
+      </div>
+
+      <div class="m-header" style="padding:8px 16px 8px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <button class="back-btn" style="font-size:.8rem;color:var(--accent-dark);background:none;border:none;font-weight:600;cursor:pointer">← Back</button>
+          <div class="m-eyebrow" style="margin:0">Apartment details</div>
+        </div>
+      </div>
+
+      <!-- Summary card EXPANDED -->
+      <div class="summary-card">
+        <div class="summary-card-topline">
+          <div class="summary-badge">🏠</div>
+          <div class="summary-title-block">
+            <div class="summary-main-title">250 W 50th St #12B</div>
+            <div class="summary-sub">Hell's Kitchen · Shortlisted</div>
+          </div>
+          <span class="pill pill-shortlisted">78%</span>
+        </div>
+
+        <div class="summary-score-row">
+          <div class="summary-score-cell summary-score-cell--avg">
+            <span class="summary-score-lbl">Avg</span>
+            <span class="summary-score-val">80%</span>
+          </div>
+          <div class="summary-score-cell summary-score-cell--kerv">
+            <span class="summary-score-lbl">Kerv</span>
+            <span class="summary-score-val">78%</span>
+          </div>
+          <div class="summary-score-cell summary-score-cell--peter">
+            <span class="summary-score-lbl">Peter</span>
+            <span class="summary-score-val">82%</span>
+          </div>
+        </div>
+
+        <div class="summary-meta-row">
+          <span class="pill">$4,200/mo</span>
+          <span class="pill">2 bed · 1 bath</span>
+          <span class="pill">Move-in Jun 1</span>
+        </div>
+
+        <!-- Expanded section -->
+        <div class="summary-expanded">
+          <div class="summary-detail-grid">
+            <div class="summary-detail-item">
+              <span class="summary-detail-label">Net effective</span>
+              <span class="summary-detail-value">$3,950/mo</span>
+            </div>
+            <div class="summary-detail-item">
+              <span class="summary-detail-label">Move-in total</span>
+              <span class="summary-detail-value">$12,600</span>
+            </div>
+            <div class="summary-detail-item">
+              <span class="summary-detail-label">Broker fee</span>
+              <span class="summary-detail-value">$4,200</span>
+            </div>
+            <div class="summary-detail-item">
+              <span class="summary-detail-label">Deposit</span>
+              <span class="summary-detail-value">$4,200</span>
+            </div>
+          </div>
+
+          <!-- Status progression -->
+          <div style="font-size:.66rem;font-weight:700;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;margin-bottom:5px">Status</div>
+          <div class="status-prog">
+            <button class="status-prog-prev">← Evaluating</button>
+            <div class="status-current">
+              <span class="pill pill-shortlisted">Shortlisted</span>
+            </div>
+            <button class="status-prog-next">→ Tour</button>
+          </div>
+
+          <!-- External link -->
+          <a href="#" style="display:flex;align-items:center;justify-content:center;gap:5px;padding:8px;border:1px solid var(--line);border-radius:8px;font-size:.8rem;color:var(--accent-dark);text-decoration:none;margin-bottom:6px">
+            ↗ View on StreetEasy
+          </a>
+
+          <!-- Duplicate -->
+          <button class="dup-summary-btn">⧉ Duplicate this listing</button>
+        </div>
+
+        <button class="summary-expand-toggle">Show less ⌃</button>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs-scroll">
+        <button class="tab-btn active">Scorecard</button>
+        <button class="tab-btn">Images</button>
+        <button class="tab-btn">Unit</button>
+        <button class="tab-btn">Peter</button>
+        <button class="tab-btn">Kerv</button>
+        <button class="tab-btn">Tour</button>
+        <button class="tab-btn">App</button>
+        <button class="tab-btn">Activity</button>
+      </div>
+
+      <div class="phone-scroll">
+        <div class="tab-panel">
+          <div style="font-size:.78rem;color:var(--muted);margin-bottom:10px">Criterion scores · Kerv view</div>
+          <div class="criterion-row">
+            <span class="criterion-name">Layout &amp; space</span>
+            <div class="score-hex-row" style="margin:0">
+              <div class="hex">1</div><div class="hex">2</div><div class="hex">3</div>
+              <div class="hex active-kerv">4</div><div class="hex">5</div>
+            </div>
+          </div>
+          <div class="criterion-row">
+            <span class="criterion-name">Natural light</span>
+            <div class="score-hex-row" style="margin:0">
+              <div class="hex">1</div><div class="hex">2</div><div class="hex">3</div><div class="hex">4</div>
+              <div class="hex active-kerv">5</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── OPTION B: Accordion sections ──────────────── -->
+  <div class="screen-wrap">
+    <div class="screen-label">Nav Option B — Accordion</div>
+    <div class="screen-note">No tabs. Each section is a collapsible card. Scorecard open by default; others tapped to expand. Good for reading without losing context.</div>
+
+    <div class="phone phone--tall">
+      <div class="phone-notch"></div>
+      <div class="phone-status-bar">
+        <span class="phone-time">9:41</span>
+        <span class="phone-icons">▲ ◀ ■</span>
+      </div>
+
+      <div class="m-header" style="padding:8px 16px 8px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <button class="back-btn" style="font-size:.8rem;color:var(--accent-dark);background:none;border:none;font-weight:600;cursor:pointer">← Back</button>
+          <div class="m-eyebrow" style="margin:0">Apartment details</div>
+        </div>
+      </div>
+
+      <!-- Compact summary strip -->
+      <div class="summary-card" style="padding:10px 16px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="flex:1;min-width:0">
+            <div class="summary-main-title">250 W 50th St #12B</div>
+            <div class="summary-sub">Hell's Kitchen</div>
+          </div>
+          <span class="pill pill-shortlisted">Shortlisted</span>
+          <span class="summary-score-val score-avg" style="font-size:1rem">80%</span>
+        </div>
+      </div>
+
+      <div class="phone-scroll" style="background:var(--bg)">
+        <div style="padding:8px 0 80px">
+
+          <!-- Scorecard: OPEN -->
+          <div class="accordion-section open">
+            <button class="accordion-toggle">
+              <div class="accordion-toggle-left">
+                <div class="accordion-icon" style="background:var(--accent-soft)">⭐</div>
+                Scorecard
+              </div>
+              <span class="accordion-arrow">⌃</span>
+            </button>
+            <div class="accordion-body">
+              <div class="criterion-row">
+                <span class="criterion-name">Layout &amp; space</span>
+                <div class="score-hex-row" style="margin:0">
+                  <div class="hex">1</div><div class="hex">2</div><div class="hex">3</div>
+                  <div class="hex active-kerv">4</div><div class="hex">5</div>
+                </div>
+              </div>
+              <div class="criterion-row" style="border:none">
+                <span class="criterion-name">Natural light</span>
+                <div class="score-hex-row" style="margin:0">
+                  <div class="hex">1</div><div class="hex">2</div><div class="hex">3</div><div class="hex">4</div>
+                  <div class="hex active-kerv">5</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Images: collapsed -->
+          <div class="accordion-section">
+            <button class="accordion-toggle">
+              <div class="accordion-toggle-left">
+                <div class="accordion-icon" style="background:#fef3c7">📷</div>
+                Images
+              </div>
+              <span class="accordion-arrow">⌄</span>
+            </button>
+          </div>
+
+          <!-- Unit Setup: collapsed -->
+          <div class="accordion-section">
+            <button class="accordion-toggle">
+              <div class="accordion-toggle-left">
+                <div class="accordion-icon" style="background:var(--good-soft)">🏠</div>
+                Unit Setup
+              </div>
+              <span class="accordion-arrow">⌄</span>
+            </button>
+          </div>
+
+          <!-- Peter: collapsed -->
+          <div class="accordion-section">
+            <button class="accordion-toggle">
+              <div class="accordion-toggle-left">
+                <div class="accordion-icon" style="background:var(--peter-soft)">🗳</div>
+                Peter's scores
+              </div>
+              <span class="accordion-arrow">⌄</span>
+            </button>
+          </div>
+
+          <!-- Kerv: collapsed -->
+          <div class="accordion-section">
+            <button class="accordion-toggle">
+              <div class="accordion-toggle-left">
+                <div class="accordion-icon" style="background:var(--kerv-soft)">🗳</div>
+                Kerv's scores
+              </div>
+              <span class="accordion-arrow">⌄</span>
+            </button>
+          </div>
+
+          <!-- Tour: collapsed -->
+          <div class="accordion-section">
+            <button class="accordion-toggle">
+              <div class="accordion-toggle-left">
+                <div class="accordion-icon" style="background:var(--accent-soft)">📍</div>
+                Tour
+              </div>
+              <span class="accordion-arrow">⌄</span>
+            </button>
+          </div>
+
+          <!-- Application: collapsed -->
+          <div class="accordion-section">
+            <button class="accordion-toggle">
+              <div class="accordion-toggle-left">
+                <div class="accordion-icon" style="background:#ede9fe">📝</div>
+                Application
+              </div>
+              <span class="accordion-arrow">⌄</span>
+            </button>
+          </div>
+
+          <!-- Activity: collapsed -->
+          <div class="accordion-section">
+            <button class="accordion-toggle">
+              <div class="accordion-toggle-left">
+                <div class="accordion-icon" style="background:var(--line-light)">🕐</div>
+                Activity log
+              </div>
+              <span class="accordion-arrow">⌄</span>
+            </button>
+          </div>
+
+          <!-- Duplicate at bottom -->
+          <div style="margin:8px 12px">
+            <button class="dup-summary-btn">⧉ Duplicate this listing</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── OPTION C: Bottom Sheet Nav ──────────────── -->
+  <div class="screen-wrap">
+    <div class="screen-label">Nav Option C — Bottom Sheet</div>
+    <div class="screen-note">Hamburger icon in the header opens a bottom sheet. Tap any section to jump. Current section shown in the header breadcrumb.</div>
+
+    <div class="phone phone--tall">
+      <div class="phone-notch"></div>
+      <div class="phone-status-bar">
+        <span class="phone-time">9:41</span>
+        <span class="phone-icons">▲ ◀ ■</span>
+      </div>
+
+      <!-- Header with hamburger -->
+      <div class="m-header" style="padding:8px 16px 8px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:10px">
+            <button class="back-btn" style="font-size:.8rem;color:var(--accent-dark);background:none;border:none;font-weight:600;cursor:pointer">← Back</button>
+            <div>
+              <div class="m-eyebrow" style="margin:0">Details</div>
+              <div style="font-size:.82rem;font-weight:600;color:var(--ink)">Scorecard</div>
+            </div>
+          </div>
+          <!-- Hamburger -->
+          <button class="icon-btn" style="border:none;background:var(--ink);color:#fff">☰</button>
+        </div>
+      </div>
+
+      <!-- Summary card (compact) -->
+      <div class="summary-card" style="padding:10px 16px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="flex:1;min-width:0">
+            <div class="summary-main-title">250 W 50th St #12B</div>
+            <div class="summary-sub">Hell's Kitchen · Shortlisted</div>
+          </div>
+          <span class="summary-score-val score-avg" style="font-size:1rem">80%</span>
+        </div>
+      </div>
+
+      <!-- Scorecard content behind sheet -->
+      <div class="phone-scroll" style="position:relative;background:var(--bg)">
+        <div class="tab-panel" style="filter:blur(1px);opacity:.5">
+          <div style="font-size:.78rem;color:var(--muted);margin-bottom:10px">Criterion scores · Kerv view</div>
+          <div class="criterion-row">
+            <span class="criterion-name">Layout &amp; space</span>
+            <div class="score-hex-row" style="margin:0">
+              <div class="hex">1</div><div class="hex">2</div><div class="hex">3</div>
+              <div class="hex active-kerv">4</div><div class="hex">5</div>
+            </div>
+          </div>
+          <div class="criterion-row">
+            <span class="criterion-name">Natural light</span>
+            <div class="score-hex-row" style="margin:0">
+              <div class="hex active-kerv">5</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom sheet overlay -->
+        <div class="bottom-sheet-overlay">
+          <div class="bottom-sheet">
+            <div class="bottom-sheet-handle"></div>
+            <div class="bottom-sheet-title">Jump to section</div>
+
+            <div class="bottom-sheet-item active">
+              <div class="bsi-icon" style="background:var(--accent-soft)">⭐</div>
+              <span>Scorecard</span>
+              <span style="margin-left:auto;font-size:.72rem;color:var(--accent-dark)">Open ✓</span>
+            </div>
+            <div class="bottom-sheet-item">
+              <div class="bsi-icon" style="background:#fef3c7">📷</div>
+              <span>Images</span>
+            </div>
+            <div class="bottom-sheet-item">
+              <div class="bsi-icon" style="background:var(--good-soft)">🏠</div>
+              <span>Unit Setup</span>
+            </div>
+            <div class="bottom-sheet-item">
+              <div class="bsi-icon" style="background:var(--peter-soft)">🗳</div>
+              <span>Peter's scores</span>
+            </div>
+            <div class="bottom-sheet-item">
+              <div class="bsi-icon" style="background:var(--kerv-soft)">🗳</div>
+              <span>Kerv's scores</span>
+            </div>
+            <div class="bottom-sheet-item">
+              <div class="bsi-icon" style="background:var(--accent-soft)">📍</div>
+              <span>Tour</span>
+            </div>
+            <div class="bottom-sheet-item">
+              <div class="bsi-icon" style="background:#ede9fe">📝</div>
+              <span>Application</span>
+            </div>
+            <div class="bottom-sheet-item">
+              <div class="bsi-icon" style="background:var(--line-light)">🕐</div>
+              <span>Activity log</span>
+            </div>
+            <div class="bottom-sheet-item" style="border-top:2px solid var(--line);color:var(--muted)">
+              <div class="bsi-icon" style="background:var(--line-light)">⧉</div>
+              <span>Duplicate listing</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="screen-note">
+      Hamburger (☰) in top-right always opens this sheet.<br>
+      Duplicate is at the bottom of the nav list.<br>
+      Good for muscle memory — same gesture everywhere.
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
