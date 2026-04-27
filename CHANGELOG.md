@@ -12,14 +12,14 @@
 - **Shortlist Finalist view:** **View** = Cards | **Finalist** (`nyhomeShortlistView`). **Finalist** table: sort **Avg (desc)** then **workflow**; **Sort by** hidden. Columns incl. move-in, scores, status pill. Narrow = horizontal scroll.
 - **Listing thumbs on shortlist / hover preview:** up to **3** images; **Cards** under score row; **Finalist** in listing column; hover → `#nyhome-finalist-flyout` 300px preview. `wireListingThumbHovers()` shared.
 - **N/A ratings** in `/details`; `NULL` in DB; migrate nullable `score` + legacy `0` → `NULL`.
-- **Listing photos (vibe):** Admin + `/details` Images; `vibeImages.js`; thumbnails on score tabs.
+- **Listing photos (vibe):** `/admin/new` + `/details` Images; `vibeImages.js`; thumbnails on score tabs.
 - Favicon + `manifest` + `sw.js` precache.
 - **Saved-list search** in admin **header** (`/admin` + `/admin/new`): filters `#admin-apartment-list`; suggestions under title; **×** + Escape. On **`/admin`**, clear query when leaving **Saved apartments** for another top tab.
 - **Route `/admin/new`:** new listing form + same saved list + `?id=` edit; rewrites in `netlify.toml`.
 - **Header global nav:** `New listing` | `Manage` (and variants) as plain text links in `.app-header-actions` (no CTA box, no underline; **|** in `.app-header-actions-sep`). Shortlist: links in `shortlist-hero-right` (`.app-header-actions--in-hero`).
 
 ### Changed
-- **Public shortlist (`/`):** **View** (left) + **Sort by** (Cards) + `New listing` | `Manage` (right, `.shortlist-hero-right` / `.app-header-actions--in-hero`); no tagline. Status filter: **drawer** + **Filters** FAB (`statusFilterGroups.js`). Shell: **`?v=` + `sw.js`** **73** (f733139).
+- **Public shortlist (`/`):** **View** (left) + **Sort by** (Cards) + `New listing` | `Manage` (right, `.shortlist-hero-right` / `.app-header-actions--in-hero`); no tagline. Status filter: **drawer** + **Filters** FAB (`statusFilterGroups.js`). Keep **`?v=`** on shell CSS/JS in lockstep with **`sw.js` `CACHE_VERSION`**.
 - **`POST/PUT /api/apartments`:** `409` + `code` **`BLACKLISTED`** / **`DUPLICATE_LISTING`** (second = another **non-`rejected`** listing shares normalized address+unit). `/details` Unit Setup address/apt saves same checks.
 - **`/admin`:** tabs **Saved apartments** | **Building blacklist** | **Criteria**; setup form at **`/admin/new`**. **Next actions** only on public `/`. **Edit** on manager (no in-page form) → `/admin/new?id=…`.
 - **`NyhomeAPI.saveApartment`:** `PUT` if `Number(id) > 0`, else `POST`.

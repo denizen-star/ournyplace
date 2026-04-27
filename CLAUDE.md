@@ -21,7 +21,7 @@ Environment: copy `.env.example` to `.env.local` and set `DATABASE_URL` (PlanetS
 - `/` → `index.html` — Public shortlist: **View** Cards | **Finalist** | **Next actions** (`nyhomeShortlistView`); **Sort by** when Cards only (Workflow, Avg, Peter, Kerv, Last updated — `nyhomeShortlistSort`). **Status filter** in glass **drawer** (`#filters-drawer` + bottom FAB, `statusFilterGroups.js`); not inline in header. Row under the title: grid **View** (left) + **Sort** + **New listing** | **Manage** (right, `.shortlist-tagline-row` / `.shortlist-hero-right` / `.app-header-actions--in-hero`, plain links, `|`). No tagline sentence. Card grid with optional listing **thumbs** (row under Avg/Kerv/Peter) + **Finalist** table (thumbs after address, columns incl. move-in) + **Next actions** (tour and/or app deadline: one-line row, status pill, **?** = `criterion-def-btn` + definition-style panel for prep text, **Next** / **Reject**, link to `/details`). Hover thumb → fixed **300px** flyout (`#nyhome-finalist-flyout`, no layout reflow)
 - `/admin` → `admin/index.html` — **Saved apartments** (list + **header** search) | **Building blacklist** | **Criteria** (normalized building keys; click-to-edit rows like criteria)
 - `/admin/new` → `admin/new/index.html` — New listing form (apartment setup + same **Saved apartments** list + **header** search as `/admin`); `?id=` pre-fills for edit
-- `/details/?id=…` → `details/index.html` — Full apartment view (scorecard, tour, application tracking)
+- `/details/?id=…` → `details/index.html` — Full apartment view (scorecard, tour, application tracking). Header: **New listing** | **Back to shortlist** (`.app-header-actions`, same link style as shortlist)
 - `/api/*` → `/.netlify/functions/:splat`
 
 ### Frontend (`assets/js/`)
