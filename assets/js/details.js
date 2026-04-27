@@ -5,6 +5,8 @@
   document.addEventListener('DOMContentLoaded', boot);
 
   var STATUS_ORDER = NyhomeStatus.STATUS_NAV;
+  /** Mirrors `calculateScores` in lib/apartmentRepository.js */
+  var SCORE_PARTNERS = ['kerv', 'peter'];
 
   function catchSaveApartment(err) {
     console.error('[nyhome-details] save apartment', err);
@@ -371,7 +373,7 @@
     var rp = r.peter || {};
     var rk = r.kerv || {};
     var rows = state.criteria.map(function (c) {
-      return '<tr><th scope="row">' + escapeHtml(c.label) + '</th><td>' + votingScoreCell(rp[c.id]) + '</td><td>' + votingScoreCell(rk[c.id]) + '</td></tr>';
+      return '<tr data-criterion-id="' + escapeAttr(String(c.id)) + '"><th scope="row">' + escapeHtml(c.label) + '</th><td>' + votingScoreCell(rp[c.id]) + '</td><td>' + votingScoreCell(rk[c.id]) + '</td></tr>';
     }).join('');
     return '<div class="detail-voting-table-wrap content-section">' +
       '<div class="section-header"><h3 class="section-title">Per-criterion scores</h3></div>' +
@@ -548,21 +550,131 @@
     });
   }
 
+  function calculateDetailScores(criteria, ratings) {
+    var result = {};
+    SCORE_PARTNERS.forEach(function (partner) {
+      var weighted = 0;
+      var includedWeight = 0;
+      (criteria || []).forEach(function (criterion) {
+        var raw = (ratings[partner] || {})[criterion.id];
+        if (raw == null) return;
+        var score = Number(raw);
+        if (Number.isNaN(score)) return;
+        var w = Number(criterion.weight || 0);
+        weighted += score * w;
+        includedWeight += w;
+      });
+      result[partner] = includedWeight > 0 ? (weighted / includedWeight) * 20 : null;
+    });
+    var available = SCORE_PARTNERS.map(function (p) { return result[p]; }).filter(function (value) { return value != null; });
+    result.combined = available.length
+      ? available.reduce(function (sum, value) { return sum + value; }, 0) / available.length
+      : null;
+    return result;
+  }
+
+  function applyVoteToApartmentState(apartment, partnerKey, criterionId, score) {
+    if (!apartment.ratings) apartment.ratings = {};
+    if (!apartment.ratings[partnerKey]) apartment.ratings[partnerKey] = {};
+    apartment.ratings[partnerKey][criterionId] = score;
+    apartment.scores = calculateDetailScores(state.criteria, apartment.ratings);
+  }
+
+  function patchHeaderScoreGridFromState() {
+    var grid = rootEl.querySelector('.score-grid--meta-inline');
+    if (!grid || !state.apartment || !state.apartment.scores) return;
+    var vals = grid.querySelectorAll('.score-box-value');
+    var s = state.apartment.scores;
+    if (vals.length < 3) return;
+    vals[0].textContent = scoreText(s.combined);
+    vals[1].textContent = scoreText(s.kerv);
+    vals[2].textContent = scoreText(s.peter);
+  }
+
+  function patchVotingScoreTableCell(criterionId, partnerKey, rawVal) {
+    var row = rootEl.querySelector('.detail-voting-score-table tr[data-criterion-id="' + String(criterionId) + '"]');
+    if (!row) return;
+    var tds = row.querySelectorAll('td');
+    if (tds.length < 2) return;
+    var td = partnerKey === 'peter' ? tds[0] : tds[1];
+    td.innerHTML = votingScoreCell(rawVal);
+  }
+
+  function persistApartmentVoteToLocalCache(apartment) {
+    try {
+      var raw = localStorage.getItem('nyhome-apartments-cache');
+      if (!raw) return;
+      var data = JSON.parse(raw);
+      var list = data.apartments || [];
+      for (var i = 0; i < list.length; i++) {
+        if (String(list[i].id) === String(apartment.id)) {
+          list[i].ratings = JSON.parse(JSON.stringify(apartment.ratings || {}));
+          list[i].scores = JSON.parse(JSON.stringify(apartment.scores || {}));
+          localStorage.setItem('nyhome-apartments-cache', JSON.stringify(data));
+          return;
+        }
+      }
+    } catch (e) {}
+  }
+
+  function finalizeRatingSave(partnerKey, criterionId, score) {
+    applyVoteToApartmentState(state.apartment, partnerKey, criterionId, score);
+    patchHeaderScoreGridFromState();
+    patchVotingScoreTableCell(criterionId, partnerKey, score);
+    persistApartmentVoteToLocalCache(state.apartment);
+  }
+
   function bindVoting() {
+    var pending = Object.create(null);
     rootEl.querySelectorAll('[data-rating]').forEach(function (button) {
       button.addEventListener('click', function () {
         var parts = button.getAttribute('data-rating').split(':');
+        var partnerKey = parts[0];
+        var criterionId = Number(parts[1]);
+        var pendingKey = partnerKey + ':' + criterionId;
+        if (pending[pendingKey]) return;
+
+        var picker = button.closest('.score-picker');
+        if (!picker || !rootEl.contains(picker)) return;
+
+        var prevActive = picker.querySelector('.score-btn.active');
+        Array.prototype.forEach.call(picker.querySelectorAll('.score-btn'), function (btn) {
+          btn.classList.remove('active');
+        });
+        button.classList.add('active');
+
         var payload = {
           apartmentId: state.apartment.id,
-          partnerKey: parts[0],
-          criterionId: Number(parts[1]),
+          partnerKey: partnerKey,
+          criterionId: criterionId,
         };
+        var scoreVal;
         if (button.getAttribute('data-na') === 'true') {
           payload.score = null;
+          scoreVal = null;
         } else {
-          payload.score = Number(button.getAttribute('data-score'));
+          scoreVal = Number(button.getAttribute('data-score'));
+          payload.score = scoreVal;
         }
-        NyhomeAPI.saveRating(payload).then(function () { load(currentTab() || 'scorecard'); });
+
+        pending[pendingKey] = true;
+        NyhomeAPI.saveRating(payload)
+          .then(function () {
+            finalizeRatingSave(partnerKey, criterionId, scoreVal);
+          })
+          .catch(function (err) {
+            console.error('[nyhome-details] save rating', err);
+            Array.prototype.forEach.call(picker.querySelectorAll('.score-btn'), function (btn) {
+              btn.classList.remove('active');
+            });
+            if (prevActive && rootEl.contains(prevActive)) {
+              prevActive.classList.add('active');
+            }
+            if (window.alert) window.alert('Could not save score. Check your connection and try again.');
+          })
+          .then(function () {
+            delete pending[pendingKey];
+          });
       });
     });
   }
