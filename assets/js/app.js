@@ -778,6 +778,13 @@
 
     visible = visible.filter(apartmentPassesExtraFilters);
 
+    if (viewMode === 'cards' || viewMode === 'finalist') {
+      visible = visible.filter(function (a) {
+        var s = NyhomeStatus.normalizeStatus(a.status);
+        return s !== 'rejected' && s !== 'archived';
+      });
+    }
+
     listEl.classList.toggle('card-list--finalist', viewMode === 'finalist');
     listEl.classList.toggle('card-list--next-actions', viewMode === 'next-actions');
     listEl.innerHTML = '';
