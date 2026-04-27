@@ -15,11 +15,17 @@
   var vibeSlots = ['', '', ''];
   var vibeActiveSlot = 0;
 
+  var ADMIN_SORT_STORAGE_KEY = 'nyhomeAdminApartmentSort';
+  var PUBLIC_BASE_STORAGE_KEY = 'nyhomePublicBaseUrl';
+  var ADMIN_VALID_SORTS = { default: 1, updated: 1, avg: 1, workflow: 1, ranked: 1 };
+  var adminSortMode = 'default';
+
   document.addEventListener('DOMContentLoaded', boot);
 
   function boot() {
     bindTabs();
     bindApartmentSearch();
+    initAdminSort();
     bindApartmentForm();
     bindCriterionForm();
     if (form) {
@@ -33,6 +39,7 @@
     bindBlacklistList();
     bindBlacklistForm();
     bindBlacklistPasteHelper();
+    bindPipelineDigestSettings();
     load();
   }
 
@@ -83,6 +90,60 @@
     if (!id) return;
     var a = state.apartments.find(function (x) { return String(x.id) === String(id); });
     if (a) fillApartmentForm(a);
+  }
+
+  function bindPipelineDigestSettings() {
+    var input = document.getElementById('nyhome-public-base-url');
+    var saveBtn = document.getElementById('nyhome-save-public-url');
+    var sendBtn = document.getElementById('nyhome-send-pipeline-digest');
+    var statusEl = document.getElementById('nyhome-digest-status');
+    if (!input || !saveBtn || !sendBtn) return;
+
+    try {
+      var saved = localStorage.getItem(PUBLIC_BASE_STORAGE_KEY);
+      if (saved) input.value = saved;
+    } catch (e) {}
+
+    saveBtn.addEventListener('click', function () {
+      var v = (input.value || '').trim().replace(/\/+$/, '');
+      try {
+        if (v) localStorage.setItem(PUBLIC_BASE_STORAGE_KEY, v);
+        else localStorage.removeItem(PUBLIC_BASE_STORAGE_KEY);
+      } catch (e) {}
+      if (statusEl) {
+        statusEl.textContent = v
+          ? 'Saved public URL in this browser.'
+          : 'Cleared. Server can still use NYHOME_PUBLIC_URL if set.';
+      }
+    });
+
+    sendBtn.addEventListener('click', function () {
+      var base = (input.value || '').trim().replace(/\/+$/, '');
+      if (!base) {
+        try {
+          base = (localStorage.getItem(PUBLIC_BASE_STORAGE_KEY) || '').trim().replace(/\/+$/, '');
+        } catch (e) {
+          base = '';
+        }
+      }
+      if (!base && window.location && window.location.origin) base = window.location.origin.replace(/\/+$/, '');
+      sendBtn.disabled = true;
+      var old = sendBtn.textContent;
+      sendBtn.textContent = 'Sending…';
+      if (statusEl) statusEl.textContent = '';
+      NyhomeAPI.sendPipelineDigestEmail({ publicBaseUrl: base })
+        .then(function (res) {
+          if (statusEl) statusEl.textContent = 'Sent: ' + (res.subject || 'OK') + ' (to ' + (res.to && res.to.length ? res.to.join(', ') : 'recipients') + ').';
+        })
+        .catch(function (err) {
+          if (statusEl) statusEl.textContent = err.message || 'Send failed';
+          else alert(err.message || 'Send failed');
+        })
+        .then(function () {
+          sendBtn.disabled = false;
+          sendBtn.textContent = old;
+        });
+    });
   }
 
   function bindTabs() {
@@ -1096,6 +1157,49 @@
     if (parsed.organizedNotes && notes) notes.value = parsed.organizedNotes;
   }
 
+  /**
+   * Read stored sort preference, sync the sort segment UI, and wire click handlers.
+   * Only wires buttons inside #admin-sort (Saved apartments tab only).
+   */
+  function initAdminSort() {
+    try {
+      var saved = localStorage.getItem(ADMIN_SORT_STORAGE_KEY);
+      if (saved && ADMIN_VALID_SORTS[saved]) adminSortMode = saved;
+    } catch (e) {}
+    syncAdminSortUi();
+    var root = document.getElementById('admin-sort');
+    if (!root) return;
+    root.querySelectorAll('[data-admin-sort]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var mode = btn.getAttribute('data-admin-sort');
+        if (!ADMIN_VALID_SORTS[mode] || mode === adminSortMode) return;
+        adminSortMode = mode;
+        try { localStorage.setItem(ADMIN_SORT_STORAGE_KEY, adminSortMode); } catch (e) {}
+        syncAdminSortUi();
+        renderApartments();
+      });
+    });
+  }
+
+  function syncAdminSortUi() {
+    var root = document.getElementById('admin-sort');
+    if (!root) return;
+    root.querySelectorAll('[data-admin-sort]').forEach(function (btn) {
+      var on = btn.getAttribute('data-admin-sort') === adminSortMode;
+      btn.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+  }
+
+  /** Apply the current adminSortMode to an already-filtered list of apartments. */
+  function applyAdminSort(items) {
+    if (typeof NyhomeShortlistSort === 'undefined') return items;
+    if (adminSortMode === 'ranked') return NyhomeShortlistSort.sortForFinalist(items);
+    if (adminSortMode === 'avg') return NyhomeShortlistSort.sortForDisplay(items, 'avg');
+    if (adminSortMode === 'workflow') return NyhomeShortlistSort.sortForDisplay(items, 'workflow');
+    if (adminSortMode === 'updated') return NyhomeShortlistSort.sortForDisplay(items, 'updated');
+    return items;
+  }
+
   function renderApartments() {
     if (!listEl) return;
     if (!state.apartments.length) {
@@ -1104,7 +1208,7 @@
     }
     var q = getAdminApartmentSearchQuery();
     var items = !q
-      ? state.apartments
+      ? state.apartments.slice()
       : state.apartments.filter(function (a) {
         return apartmentSearchHaystack(a).indexOf(q) !== -1;
       });
@@ -1112,6 +1216,7 @@
       listEl.innerHTML = '<div class="empty-state">No listings match your search.</div>';
       return;
     }
+    items = applyAdminSort(items);
     listEl.innerHTML = '';
     items.forEach(function (apartment) {
       listEl.appendChild(renderAdminApartment(apartment));

@@ -88,10 +88,12 @@ textarea {
   border: 0;
   background: none;
   border-radius: 0;
+  font: inherit;
   font-weight: 500;
   color: var(--accent-dark);
   text-decoration: none;
   box-shadow: none;
+  cursor: pointer;
 }
 
 .app-header-actions .link-button:hover {
@@ -1093,6 +1095,52 @@ body.shortlist .link-button--no-listing {
   display: grid;
   gap: 20px;
   align-content: start;
+}
+
+/* Saved apartments sort control */
+.admin-sort {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.admin-sort-label {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+.admin-sort .shortlist-sort-segment {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  background: var(--paper);
+  overflow: hidden;
+  overflow-x: auto;
+}
+.admin-sort .shortlist-sort-btn {
+  margin: 0;
+  padding: 6px 11px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.admin-sort .shortlist-sort-btn + .shortlist-sort-btn {
+  border-left: 1px solid #e5e7eb;
+}
+.admin-sort .shortlist-sort-btn:hover {
+  color: var(--ink);
+  background: rgba(243, 244, 246, 0.9);
+}
+.admin-sort .shortlist-sort-btn[aria-checked="true"] {
+  color: var(--accent-dark);
+  background: var(--accent-soft);
+  font-weight: 600;
 }
 
 /* Admin: clearer field edges and lighter placeholders (criteria + other admin inputs) */
@@ -2760,6 +2808,15 @@ body.filters-drawer--open .filters-drawer-fab {
   gap: 12px;
   padding: 16px 20px 20px;
   border-top: 1px solid var(--line);
+}
+
+.status-filter-digest-row {
+  padding: 4px 20px 20px;
+  border-top: 1px solid var(--line);
+}
+
+.status-filter-digest-row .secondary-btn {
+  width: 100%;
 }
 
 .status-filter-row1 {

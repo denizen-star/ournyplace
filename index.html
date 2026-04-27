@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="/assets/css/app.css?v=96">
+  <link rel="stylesheet" href="/assets/css/app.css?v=98">
 </head>
 <body class="shortlist">
   <header class="app-header app-header--shortlist">
@@ -22,7 +22,7 @@
           <span class="shortlist-view-label" id="shortlist-view-label">View</span>
           <div class="shortlist-view-segment" role="presentation">
             <button type="button" class="shortlist-view-btn" role="tab" id="shortlist-view-cards" data-shortlist-view="cards" aria-selected="true" aria-controls="apartment-list">Cards</button>
-            <button type="button" class="shortlist-view-btn" role="tab" id="shortlist-view-finalist" data-shortlist-view="finalist" aria-selected="false" aria-controls="apartment-list">Finalist</button>
+            <button type="button" class="shortlist-view-btn" role="tab" id="shortlist-view-finalist" data-shortlist-view="finalist" aria-selected="false" aria-controls="apartment-list">Table</button>
             <button type="button" class="shortlist-view-btn" role="tab" id="shortlist-view-next-actions" data-shortlist-view="next-actions" aria-selected="false" aria-controls="apartment-list">Next actions</button>
           </div>
         </div>
@@ -49,12 +49,13 @@
                   <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="kerv" aria-checked="false">Kerv</button>
                   <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="updated" aria-checked="false">Last updated</button>
                   <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="star" aria-checked="false">Star</button>
+                  <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="ranked" aria-checked="false">Ranked</button>
                 </div>
               </div>
             </div>
           </div>
           <div class="app-header-actions app-header-actions--in-hero" aria-label="Listings">
-            <a class="link-button" href="/admin/new">New listing</a><span class="app-header-actions-sep" aria-hidden="true">|</span><a class="link-button" href="/admin">Manage</a>
+            <a class="link-button" href="/admin/new">New listing</a><span class="app-header-actions-sep" aria-hidden="true">|</span><a class="link-button" href="/admin">Manage</a><span class="app-header-actions-sep" aria-hidden="true">|</span><button type="button" class="link-button" id="nyhome-shortlist-send-digest">Email digest</button>
           </div>
         </div>
       </div>
@@ -102,13 +103,14 @@
     </div>
   </dialog>
 
-  <script src="/assets/js/apartmentStatus.js?v=96"></script>
-  <script src="/assets/js/statusFilterGroups.js?v=96"></script>
-  <script src="/assets/js/listingStar.js?v=96"></script>
-  <script src="/assets/js/apartmentSavePayload.js?v=96"></script>
-  <script src="/assets/js/saveApartmentWorkflow.js?v=96"></script>
-  <script src="/assets/js/api.js?v=96"></script>
-  <script src="/assets/js/app.js?v=96"></script>
+  <script src="/assets/js/apartmentStatus.js?v=98"></script>
+  <script src="/assets/js/statusFilterGroups.js?v=98"></script>
+  <script src="/assets/js/listingStar.js?v=98"></script>
+  <script src="/assets/js/shortlistSort.js?v=98"></script>
+  <script src="/assets/js/apartmentSavePayload.js?v=98"></script>
+  <script src="/assets/js/saveApartmentWorkflow.js?v=98"></script>
+  <script src="/assets/js/api.js?v=98"></script>
+  <script src="/assets/js/app.js?v=98"></script>
   <script>
     (function () {
       var h = location.hostname;

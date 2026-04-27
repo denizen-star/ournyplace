@@ -7,12 +7,13 @@
 
   var SORT_STORAGE_KEY = 'nyhomeShortlistSort';
   var VIEW_STORAGE_KEY = 'nyhomeShortlistView';
+  var PUBLIC_BASE_STORAGE_KEY = 'nyhomePublicBaseUrl';
   var NA_LAYOUT_STORAGE_KEY = 'nyhomeNextActionsLayout';
   var NA_OMIT_TOUR_KEY = 'nyhomeNextActionsOmitTour';
   var NA_OMIT_DEADLINE_KEY = 'nyhomeNextActionsOmitDeadline';
   var NA_OMIT_MOVEIN_KEY = 'nyhomeNextActionsOmitMoveIn';
   var NA_CAL_DENSITY_KEY = 'nyhomeNextActionsCalendarDensity';
-  var VALID_SORTS = { workflow: 1, avg: 1, peter: 1, kerv: 1, updated: 1, star: 1 };
+  var VALID_SORTS = { workflow: 1, avg: 1, peter: 1, kerv: 1, updated: 1, star: 1, ranked: 1 };
   var VALID_VIEWS = { cards: 1, finalist: 1, 'next-actions': 1 };
   var VALID_NA_LAYOUTS = { list: 1, calendar: 1 };
   var VALID_NA_CAL_DENSITY = { summary: 1, details: 1, prospect: 1 };
@@ -93,6 +94,49 @@
   /** Bottom nav + mobile shell — match Option A (header VIEW hidden, FAB + sort collapse). */
   var MOBILE_WIDTH_MAX = 720;
 
+  function getStoredPublicBaseUrl() {
+    try {
+      var u = localStorage.getItem(PUBLIC_BASE_STORAGE_KEY);
+      return u && String(u).trim() ? String(u).trim().replace(/\/+$/, '') : '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function sendPipelineDigestFromShortlist(triggerEl) {
+    var base =
+      getStoredPublicBaseUrl() ||
+      (window.location && window.location.origin ? window.location.origin.replace(/\/+$/, '') : '');
+    var el = triggerEl || null;
+    var old = el && el.textContent;
+    if (el) {
+      el.disabled = true;
+      el.textContent = 'Sending…';
+    }
+    NyhomeAPI.sendPipelineDigestEmail({ publicBaseUrl: base })
+      .then(function (res) {
+        window.alert('Digest sent: ' + (res.subject || 'OK'));
+      })
+      .catch(function (err) {
+        window.alert(err.message || 'Send failed');
+      })
+      .then(function () {
+        if (el) {
+          el.disabled = false;
+          if (old != null) el.textContent = old;
+        }
+      });
+  }
+
+  function initPipelineDigestUi() {
+    var shortlistBtn = document.getElementById('nyhome-shortlist-send-digest');
+    if (shortlistBtn) {
+      shortlistBtn.addEventListener('click', function () {
+        sendPipelineDigestFromShortlist(shortlistBtn);
+      });
+    }
+  }
+
   function isShortlistMobile() {
     return typeof window.matchMedia === 'function' && window.matchMedia('(max-width: ' + MOBILE_WIDTH_MAX + 'px)').matches;
   }
@@ -123,8 +167,6 @@
     nav.innerHTML =
       '<button type="button" class="m-nav-btn" data-shortlist-view="cards" aria-controls="apartment-list">' +
       '<span class="m-nav-icon" aria-hidden="true">▦</span><span class="m-nav-label">Cards</span></button>' +
-      '<button type="button" class="m-nav-btn" data-shortlist-view="finalist" aria-controls="apartment-list">' +
-      '<span class="m-nav-icon" aria-hidden="true">☰</span><span class="m-nav-label">Finalist</span></button>' +
       '<button type="button" class="m-nav-btn" data-shortlist-view="next-actions" aria-controls="apartment-list">' +
       '<span class="m-nav-icon" aria-hidden="true">\u25A3</span><span class="m-nav-label">Next actions</span></button>';
     document.body.appendChild(nav);
@@ -188,6 +230,7 @@
     initMobileBottomNav();
     initShortlistView();
     initShortlistSort();
+    initPipelineDigestUi();
     initNextActionsPrefs();
     applyMobileNextActionsDefaults();
     initMobileSortCollapse();
@@ -252,7 +295,7 @@
       });
     }
     if (sortRootEl) {
-      if (viewMode === 'finalist' || viewMode === 'next-actions') {
+      if (viewMode === 'next-actions') {
         sortRootEl.classList.add('shortlist-sort--hidden');
         sortRootEl.setAttribute('aria-hidden', 'true');
       } else {
@@ -285,7 +328,7 @@
           localStorage.setItem(SORT_STORAGE_KEY, sortMode);
         } catch (e) {}
         syncShortlistSortUi();
-        if (allApartments.length && viewMode === 'cards') applyFilters();
+        if (allApartments.length && (viewMode === 'cards' || viewMode === 'finalist')) applyFilters();
       });
     });
   }
@@ -350,7 +393,7 @@
     if (!toggle || !panel) return;
     var hint = toggle.querySelector('.shortlist-sort-mobile-toggle-hint');
     var sortHidden = sortRootEl && sortRootEl.classList.contains('shortlist-sort--hidden');
-    if (!isShortlistMobile() || viewMode !== 'cards' || sortHidden) {
+    if (!isShortlistMobile() || (viewMode !== 'cards' && viewMode !== 'finalist') || sortHidden) {
       toggle.setAttribute('hidden', '');
       panel.removeAttribute('hidden');
       if (hint) hint.textContent = 'Show';
@@ -404,47 +447,16 @@
     return !!(apartment && apartment.move_in_date && String(apartment.move_in_date).trim());
   }
 
-  function updatedAtMs(apt) {
-    if (!apt || !apt.updated_at) return 0;
-    var t = Date.parse(apt.updated_at);
-    return isNaN(t) ? 0 : t;
-  }
-
   function compareWorkflowDesc(a, b) {
-    var sa = NyhomeStatus.normalizeStatus(a.status);
-    var sb = NyhomeStatus.normalizeStatus(b.status);
-    var ia = NyhomeStatus.STATUS_ORDER.indexOf(sa);
-    var ib = NyhomeStatus.STATUS_ORDER.indexOf(sb);
-    if (ia < 0) ia = 0;
-    if (ib < 0) ib = 0;
-    if (ia !== ib) return ib - ia;
-    return updatedAtMs(b) - updatedAtMs(a);
-  }
-
-  /**
-   * Star sort: higher `listing_star` tier first (3 → 0), then workflow (desc) as tiebreaker.
-   */
-  function compareListingStarSort(a, b) {
-    if (typeof NyhomeListingStar === 'undefined') {
-      return compareWorkflowDesc(a, b);
-    }
-    var ta = NyhomeListingStar.normalizeTier(a);
-    var tb = NyhomeListingStar.normalizeTier(b);
-    if (tb !== ta) return tb - ta;
-    return compareWorkflowDesc(a, b);
+    return NyhomeShortlistSort.compareWorkflowDesc(a, b);
   }
 
   function compareLastUpdated(a, b) {
-    return updatedAtMs(b) - updatedAtMs(a);
+    return NyhomeShortlistSort.compareLastUpdated(a, b);
   }
 
   function scoreNumber(apt, key) {
-    var s = apt && apt.scores;
-    if (!s) return null;
-    var v = s[key];
-    if (v == null) return null;
-    var n = Number(v);
-    return isNaN(n) ? null : n;
+    return NyhomeShortlistSort.scoreNumber(apt, key);
   }
 
   function listingUrlIsMissingOrInvalid(raw) {
@@ -516,36 +528,17 @@
   }
 
   function compareScoreDesc(key) {
-    return function (a, b) {
-      var na = scoreNumber(a, key);
-      var nb = scoreNumber(b, key);
-      if (na != null && nb != null) {
-        if (nb !== na) return nb - na;
-      } else if (na != null && nb == null) return -1;
-      else if (na == null && nb != null) return 1;
-      return updatedAtMs(b) - updatedAtMs(a);
-    };
+    return NyhomeShortlistSort.compareScoreDesc(key);
   }
 
+  /** Sort card grid using the current sortMode. Delegates to shared NyhomeShortlistSort. */
   function sortForDisplay(list) {
-    var cmp;
-    if (sortMode === 'updated') cmp = compareLastUpdated;
-    else if (sortMode === 'avg') cmp = compareScoreDesc('combined');
-    else if (sortMode === 'peter') cmp = compareScoreDesc('peter');
-    else if (sortMode === 'kerv') cmp = compareScoreDesc('kerv');
-    else if (sortMode === 'star') cmp = compareListingStarSort;
-    else cmp = compareWorkflowDesc;
-    return list.slice().sort(cmp);
+    return NyhomeShortlistSort.sortForDisplay(list, sortMode);
   }
 
-  /** Finalist list: Avg (desc) then workflow (desc), same as sort options 2 then 1 in the public shortlist help text. */
+  /** Ranked sort: Avg desc then workflow desc. Delegates to shared NyhomeShortlistSort. */
   function sortForFinalist(list) {
-    var byAvg = compareScoreDesc('combined');
-    return list.slice().sort(function (a, b) {
-      var c = byAvg(a, b);
-      if (c !== 0) return c;
-      return compareWorkflowDesc(a, b);
-    });
+    return NyhomeShortlistSort.sortForFinalist(list);
   }
 
   /** Listing appears in Next actions if it has a tour, application deadline, and/or move-in date. */
@@ -1794,6 +1787,9 @@
         statusGroupsHtml +
         '</div>' +
         '</div>' +
+        '<div class="status-filter-digest-row">' +
+        '<button type="button" class="secondary-btn" id="nyhome-drawer-send-digest">Email pipeline digest</button>' +
+        '</div>' +
       '</div>';
 
     filterEl.querySelectorAll('[data-filter-status]').forEach(function (btn) {
@@ -1856,6 +1852,13 @@
       });
     }
 
+    var digestDrawer = document.getElementById('nyhome-drawer-send-digest');
+    if (digestDrawer) {
+      digestDrawer.addEventListener('click', function () {
+        sendPipelineDigestFromShortlist(digestDrawer);
+      });
+    }
+
     if (wasDrawerOpen) {
       setFiltersDrawerOpen(true);
     }
@@ -1890,7 +1893,10 @@
       return;
     }
     if (viewMode === 'finalist') {
-      renderFinalistList(visible);
+      var tableSort = sortMode === 'ranked'
+        ? NyhomeShortlistSort.sortForFinalist(visible)
+        : NyhomeShortlistSort.sortForDisplay(visible, sortMode);
+      renderFinalistList(tableSort);
       return;
     }
     if (viewMode === 'next-actions') {
@@ -1906,8 +1912,7 @@
     syncMobileSortPanel();
   }
 
-  function renderFinalistList(visible) {
-    var sorted = sortForFinalist(visible);
+  function renderFinalistList(sorted) {
     var h =
       '<div class="shortlist-finalist-c shortlist-finalist-c--ord shortlist-finalist-c--h">#</div>' +
       '<div class="shortlist-finalist-c shortlist-finalist-c--h">Listing</div>' +
@@ -1948,8 +1953,11 @@
         '</div></div>'
       );
     }).join('');
+    var tableAriaLabel = sortMode === 'ranked'
+      ? 'Compare table, ranked by Avg then workflow'
+      : 'Compare table, sorted by ' + sortMode;
     listEl.innerHTML =
-      '<div class="shortlist-finalist-wrap" role="region" aria-label="Finalist list, sorted by Avg then workflow">' +
+      '<div class="shortlist-finalist-wrap" role="region" aria-label="' + escapeAttr(tableAriaLabel) + '">' +
         '<div class="shortlist-finalist-header shortlist-finalist-cols" role="row">' + h + '</div>' +
         '<div class="shortlist-finalist-body">' + body + '</div>' +
       '</div>';

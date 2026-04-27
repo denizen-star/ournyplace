@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="/assets/css/app.css?v=96">
+  <link rel="stylesheet" href="/assets/css/app.css?v=98">
 </head>
 <body>
   <header class="app-header app-header--admin">
@@ -38,12 +38,23 @@
       <button class="summary-tab tab active" data-tab="saved">Saved apartments</button>
       <button class="summary-tab tab" data-tab="blacklist">Building blacklist</button>
       <button class="summary-tab tab" data-tab="criteria">Criteria</button>
+      <button class="summary-tab tab" data-tab="settings">Settings</button>
     </nav>
 
     <section id="tab-saved" class="tab-panel active">
       <section class="content-section">
         <div class="section-header">
           <h2 class="section-title">Saved apartments</h2>
+          <div id="admin-sort" class="admin-sort" role="group" aria-label="Sort saved apartments">
+            <span class="admin-sort-label">Sort</span>
+            <div class="shortlist-sort-segment" role="radiogroup" aria-label="Sort saved apartments">
+              <button type="button" class="shortlist-sort-btn" role="radio" data-admin-sort="default" aria-checked="true">Default</button>
+              <button type="button" class="shortlist-sort-btn" role="radio" data-admin-sort="workflow" aria-checked="false">Workflow</button>
+              <button type="button" class="shortlist-sort-btn" role="radio" data-admin-sort="avg" aria-checked="false">Avg</button>
+              <button type="button" class="shortlist-sort-btn" role="radio" data-admin-sort="updated" aria-checked="false">Updated</button>
+              <button type="button" class="shortlist-sort-btn" role="radio" data-admin-sort="ranked" aria-checked="false">Ranked</button>
+            </div>
+          </div>
         </div>
         <div id="admin-apartment-list" class="compact-list"></div>
       </section>
@@ -108,6 +119,26 @@
       <div id="criteria-list" class="compact-list"></div>
     </section>
 
+    <section id="tab-settings" class="tab-panel">
+      <section class="content-section admin-form-card">
+        <div class="section-header">
+          <h2 class="section-title">Pipeline digest email</h2>
+        </div>
+        <p class="form-hint muted">SMTP is configured with Netlify environment variables (see <code>.env.example</code>). Set your <strong>public site URL</strong> here so links in the email point at your deployed nyhome (not localhost).</p>
+        <div class="form-grid">
+          <label class="span-2">Public site URL
+            <input type="url" id="nyhome-public-base-url" placeholder="https://your-site.netlify.app" autocomplete="off" aria-describedby="nyhome-public-base-hint">
+          </label>
+          <p id="nyhome-public-base-hint" class="span-2 form-hint muted">Saved in this browser only. You can also set <code>NYHOME_PUBLIC_URL</code> on the server.</p>
+        </div>
+        <div class="button-row">
+          <button type="button" class="secondary-btn" id="nyhome-save-public-url">Save URL</button>
+          <button type="button" class="primary-btn" id="nyhome-send-pipeline-digest">Send digest now</button>
+        </div>
+        <p id="nyhome-digest-status" class="form-hint" role="status" aria-live="polite"></p>
+      </section>
+    </section>
+
   </main>
 
   <dialog id="nyhome-blacklist-dialog" class="nyhome-modal">
@@ -121,13 +152,14 @@
     </div>
   </dialog>
 
-  <script src="/assets/js/apartmentStatus.js?v=96"></script>
-  <script src="/assets/js/listingTextParse.js?v=96"></script>
-  <script src="/assets/js/listingStar.js?v=96"></script>
-  <script src="/assets/js/apartmentSavePayload.js?v=96"></script>
-  <script src="/assets/js/saveApartmentWorkflow.js?v=96"></script>
-  <script src="/assets/js/api.js?v=96"></script>
-  <script src="/assets/js/vibeImages.js?v=96"></script>
-  <script src="/assets/js/admin.js?v=96"></script>
+  <script src="/assets/js/apartmentStatus.js?v=98"></script>
+  <script src="/assets/js/listingTextParse.js?v=98"></script>
+  <script src="/assets/js/listingStar.js?v=98"></script>
+  <script src="/assets/js/shortlistSort.js?v=98"></script>
+  <script src="/assets/js/apartmentSavePayload.js?v=98"></script>
+  <script src="/assets/js/saveApartmentWorkflow.js?v=98"></script>
+  <script src="/assets/js/api.js?v=98"></script>
+  <script src="/assets/js/vibeImages.js?v=98"></script>
+  <script src="/assets/js/admin.js?v=98"></script>
 </body>
 </html>
