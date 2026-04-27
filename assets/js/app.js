@@ -10,16 +10,70 @@
   var VALID_SORTS = { workflow: 1, avg: 1, peter: 1, kerv: 1, updated: 1 };
   var VALID_VIEWS = { cards: 1, finalist: 1, 'next-actions': 1 };
   var activeFilters = new Set();
+  /** When true, show only listings where at least one partner has no score rollup. */
+  var extraFilterNotVoted = false;
+  /** When true, show only listings with missing or invalid listing_url. */
+  var extraFilterLinkMissing = false;
+  /** If non-empty, only listings whose trimmed neighborhood is in the set. */
+  var hoodFilter = new Set();
   var allApartments = [];
   var sortMode = 'workflow';
   var viewMode = 'cards';
   var finalistFlyoutEl = null;
   var finalistFlyoutHideTimer = null;
   var finalistFlyoutGlobalsBound = false;
-
   document.addEventListener('DOMContentLoaded', boot);
 
+  function isFiltersDrawerOpen() {
+    var d = document.getElementById('filters-drawer');
+    return !!(d && !d.hasAttribute('hidden'));
+  }
+
+  function setFiltersDrawerOpen(open) {
+    var drawer = document.getElementById('filters-drawer');
+    var fab = document.getElementById('filters-drawer-toggle');
+    if (!drawer || !fab) return;
+    if (open) {
+      drawer.removeAttribute('hidden');
+      fab.setAttribute('aria-expanded', 'true');
+      document.body.classList.add('filters-drawer--open');
+      drawer.setAttribute('aria-hidden', 'false');
+    } else {
+      drawer.setAttribute('hidden', '');
+      fab.setAttribute('aria-expanded', 'false');
+      document.body.classList.remove('filters-drawer--open');
+      drawer.setAttribute('aria-hidden', 'true');
+    }
+  }
+
+  function initFiltersDrawer() {
+    var fab = document.getElementById('filters-drawer-toggle');
+    if (!fab) return;
+    fab.addEventListener('click', function (e) {
+      e.stopPropagation();
+      setFiltersDrawerOpen(!isFiltersDrawerOpen());
+    });
+    document.addEventListener('click', function (e) {
+      var t = e.target;
+      if (t && t.closest && t.closest('[data-filters-close]')) {
+        e.preventDefault();
+        setFiltersDrawerOpen(false);
+      }
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && isFiltersDrawerOpen()) {
+        setFiltersDrawerOpen(false);
+      }
+    });
+  }
+
   function boot() {
+    if (typeof NyhomeStatusFilterGroups !== 'undefined' && typeof NyhomeStatus !== 'undefined') {
+      try {
+        NyhomeStatusFilterGroups.assertComplete(NyhomeStatus.STATUS_ORDER);
+      } catch (e) {}
+    }
+    initFiltersDrawer();
     initShortlistView();
     initShortlistSort();
     var cached = NyhomeAPI.getApartmentsCache();
@@ -153,6 +207,74 @@
     if (v == null) return null;
     var n = Number(v);
     return isNaN(n) ? null : n;
+  }
+
+  function listingUrlIsMissingOrInvalid(raw) {
+    if (raw == null) return true;
+    var s = String(raw).trim();
+    if (!s) return true;
+    var t = s.toLowerCase();
+    if (t === 'n/a' || t === 'na' || t === 'none' || t === 'nada' || t === 'tbd' || t === '—' || t === '-' || t === 'pending') {
+      return true;
+    }
+    var candidate = s;
+    if (!/^[a-z+.-]+:\/\//i.test(s)) {
+      candidate = 'https://' + s;
+    }
+    try {
+      var u = new URL(candidate);
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') return true;
+      var host = (u.hostname || '').toLowerCase();
+      if (host.length < 3) return true;
+      return false;
+    } catch (e) {
+      return true;
+    }
+  }
+
+  function distinctNeighborhoods(apartments) {
+    var out = [];
+    var seen = {};
+    (apartments || []).forEach(function (a) {
+      var n = a && a.neighborhood && String(a.neighborhood).trim();
+      if (n && !seen[n]) {
+        seen[n] = 1;
+        out.push(n);
+      }
+    });
+    out.sort(function (a, b) {
+      return a.localeCompare(b, undefined, { sensitivity: 'base' });
+    });
+    return out;
+  }
+
+  function pruneHoodFilter() {
+    var valid = new Set();
+    allApartments.forEach(function (a) {
+      var n = a.neighborhood && String(a.neighborhood).trim();
+      if (n) valid.add(n);
+    });
+    Array.from(hoodFilter).forEach(function (h) {
+      if (!valid.has(h)) hoodFilter.delete(h);
+    });
+  }
+
+  function apartmentPassesExtraFilters(a) {
+    if (extraFilterNotVoted) {
+      if (scoreNumber(a, 'kerv') != null && scoreNumber(a, 'peter') != null) {
+        return false;
+      }
+    }
+    if (extraFilterLinkMissing) {
+      if (!listingUrlIsMissingOrInvalid(a.listing_url)) {
+        return false;
+      }
+    }
+    if (hoodFilter.size > 0) {
+      var n = a.neighborhood && String(a.neighborhood).trim();
+      if (!n || !hoodFilter.has(n)) return false;
+    }
+    return true;
   }
 
   function compareScoreDesc(key) {
@@ -422,6 +544,7 @@
 
   function render(data) {
     allApartments = data.apartments || [];
+    pruneHoodFilter();
     renderSummary(allApartments);
     renderFilterBar(allApartments);
 
@@ -456,11 +579,24 @@
     return '<article class="summary-card"><span class="' + valueCls + '">' + escapeHtml(value) + '</span><span class="summary-label">' + escapeHtml(label) + '</span></article>';
   }
 
+  function buildStatusFilterButtonHtml(status, counts) {
+    var count = counts[status] || 0;
+    var isActive = activeFilters.has(status);
+    var isEmpty = count === 0;
+    var cls = 'status-filter-btn' + (isActive ? ' active' : '') + (isEmpty ? ' empty' : '');
+    return (
+      '<button type="button" class="' + cls + '" data-filter-status="' + escapeAttr(status) + '" aria-pressed="' + isActive + '">' +
+      '<img src="/assets/img/' + escapeAttr(status) + '.png" alt="' + escapeAttr(formatStatusLabel(status)) + '" width="80" height="80">' +
+      '<span class="status-filter-count">' + count + '</span>' +
+      '<span class="status-filter-label">' + escapeHtml(formatStatusLabel(status)) + '</span>' +
+      '</button>'
+    );
+  }
+
   function renderFilterBar(apartments) {
     if (!filterEl) return;
 
-    var existingDetails = filterEl.querySelector('.status-filter-details');
-    var isOpen = existingDetails ? existingDetails.open : false;
+    var wasDrawerOpen = isFiltersDrawerOpen();
 
     var counts = {};
     NyhomeStatus.STATUS_ORDER.forEach(function (s) { counts[s] = 0; });
@@ -469,33 +605,103 @@
       counts[s] = (counts[s] || 0) + 1;
     });
 
-    var btns = NyhomeStatus.STATUS_ORDER.map(function (status) {
-      var count = counts[status] || 0;
-      var isActive = activeFilters.has(status);
-      var isEmpty = count === 0;
-      var cls = 'status-filter-btn' + (isActive ? ' active' : '') + (isEmpty ? ' empty' : '');
-      return '<button type="button" class="' + cls + '" data-filter-status="' + escapeAttr(status) + '" aria-pressed="' + isActive + '">' +
-        '<img src="/assets/img/' + escapeAttr(status) + '.png" alt="' + escapeAttr(formatStatusLabel(status)) + '" width="80" height="80">' +
-        '<span class="status-filter-count">' + count + '</span>' +
-        '<span class="status-filter-label">' + escapeHtml(formatStatusLabel(status)) + '</span>' +
-      '</button>';
+    var statusGroupsHtml = (typeof NyhomeStatusFilterGroups !== 'undefined' && NyhomeStatusFilterGroups.GROUPS
+      ? NyhomeStatusFilterGroups.GROUPS
+      : []
+    ).map(function (g) {
+      var cells = g.statuses
+        .map(function (s) {
+          return buildStatusFilterButtonHtml(s, counts);
+        })
+        .join('');
+      return (
+        '<section class="status-filter-group" data-status-group="' +
+        escapeAttr(g.id) +
+        '" aria-label="' +
+        escapeAttr(g.label) +
+        '">' +
+        '<h3 class="status-filter-group-title">' +
+        escapeHtml(g.label) +
+        '</h3>' +
+        '<div class="status-filter-group-chips" role="group">' +
+        cells +
+        '</div></section>'
+      );
     }).join('');
 
     var hasClear = activeFilters.size > 0;
     var activeSummary = hasClear ? ' <span class="status-filter-active-summary">(' + activeFilters.size + ' selected)</span>' : '';
+    var hoods = distinctNeighborhoods(apartments);
+    var showHoodClear = hoodFilter.size > 0;
+    var neighborhoodBlock;
+    if (hoods.length === 0) {
+      neighborhoodBlock =
+        '<div class="status-filter-hood-block status-filter-hood-block--empty">' +
+        '<span class="status-filter-hood-heading">Neighborhood</span>' +
+        '<p class="status-filter-hood-empty muted">No neighborhood set on your listings yet. Add one in Manage.</p>' +
+        '</div>';
+    } else {
+      neighborhoodBlock =
+        '<div class="status-filter-hood-block">' +
+        '<div class="status-filter-hood-head">' +
+        '<span class="status-filter-hood-heading">Neighborhood</span>' +
+        (showHoodClear
+          ? '<button type="button" class="link-button status-filter-hood-clear" data-hood-clear>Clear</button>'
+          : '') +
+        '</div>' +
+        '<div class="status-filter-hood-chips" role="group" aria-label="Filter by neighborhood. Tap a name; multiple allowed.">' +
+        hoods
+          .map(function (name) {
+            var on = hoodFilter.has(name);
+            return (
+              '<button type="button" class="status-filter-pill' +
+              (on ? ' active' : '') +
+              '" data-hood-chip data-hood-name="' +
+              escapeAttr(name) +
+              '" aria-pressed="' +
+              (on ? 'true' : 'false') +
+              '">' +
+              escapeHtml(name) +
+              '</button>'
+            );
+          })
+          .join('') +
+        '</div></div>';
+    }
+    var extraLine =
+      '<div class="status-filter-extras">' +
+        '<div class="status-filter-pills" role="group" aria-label="Narrow by listing">' +
+        '<button type="button" class="status-filter-pill' +
+        (extraFilterNotVoted ? ' active' : '') +
+        '" data-filter-pill="not-voted" aria-pressed="' +
+        (extraFilterNotVoted ? 'true' : 'false') +
+        '">Not voted</button>' +
+        '<button type="button" class="status-filter-pill' +
+        (extraFilterLinkMissing ? ' active' : '') +
+        '" data-filter-pill="link-missing" aria-pressed="' +
+        (extraFilterLinkMissing ? 'true' : 'false') +
+        '">Link missing</button>' +
+        '</div>' +
+        neighborhoodBlock +
+      '</div>';
 
     filterEl.innerHTML =
-      '<div class="status-filter-bar">' +
-        '<details class="status-filter-details"' + (isOpen ? ' open' : '') + '>' +
-          '<summary class="status-filter-header">' +
-            '<span class="status-filter-title">Filter by status' + activeSummary + '</span>' +
-            '<span class="status-filter-chevron" aria-hidden="true"></span>' +
-          '</summary>' +
-          '<div class="status-filter-body">' +
-            '<div class="status-filter-scroll">' + btns + '</div>' +
-            (hasClear ? '<a href="#" class="status-filter-clear">Clear</a>' : '') +
-          '</div>' +
-        '</details>' +
+      '<div class="filters-panel">' +
+        '<div class="filters-panel-header">' +
+        '<h2 class="filters-panel-title" id="filters-panel-heading">Filters' +
+        activeSummary +
+        '</h2>' +
+        '<button type="button" class="filters-panel-close" data-filters-close aria-label="Close filters">×</button>' +
+        '</div>' +
+        '<div class="status-filter-body">' +
+        extraLine +
+        '<div class="status-filter-groups">' +
+        (hasClear
+          ? '<div class="status-filter-clear-wrap"><a href="#" class="status-filter-clear" data-filter-clear-link>Clear status filters</a></div>'
+          : '') +
+        statusGroupsHtml +
+        '</div>' +
+        '</div>' +
       '</div>';
 
     filterEl.querySelectorAll('[data-filter-status]').forEach(function (btn) {
@@ -520,6 +726,47 @@
         applyFilters();
       });
     }
+
+    filterEl.querySelectorAll('[data-filter-pill]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var k = btn.getAttribute('data-filter-pill');
+        if (k === 'not-voted') {
+          extraFilterNotVoted = !extraFilterNotVoted;
+        } else if (k === 'link-missing') {
+          extraFilterLinkMissing = !extraFilterLinkMissing;
+        }
+        renderFilterBar(allApartments);
+        applyFilters();
+      });
+    });
+
+    filterEl.querySelectorAll('[data-hood-chip]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var name = btn.getAttribute('data-hood-name');
+        if (!name) return;
+        if (hoodFilter.has(name)) {
+          hoodFilter.delete(name);
+        } else {
+          hoodFilter.add(name);
+        }
+        renderFilterBar(allApartments);
+        applyFilters();
+      });
+    });
+
+    var hoodClear = filterEl.querySelector('[data-hood-clear]');
+    if (hoodClear) {
+      hoodClear.addEventListener('click', function (e) {
+        e.preventDefault();
+        hoodFilter.clear();
+        renderFilterBar(allApartments);
+        applyFilters();
+      });
+    }
+
+    if (wasDrawerOpen) {
+      setFiltersDrawerOpen(true);
+    }
   }
 
   function applyFilters() {
@@ -528,6 +775,8 @@
       : allApartments.filter(function (a) {
           return activeFilters.has(NyhomeStatus.normalizeStatus(a.status));
         });
+
+    visible = visible.filter(apartmentPassesExtraFilters);
 
     listEl.classList.toggle('card-list--finalist', viewMode === 'finalist');
     listEl.classList.toggle('card-list--next-actions', viewMode === 'next-actions');
@@ -738,6 +987,13 @@
   function renderApartmentCard(apartment) {
     var article = document.createElement('article');
     var status = NyhomeStatus.normalizeStatus(apartment.status || 'new');
+    var statusLabel = formatStatusLabel(status);
+    var hoodOnly =
+      apartment.neighborhood && String(apartment.neighborhood).trim()
+        ? '<div class="apartment-location muted">' +
+          escapeHtml(String(apartment.neighborhood).trim()) +
+          '</div>'
+        : '';
     article.className = 'apartment-card listing-status-' + status.replace(/_/g, '-');
 
     article.innerHTML =
@@ -745,11 +1001,17 @@
         '<div class="card-topline">' +
           '<div>' +
             '<h2 class="apartment-title">' + escapeHtml(apartment.title || 'Untitled apartment') + '</h2>' +
-            '<div class="apartment-location muted">' + escapeHtml([apartment.neighborhood, apartment.address].filter(Boolean).join(' · ')) + '</div>' +
+            hoodOnly +
           '</div>' +
           '<div class="card-topright">' +
+            '<span class="status-pill ' +
+            NyhomeStatus.statusClass(status) +
+            ' card-top-status-pill" title="' +
+            escapeAttr('Status: ' + statusLabel) +
+            '">' +
+            escapeHtml(statusLabel) +
+            '</span>' +
             scoreChip(apartment.scores && apartment.scores.combined) +
-            '<img class="card-status-badge" src="/assets/img/' + escapeAttr(status) + '.png" alt="" aria-hidden="true" width="48" height="48">' +
           '</div>' +
         '</div>' +
         '<div class="card-status-container">' +
@@ -780,6 +1042,12 @@
   function renderFacts(apartment) {
     var facts = [];
     if (apartment.rent_cents) facts.push(formatMoney(apartment.rent_cents) + '/mo');
+    if (apartment.net_effective_cents) {
+      facts.push('Net eff. ' + formatMoney(apartment.net_effective_cents) + '/mo');
+    }
+    if (apartment.total_move_in_cents != null) {
+      facts.push('Move-in ' + formatMoney(apartment.total_move_in_cents) + ' total');
+    }
     if (apartment.bedrooms != null) facts.push(apartment.bedrooms + ' bed');
     if (apartment.bathrooms != null) facts.push(apartment.bathrooms + ' bath');
     if (apartment.square_feet) facts.push(apartment.square_feet + ' sq ft');
@@ -788,11 +1056,12 @@
   }
 
   function renderScores(scores) {
-    return '<div class="score-grid">' +
-      scoreBox('combined', 'Avg', scores.combined) +
+    return (
+      '<div class="score-grid score-grid--card-partners">' +
       scoreBox('kerv', 'Kerv', scores.kerv) +
       scoreBox('peter', 'Peter', scores.peter) +
-    '</div>';
+      '</div>'
+    );
   }
 
   function renderScoresAndThumbs(apartment) {

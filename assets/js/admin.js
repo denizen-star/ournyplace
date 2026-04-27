@@ -20,13 +20,16 @@
   function boot() {
     bindTabs();
     bindApartmentSearch();
-    bindForms();
-    bindSelectorChips();
-    bindNotesParser();
-    initVibeSlots();
-    syncStatusControls(value('status') || 'new');
-    bindStatusControls();
-    bindCriteriaList();
+    bindApartmentForm();
+    bindCriterionForm();
+    if (form) {
+      bindSelectorChips();
+      bindNotesParser();
+      initVibeSlots();
+      syncStatusControls(value('status') || 'new');
+      bindStatusControls();
+    }
+    if (criteriaListEl) bindCriteriaList();
     bindBlacklistList();
     bindBlacklistForm();
     bindBlacklistPasteHelper();
@@ -67,19 +70,28 @@
         state.neighborhoods = data.neighborhoods || [];
         state.buildingBlacklist = (bl && bl.entries) || [];
         applyAdminListPaint();
+        maybeApplyEditFromQuery();
       })
       .catch(function (err) {
         console.error('[nyhome-admin] load', err);
       });
   }
 
+  function maybeApplyEditFromQuery() {
+    if (!form) return;
+    var id = new URLSearchParams(window.location.search).get('id');
+    if (!id) return;
+    var a = state.apartments.find(function (x) { return String(x.id) === String(id); });
+    if (a) fillApartmentForm(a);
+  }
+
   function bindTabs() {
     Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (button) {
       button.addEventListener('click', function () {
         var tab = button.getAttribute('data-tab');
-        var apartmentsPanel = document.getElementById('tab-apartments');
-        var leavingApartments = apartmentsPanel && apartmentsPanel.classList.contains('active');
-        if (leavingApartments && tab !== 'apartments') {
+        var savedPanel = document.getElementById('tab-saved');
+        var leavingSaved = savedPanel && savedPanel.classList.contains('active');
+        if (leavingSaved && tab !== 'saved') {
           clearAdminApartmentSearch();
         }
         document.querySelectorAll('.tab').forEach(function (el) { el.classList.remove('active'); });
@@ -230,7 +242,8 @@
     hideSearchSuggestions();
   }
 
-  function bindForms() {
+  function bindApartmentForm() {
+    if (!form) return;
     form.addEventListener('submit', function (event) {
       event.preventDefault();
       NyhomeSaveWorkflow.saveApartmentRespectingBlacklist(NyhomeAPI.saveApartment, function (forRetry) {
@@ -249,9 +262,16 @@
         });
     });
 
-    document.getElementById('reset-form').addEventListener('click', clearApartmentForm);
+    var resetBtn = document.getElementById('reset-form');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', clearApartmentForm);
+    }
+  }
 
-    document.getElementById('criterion-form').addEventListener('submit', function (event) {
+  function bindCriterionForm() {
+    var cform = document.getElementById('criterion-form');
+    if (!cform) return;
+    cform.addEventListener('submit', function (event) {
       event.preventDefault();
       NyhomeAPI.saveCriterion({
         label: document.getElementById('criterion-label').value,
@@ -269,6 +289,7 @@
   }
 
   function bindCriteriaList() {
+    if (!criteriaListEl) return;
     criteriaListEl.addEventListener('click', function (event) {
       if (event.target.closest('.criterion-drag') || event.target.closest('.criterion-delete')) return;
       var disp = event.target.closest('.criterion-display');
@@ -808,6 +829,7 @@
   }
 
   function fillApartmentForm(apartment) {
+    if (!document.getElementById('apartment-id')) return;
     setValue('apartment-id', apartment.id);
     setValue('neighborhood', apartment.neighborhood);
     setValue('address', apartment.address);
@@ -833,6 +855,7 @@
   }
 
   function clearApartmentForm() {
+    if (!form) return;
     form.reset();
     setValue('apartment-id', '');
     syncStatusControls('new');
@@ -1061,6 +1084,7 @@
   }
 
   function renderApartments() {
+    if (!listEl) return;
     if (!state.apartments.length) {
       listEl.innerHTML = '<div class="empty-state">No apartments yet.</div>';
       return;
@@ -1125,7 +1149,7 @@
         })
           .then(function () {
             apartment.status = nextStatus;
-            if (String(value('apartment-id')) === String(apartment.id)) {
+            if (form && document.getElementById('apartment-id') && String(value('apartment-id')) === String(apartment.id)) {
               setValue('status', nextStatus);
               syncStatusControls(nextStatus);
             }
@@ -1146,7 +1170,14 @@
       });
     }
 
-    card.querySelector('[data-action="edit"]').addEventListener('click', function () { fillApartmentForm(apartment); });
+    card.querySelector('[data-action="edit"]').addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (form) {
+        fillApartmentForm(apartment);
+      } else {
+        window.location.href = '/admin/new?id=' + encodeURIComponent(apartment.id);
+      }
+    });
     card.querySelector('[data-action="delete"]').addEventListener('click', function () {
       if (!confirm('Delete this apartment?')) return;
       return NyhomeAPI.deleteApartment(apartment.id).then(load).catch(function (err) {
@@ -1243,6 +1274,7 @@
   }
 
   function renderCriteria() {
+    if (!criteriaListEl) return;
     if (!state.criteria.length) {
       criteriaListEl.innerHTML = '<div class="empty-state criteria-empty">No criteria yet.</div>';
       return;
@@ -1284,6 +1316,7 @@
 
   function renderNeighborhoodOptions() {
     var datalist = document.getElementById('neighborhood-options');
+    if (!datalist) return;
     datalist.innerHTML = state.neighborhoods.map(function (neighborhood) {
       return '<option value="' + escapeAttr(neighborhood.name) + '"></option>';
     }).join('');
@@ -1338,11 +1371,15 @@
   }
 
   function value(id) {
-    return document.getElementById(id).value.trim();
+    var el = document.getElementById(id);
+    if (!el) return '';
+    return String(el.value || '').trim();
   }
 
   function setValue(id, next) {
-    document.getElementById(id).value = next == null ? '' : next;
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.value = next == null ? '' : next;
   }
 
   function numberOrNull(value) {

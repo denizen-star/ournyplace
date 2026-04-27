@@ -19,7 +19,8 @@ Environment: copy `.env.example` to `.env.local` and set `DATABASE_URL` (PlanetS
 ### Routing (netlify.toml)
 
 - `/` → `index.html` — Public shortlist: **View** Cards | **Finalist** | **Next actions** (`nyhomeShortlistView`); **Sort by** when Cards only (Workflow, Avg, Peter, Kerv, Last updated — `nyhomeShortlistSort`). Status filter; card grid with optional listing **thumbs** (row under Avg/Kerv/Peter) + **Finalist** table (thumbs after address, columns incl. move-in) + **Next actions** (tour and/or app deadline: one-line row, status pill, **?** = `criterion-def-btn` + definition-style panel for prep text, **Next** / **Reject**, link to `/details`). Hover thumb → fixed **300px** flyout (`#nyhome-finalist-flyout`, no layout reflow)
-- `/admin` → `admin/index.html` — **Apartment Setup** | **Criteria** | **Building blacklist** (normalized building keys; click-to-edit rows like criteria)
+- `/admin` → `admin/index.html` — **Saved apartments** (list + **header** search) | **Building blacklist** | **Criteria** (normalized building keys; click-to-edit rows like criteria)
+- `/admin/new` → `admin/new/index.html` — New listing form (apartment setup + same **Saved apartments** list as before); `?id=` pre-fills for edit
 - `/details/?id=…` → `details/index.html` — Full apartment view (scorecard, tour, application tracking)
 - `/api/*` → `/.netlify/functions/:splat`
 
@@ -30,10 +31,11 @@ Environment: copy `.env.example` to `.env.local` and set `DATABASE_URL` (PlanetS
 - **`apartmentSavePayload.js`** — `NyhomeApartmentPayload.apartmentToSavePayload(apartment, overrides?)` for consistent `PUT`/`POST` apartment bodies (admin manager status, shortlist Next actions)
 - **`listingTextParse.js`** — `NyhomeListingText.parseListingText` (StreetEasy, Google Maps comma lines, unit-first `#39M` lines); loaded before **`admin.js`** / used by Notes + blacklist paste
 - **`saveApartmentWorkflow.js`** — Shared modal + retry for blacklist / duplicate conflicts (`ignoreBlacklist` on second attempt)
-- **`admin.js`** — Admin forms, criteria (click-edit, drag reorder) + **blacklist** (click-edit, blur save; delete per row), **header search** (filters **Saved apartments**; cleared when leaving **Apartment Setup** for **Criteria** only), manager rows (row click → `/details` except interactive controls); Notes paste uses clipboard insert then parse
+- **`admin.js`** — `/admin` + `/admin/new`: list + criteria + blacklist; **apartment form** and vibe slots only on `/admin/new`. **Header search** (on `/admin`) filters the saved list; cleared when leaving the **Saved apartments** tab. **Edit** on `/admin` goes to `/admin/new?id=…`. Manager rows: row click → `/details` except controls; Notes paste (new listing page) uses clipboard insert then parse
 - **`details.js`** — Details page tabs, status transitions, **Unit Setup** address/apt saves use same blacklist + duplicate checks as admin; per-partner scoring UI; **Activity Log** merges `listing_events` with tour/application milestones
 - **`vibeImages.js`** — Client-side image resize + JPEG compress for listing photos (used by `admin.js` and `details.js` Images tab)
 - **`apartmentStatus.js`** — Shared status enum and CSS class mapping (used by both client and `lib/`)
+- **`statusFilterGroups.js`** — `NyhomeStatusFilterGroups.GROUPS`: shortlist filter drawer **sections** (Discovery & shortlist, Tours, Finalist, Application & lease, Closed). Must list every `STATUS_ORDER` value exactly once; `assertComplete(STATUS_ORDER)` checks at boot
 
 Data is fetched on load, cached to `localStorage`, and re-fetched after mutations. UI re-renders after successful saves; failures log to the console; **admin** apartment form save also shows a **browser alert** on error.
 
@@ -67,7 +69,7 @@ Each status has a corresponding PNG badge in `assets/img/` (incl. **`blacklisted
 
 ### Listing photos (vibe)
 
-Up to **3** images per apartment in `nyp_apartment_images` (`image_url` is text: `https://` or, after paste/drop, `data:image/jpeg;base64,...` from `vibeImages.js`). **Admin** (Apartment Setup) and **`/details` Images tab** use three click/paste/drop slots; **Save photos** on details sends a full apartment `PUT` with `imageUrls[]`. Thumbnail previews: **shortlist** Cards (under scores) and **Finalist** table + hover flyout; **Scorecard** / Images / partner tabs on `/details` (not on the details top summary card alone).
+Up to **3** images per apartment in `nyp_apartment_images` (`image_url` is text: `https://` or, after paste/drop, `data:image/jpeg;base64,...` from `vibeImages.js`). **`/admin/new`** and **`/details` Images tab** use three click/paste/drop slots; **Save photos** on details sends a full apartment `PUT` with `imageUrls[]`. Thumbnail previews: **shortlist** Cards (under scores) and **Finalist** table + hover flyout; **Scorecard** / Images / partner tabs on `/details` (not on the details top summary card alone).
 
 ### Scoring
 

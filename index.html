@@ -10,48 +10,77 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="/assets/css/app.css?v=56">
+  <link rel="stylesheet" href="/assets/css/app.css?v=68">
 </head>
 <body class="shortlist">
-  <header class="app-header">
-    <div>
+  <header class="app-header app-header--shortlist">
+    <div class="app-header__main">
       <p class="eyebrow">nyhome</p>
       <h1>Apartment shortlist</h1>
-      <p class="shortlist-tagline">Scores, status, and next steps at a glance.</p>
-      <div class="shortlist-view" id="shortlist-view" role="tablist" aria-label="Shortlist view">
-        <span class="shortlist-view-label" id="shortlist-view-label">View</span>
-        <div class="shortlist-view-segment" role="presentation">
-          <button type="button" class="shortlist-view-btn" role="tab" id="shortlist-view-cards" data-shortlist-view="cards" aria-selected="true" aria-controls="apartment-list">Cards</button>
-          <button type="button" class="shortlist-view-btn" role="tab" id="shortlist-view-finalist" data-shortlist-view="finalist" aria-selected="false" aria-controls="apartment-list">Finalist</button>
-          <button type="button" class="shortlist-view-btn" role="tab" id="shortlist-view-next-actions" data-shortlist-view="next-actions" aria-selected="false" aria-controls="apartment-list">Next actions</button>
-        </div>
-      </div>
-      <div class="shortlist-sort" id="shortlist-sort" role="group" aria-label="Sort apartment cards">
-        <span class="shortlist-sort-label" id="shortlist-sort-label">Sort by</span>
-        <div class="shortlist-sort-segment" role="radiogroup" aria-labelledby="shortlist-sort-label">
-          <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="workflow" aria-checked="true">Workflow</button>
-          <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="avg" aria-checked="false">Avg</button>
-          <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="peter" aria-checked="false">Peter</button>
-          <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="kerv" aria-checked="false">Kerv</button>
-          <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="updated" aria-checked="false">Last updated</button>
+      <div class="shortlist-tagline-row">
+        <p class="shortlist-tagline">Scores, status, and next steps at a glance.</p>
+        <div class="shortlist-toolbar" id="shortlist-toolbar">
+          <div class="shortlist-view" id="shortlist-view" role="tablist" aria-label="Shortlist view">
+            <span class="shortlist-view-label" id="shortlist-view-label">View</span>
+            <div class="shortlist-view-segment" role="presentation">
+              <button type="button" class="shortlist-view-btn" role="tab" id="shortlist-view-cards" data-shortlist-view="cards" aria-selected="true" aria-controls="apartment-list">Cards</button>
+              <button type="button" class="shortlist-view-btn" role="tab" id="shortlist-view-finalist" data-shortlist-view="finalist" aria-selected="false" aria-controls="apartment-list">Finalist</button>
+              <button type="button" class="shortlist-view-btn" role="tab" id="shortlist-view-next-actions" data-shortlist-view="next-actions" aria-selected="false" aria-controls="apartment-list">Next actions</button>
+            </div>
+          </div>
+          <div class="shortlist-sort" id="shortlist-sort" role="group" aria-label="Sort apartment cards">
+            <span class="shortlist-sort-label" id="shortlist-sort-label">Sort by</span>
+            <div class="shortlist-sort-segment" role="radiogroup" aria-labelledby="shortlist-sort-label">
+              <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="workflow" aria-checked="true">Workflow</button>
+              <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="avg" aria-checked="false">Avg</button>
+              <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="peter" aria-checked="false">Peter</button>
+              <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="kerv" aria-checked="false">Kerv</button>
+              <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="updated" aria-checked="false">Last updated</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-    <a class="link-button" href="/admin">Manage</a>
+    <div class="app-header-actions">
+      <a class="link-button" href="/admin/new">New listing</a><span class="app-header-actions-sep" aria-hidden="true">  |  </span><a class="link-button" href="/admin">Manage</a>
+    </div>
   </header>
 
+  <aside
+    class="filters-drawer"
+    id="filters-drawer"
+    role="dialog"
+    aria-modal="false"
+    aria-hidden="true"
+    aria-labelledby="filters-panel-heading"
+    hidden
+  >
+    <div class="filters-drawer-surface" id="status-filter" role="region" aria-label="Filters"></div>
+  </aside>
+  <button
+    type="button"
+    class="filters-drawer-fab"
+    id="filters-drawer-toggle"
+    aria-expanded="false"
+    aria-controls="filters-drawer"
+    title="Open filters"
+  >
+    <span class="filters-drawer-fab-chevron" aria-hidden="true"></span>
+    <span class="filters-drawer-fab-text">Filters</span>
+  </button>
+
   <main class="page-shell">
-    <section id="status-filter"></section>
     <section class="summary-grid" id="summary-grid" aria-label="Apartment summary"></section>
     <section class="card-list" id="apartment-list" aria-live="polite">
       <div class="empty-state">Loading apartments...</div>
     </section>
   </main>
 
-  <script src="/assets/js/apartmentStatus.js?v=53"></script>
-  <script src="/assets/js/apartmentSavePayload.js?v=53"></script>
-  <script src="/assets/js/api.js?v=53"></script>
-  <script src="/assets/js/app.js?v=53"></script>
+  <script src="/assets/js/apartmentStatus.js?v=67"></script>
+  <script src="/assets/js/statusFilterGroups.js?v=67"></script>
+  <script src="/assets/js/apartmentSavePayload.js?v=67"></script>
+  <script src="/assets/js/api.js?v=67"></script>
+  <script src="/assets/js/app.js?v=67"></script>
   <script>
     (function () {
       var h = location.hostname;

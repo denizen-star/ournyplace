@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>New listing | nyhome</title>
+  <link rel="icon" href="/assets/img/favicon1.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/assets/css/app.css?v=68">
+</head>
+<body>
+  <header class="app-header app-header--admin">
+    <div>
+      <p class="eyebrow">nyhome admin</p>
+      <h1>New listing</h1>
+    </div>
+    <div class="app-header-actions">
+      <a class="link-button" href="/">View cards</a><span class="app-header-actions-sep" aria-hidden="true">  |  </span><a class="link-button" href="/admin">Manager</a>
+    </div>
+  </header>
+
+  <main class="admin-shell">
+    <form id="apartment-form" class="content-section admin-form-card apartment-setup-form">
+      <div class="section-header apartment-setup-header">
+        <h2 class="section-title">Apartment setup</h2>
+      </div>
+      <input type="hidden" id="apartment-id">
+      <div class="form-section-grid">
+        <section class="form-section">
+          <h2>Location</h2>
+          <div class="form-grid">
+            <label>Neighborhood<input id="neighborhood" list="neighborhood-options" placeholder="Start typing or add a new neighborhood"></label>
+            <datalist id="neighborhood-options"></datalist>
+            <label>Address<input id="address" required placeholder="260 Gold Street"></label>
+            <label>Apt number<input id="apt-number" placeholder="717G"></label>
+            <label>Move-in date<input id="move-in-date" type="date"></label>
+            <label>Status
+              <div class="status-admin-row status-admin-row--field">
+                <select class="status-pill status-select status-new" id="status" aria-label="Status"></select>
+                <button type="button" class="danger-btn status-reject-inline" id="status-reject" aria-label="Mark rejected">Reject</button>
+              </div>
+            </label>
+            <label class="span-2">Listing URL<input id="listing-url" type="url" placeholder="https://..."></label>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h2>Financials</h2>
+          <div class="form-grid">
+            <label>Rent<input id="rent" type="number" min="0" step="1" placeholder="3840"></label>
+            <label>Net effective<input id="net-effective" type="number" min="0" step="1" placeholder="optional"></label>
+            <label>Broker fee<input id="broker-fee" type="number" min="0" step="1" placeholder="optional"></label>
+            <label>Deposit<input id="deposit" type="number" min="0" step="1" placeholder="optional"></label>
+            <label>Amenities fees<input id="amenities-fees" type="number" min="0" step="1" placeholder="optional"></label>
+            <label>Total move-in amount<input id="total-move-in" type="number" min="0" step="1" placeholder="optional"></label>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h2>The Unit</h2>
+          <div class="form-grid">
+            <label>Bedrooms<input id="bedrooms" type="number" min="0" step="0.5" value="1"></label>
+            <label>Bathrooms<input id="bathrooms" type="number" min="0" step="0.5" value="1"></label>
+            <label>Sq ft<input id="square-feet" type="number" min="0" step="1" placeholder="498"></label>
+          </div>
+          <div class="selector-group" data-selector-group="unit-features" aria-label="Unit features">
+            <button type="button" class="selector-chip" data-value="dishwasher">Dishwasher</button>
+            <button type="button" class="selector-chip" data-value="washer-dryer">W/D</button>
+            <button type="button" class="selector-chip" data-value="storage">Storage</button>
+            <button type="button" class="selector-chip" data-value="views">Views</button>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h2>Amenities</h2>
+          <div class="selector-group" data-selector-group="amenities" aria-label="Amenities">
+            <button type="button" class="selector-chip" data-value="doorman">Doorman</button>
+            <button type="button" class="selector-chip" data-value="highrise">Highrise</button>
+            <button type="button" class="selector-chip" data-value="new-construction">New construction</button>
+            <button type="button" class="selector-chip" data-value="walkup">Walkup</button>
+            <button type="button" class="selector-chip" data-value="pool">Pool</button>
+            <button type="button" class="selector-chip" data-value="sauna">Sauna</button>
+            <button type="button" class="selector-chip" data-value="laundry-room">Laundry room</button>
+            <button type="button" class="selector-chip" data-value="suites">Suites</button>
+          </div>
+        </section>
+
+        <section class="form-section form-section-wide">
+          <h2>Listing Notes</h2>
+          <div class="form-grid form-grid--notes">
+            <label class="span-2">Notes<textarea id="notes" rows="6" placeholder="Paste listing text here. Address, rent, sqft, beds, and baths will auto-fill when detected."></textarea></label>
+          </div>
+        </section>
+        <section class="form-section form-section-wide">
+          <h2>Listing photos</h2>
+          <p class="form-hint muted">Up to 3. Click a box, then paste a screenshot or drop an image. Stored in the database as compressed JPEGs (resized to screen quality).</p>
+          <div id="vibe-photo-slots" class="vibe-photo-slots" role="group" aria-label="Apartment photos">
+            <div class="vibe-slot" data-vibe-slot="0">
+              <div class="vibe-slot-surface" tabindex="0" role="button" aria-label="Photo 1, paste or drop"></div>
+              <button type="button" class="vibe-slot-clear" data-vibe-clear aria-label="Remove photo 1" hidden>×</button>
+            </div>
+            <div class="vibe-slot" data-vibe-slot="1">
+              <div class="vibe-slot-surface" tabindex="0" role="button" aria-label="Photo 2, paste or drop"></div>
+              <button type="button" class="vibe-slot-clear" data-vibe-clear aria-label="Remove photo 2" hidden>×</button>
+            </div>
+            <div class="vibe-slot" data-vibe-slot="2">
+              <div class="vibe-slot-surface" tabindex="0" role="button" aria-label="Photo 3, paste or drop"></div>
+              <button type="button" class="vibe-slot-clear" data-vibe-clear aria-label="Remove photo 3" hidden>×</button>
+            </div>
+          </div>
+        </section>
+      </div>
+      <div class="button-row">
+        <button type="submit" class="primary-btn">Save apartment</button>
+        <button type="button" id="reset-form" class="secondary-btn">Clear</button>
+      </div>
+    </form>
+    <section class="content-section">
+      <div class="section-header">
+        <h2 class="section-title">Saved apartments</h2>
+      </div>
+      <div id="admin-apartment-list" class="compact-list"></div>
+    </section>
+  </main>
+
+  <dialog id="nyhome-blacklist-dialog" class="nyhome-modal">
+    <div class="nyhome-modal-inner">
+      <h2 class="nyhome-modal-title">Blacklisted building</h2>
+      <p id="nyhome-blacklist-dialog-msg" class="nyhome-modal-msg muted"></p>
+      <div class="nyhome-modal-actions">
+        <button type="button" class="secondary-btn" id="nyhome-blacklist-cancel">Go back</button>
+        <button type="button" class="primary-btn" id="nyhome-blacklist-confirm">Save anyway</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="/assets/js/apartmentStatus.js?v=63"></script>
+  <script src="/assets/js/listingTextParse.js?v=63"></script>
+  <script src="/assets/js/apartmentSavePayload.js?v=63"></script>
+  <script src="/assets/js/saveApartmentWorkflow.js?v=63"></script>
+  <script src="/assets/js/api.js?v=63"></script>
+  <script src="/assets/js/vibeImages.js?v=63"></script>
+  <script src="/assets/js/admin.js?v=63"></script>
+</body>
+</html>
