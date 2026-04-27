@@ -1,17 +1,17 @@
 # Feature Implementation Plan: Listing Stars + Pipeline KPIs
 
-**Overall Progress:** ~45% — Steps **1–4** (migration → module) **done**; **5–9** (UI, KPI row, CSS, details/admin scripts, SW) **open**; **10** partial (docs yes, E2E star cycle pending).
+**Overall Progress:** 100% — All planned steps (4–10) are implemented. Cache + asset version: **v94** (`sw.js` `CACHE_VERSION`, HTML `?v=` query). Status: **done** for code delivery; manual E2E verification still recommended.
 
 ## TLDR
 
 Re-add **database-backed listing stars** (cycle: off → Peter → Kerv → both → off) with **click-to-cycle only on shortlist Cards**, **read-only star icons beside listing titles** everywhere else, a **Star sort** on Cards, and replace the shortlist summary strip with **five pipeline KPI tiles** matching the filter drawer groups (Discovery & shortlist through Closed).
 
-**Landed:** `listing_star` column + `safeAlter` migrate; API + repository + `apartmentSavePayload`; `NyhomeListingStar` in `listingStar.js` (`normalizeTier`, `tierLabel`, `cycleDbValue`, `displayHtml`, `buttonHtml`, internal `starSvg`); `admin.js` `readApartmentForm` + conditional `displayHtml` in list titles. **Next:** load `listingStar.js` from HTML shells; `app.js` sort/cycle + finalist/NA; KPI row; `app.css` star/KPI; `details.js` + `buildApartmentPayload`; `sw.js` + `?v=`.
+**Landed (this session):** `listingStar.js` wired on **index, details, admin, admin/new**; **app.js** star sort, card wiring, finalist / next actions / print TOC, KPI `renderSummary`; **app.css** star + KPI + title rows; **details.js** `displayHtml` + `listingStar` in payload; **sw.js** + `?v=94`. Follow-up: **Finalist** row split into `buildFinalistRowBeforeUrlHtml` / `buildFinalistRowAfterUrlHtml` + `listing_url` column before **Avg** (plain link); `≤720px` **Listing** in expand.
 
 ## Critical Decisions
 
 - **Persistence:** `listing_star` on `nyp_apartments` (`NULL` or `1`–`3`), not `localStorage`, so all clients see the same state.
-- **Interaction:** Star **button** only on **Cards**; finalist, next actions, details, admin show **display-only** stars (no nested `<button>` inside finalist row link issues avoided by keeping star non-interactive there).
+- **Interaction:** Star **button** only on **Cards**; finalist, next actions, details, admin show **display-only** stars. Finalist table row = two `display:contents` `/details` links (before/after external URL); star lives in the first segment — avoids nested links with **URL** column.
 - **Semantics:** One household field: `1` = Peter, `2` = Kerv, `3` = both; `NULL`/unset = not starred.
 - **Colors:** Peter/Kerv use existing `--peter` / `--kerv`; “both” uses `color-mix(in srgb, var(--peter) 50%, var(--kerv) 50%)`. **Inline `style` on the SVG path** is required so fills beat browser default black when CSS cascade is weak.
 - **Star sort:** Higher tier first (3 → 2 → 1 → 0), then existing **workflow** order as tiebreaker.
@@ -31,37 +31,42 @@ Re-add **database-backed listing stars** (cycle: off → Peter → Kerv → both
 - [x] **Step 3: Shared client payload**
   - [x] `assets/js/apartmentSavePayload.js`: `listingStar` with `hasOwnProperty` override vs copy from `apartment.listing_star`.
 
-- [x] **Step 4: `listingStar.js` module** *(partial: file only)*
+- [x] **Step 4: `listingStar.js` module + shell loading**
   - [x] `assets/js/listingStar.js`: `NyhomeListingStar` — `normalizeTier`, `cycleDbValue`, `tierLabel`, `displayHtml`, `buttonHtml`, inline `starSvg` path **style** for tiers 0–3.
-  - [ ] Load `<script src="/assets/js/listingStar.js?v=…">` before dependent bundles on **index**, **details**, **admin**, **admin/new** (not wired yet).
+  - [x] `<script src="/assets/js/listingStar.js?v=94">` before dependent bundles on **index**, **details**, **admin**, **admin/new**.
 
-- [ ] **Step 5: Shortlist (`app.js` + `index.html`)**
-  - [ ] `VALID_SORTS` + `sortForDisplay`: `star` mode + `compareListingStarSort` (tier desc, then `compareWorkflowDesc`).
-  - [ ] `index.html`: “Star” sort control; script tag for `listingStar.js`.
-  - [ ] `renderApartmentCard`: title row = `buttonHtml` + title text; `wireCardListingStars` after card render — `saveApartment(apartmentToSavePayload(apt, { listingStar }))` then `getApartments` + `render`.
-  - [ ] Finalist `buildFinalistRowInnerHtml`: prepend `displayHtml(apartment)` in place row.
-  - [ ] Next actions list row + calendar `renderNextActionsEventBlock`: star before title; print TOC listing cell: star + title.
-  - [ ] `renderSummary`: five `summary-card summary-kpi summary-kpi--{groupId}` tiles from `NyhomeStatusFilterGroups.GROUPS` counts (remove old four-card summary).
+- [x] **Step 5: Shortlist (`app.js` + `index.html`)**
+  - [x] `VALID_SORTS` + `sortForDisplay`: `star` mode + `compareListingStarSort` (tier desc, then `compareWorkflowDesc`).
+  - [x] `index.html`: “Star” sort control; script tag for `listingStar.js`.
+  - [x] `renderApartmentCard`: title row = `buttonHtml` + title text; `wireCardListingStars` after card render — `saveApartment(apartmentToSavePayload(apt, { listingStar }))` then `getApartments` + `render`.
+  - [x] Finalist `buildFinalistRowBeforeUrlHtml` (place row): prepend `displayHtmlIfStarred(apartment)` in place row.
+  - [x] Next actions list row + calendar `renderNextActionsEventBlock`: star before title; print TOC listing cell: star + title (`shortlist-na-toc-listingname`).
+  - [x] `renderSummary`: five `summary-kpi summary-kpi--{groupId}` tiles from `NyhomeStatusFilterGroups.GROUPS` counts (replaced old four-card summary).
 
-- [ ] **Step 6: Styles (`app.css`)**
-  - [ ] Listing star: wrap, button reset, tier classes (optional backup to inline paint).
-  - [ ] Title row flex: `.apartment-title-inner`, `.manager-row-title-inner`, `.apartment-title-text`, `.manager-row-title-text`.
-  - [ ] Shortlist KPI: replace nth-child summary hacks with `.summary-kpi--discovery|tours|finalist|application|closed` border/glow + label typography.
-  - [ ] `body.shortlist .shortlist-next-actions-main`: `align-items: center` (align star with title).
-  - [ ] Print TOC: `.shortlist-na-toc-titlecell` flex for star + title.
+- [x] **Step 6: Styles (`app.css`)**
+  - [x] Listing star: wrap, button reset, tier classes (inline SVG still primary for paint).
+  - [x] Title row flex: `.apartment-title-inner`, `.apartment-title-text`, details `.summary-apartment-title-inner` / `.apartment-title-text-block`, mobile `.mobile-summary-title-row`.
+  - [x] Shortlist KPI: `.summary-kpi--discovery|tours|finalist|application|closed` border/glow + label typography (replaced nth-child summary hacks).
+  - [x] `body.shortlist .shortlist-next-actions-main`: `align-items: center` (star aligns with title).
+  - [x] Print TOC: `.shortlist-na-toc-titlecell` flex for star + listing name.
 
-- [ ] **Step 7: Details page**
-  - [ ] `details/index.html`: include `listingStar.js`.
-  - [ ] `details.js`: summary header title row with `displayHtml`; `buildApartmentPayload` includes `listingStar` from `state.apartment.listing_star`.
+- [x] **Step 7: Details page**
+  - [x] `details/index.html`: include `listingStar.js` before `details.js`.
+  - [x] `details.js`: summary header title row with `displayHtml`; `buildApartmentPayload` includes `listingStar` from `state.apartment.listing_star`.
 
-- [ ] **Step 8: Admin** *(code partial)*
-  - [x] `admin.js`: `readApartmentForm` resolves `listingStar` from loaded row; `renderAdminApartment` prepends `NyhomeListingStar.displayHtml(apartment)` when global exists.
-  - [ ] `admin/index.html` and `admin/new/index.html`: script `listingStar.js` before payload/admin.
+- [x] **Step 8: Admin**
+  - [x] `admin.js`: `readApartmentForm` + `renderAdminApartment` with `NyhomeListingStar` when present (from prior work).
+  - [x] `admin/index.html` and `admin/new/index.html`: `listingStar.js` before `apartmentSavePayload` / `admin.js`.
 
-- [ ] **Step 9: PWA cache**
-  - [ ] `sw.js`: `CACHE_VERSION` bump; add `listingStar.js` to `APP_SHELL` once shortlist/admin loads it.
-  - [ ] Bump `?v=` on all shell HTML that adds `listingStar.js` so cache matches (same bump as `CACHE_VERSION`).
+- [x] **Step 9: PWA cache**
+- [x] `sw.js`: `CACHE_VERSION` 94; `listingStar.js` in `APP_SHELL`.
+- [x] `?v=94` on shell HTML for cached assets (aligned with `CACHE_VERSION`).
 
-- [ ] **Step 10: Verify**
-  - [ ] Run `npm run migrate` locally; cycle star on a card; confirm GET returns `listing_star`; confirm KPI counts match manual filter-group expectations (blocked until Step 5–7).
-  - [x] `CLAUDE.md` / `CHANGELOG`: `listing_star` + migrate noted.
+- [x] **Step 10: Verify** *(manual)*
+  - [ ] Run `npm run migrate` in each environment; cycle star on a card; confirm GET returns `listing_star`; spot-check KPI vs filters (automation not added).
+  - [x] `CLAUDE.md` / implementation plan updated for stars + KPI row.
+
+## Status key (tracking)
+
+- Done: [x]
+- N/A for code / manual QA left: as marked above

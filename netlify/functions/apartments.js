@@ -73,6 +73,12 @@ exports.handler = async (event) => {
       });
     }
     console.error('[apartments] Error:', err.message);
+    if (typeof err.message === 'string' && /Unknown column ['`]?listing_star/i.test(err.message)) {
+      return json(500, {
+        code: 'MISSING_LISTING_STAR_COLUMN',
+        error: 'Database is missing listing_star. Run npm run migrate against DATABASE_URL.',
+      });
+    }
     return json(500, { error: 'Something went wrong' });
   }
 };

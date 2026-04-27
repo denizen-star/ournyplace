@@ -16,7 +16,15 @@
     var payload = {
       id: o.id != null ? o.id : apartment.id,
       neighborhood: o.neighborhood != null ? o.neighborhood : apartment.neighborhood || '',
-      address: o.address != null ? o.address : apartment.address,
+      address:
+        /** Always a string — `undefined` is omitted by JSON.stringify and breaks PUT validation. */
+        (function () {
+          if (o.address != null && String(o.address).trim() !== '') return String(o.address).trim();
+          if (apartment && apartment.address != null && String(apartment.address).trim() !== '') {
+            return String(apartment.address).trim();
+          }
+          return '';
+        })(),
       aptNumber: o.aptNumber != null ? o.aptNumber : apartment.apt_number || '',
       rent: o.rent != null ? o.rent : apartment.rent_cents != null ? apartment.rent_cents / 100 : null,
       netEffective:

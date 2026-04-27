@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="/assets/css/app.css?v=91">
+  <link rel="stylesheet" href="/assets/css/app.css?v=96">
 </head>
 <body class="shortlist">
   <header class="app-header app-header--shortlist">
@@ -48,6 +48,7 @@
                   <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="peter" aria-checked="false">Peter</button>
                   <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="kerv" aria-checked="false">Kerv</button>
                   <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="updated" aria-checked="false">Last updated</button>
+                  <button type="button" class="shortlist-sort-btn" role="radio" data-shortlist-sort="star" aria-checked="false">Star</button>
                 </div>
               </div>
             </div>
@@ -84,7 +85,7 @@
   </button>
 
   <main class="page-shell">
-    <section class="summary-grid" id="summary-grid" aria-label="Apartment summary"></section>
+    <section class="summary-grid" id="summary-grid" aria-label="Pipeline summary by status group"></section>
     <section class="card-list" id="apartment-list" aria-live="polite">
       <div class="empty-state">Loading apartments...</div>
     </section>
@@ -101,12 +102,13 @@
     </div>
   </dialog>
 
-  <script src="/assets/js/apartmentStatus.js?v=91"></script>
-  <script src="/assets/js/statusFilterGroups.js?v=91"></script>
-  <script src="/assets/js/apartmentSavePayload.js?v=91"></script>
-  <script src="/assets/js/saveApartmentWorkflow.js?v=91"></script>
-  <script src="/assets/js/api.js?v=91"></script>
-  <script src="/assets/js/app.js?v=91"></script>
+  <script src="/assets/js/apartmentStatus.js?v=96"></script>
+  <script src="/assets/js/statusFilterGroups.js?v=96"></script>
+  <script src="/assets/js/listingStar.js?v=96"></script>
+  <script src="/assets/js/apartmentSavePayload.js?v=96"></script>
+  <script src="/assets/js/saveApartmentWorkflow.js?v=96"></script>
+  <script src="/assets/js/api.js?v=96"></script>
+  <script src="/assets/js/app.js?v=96"></script>
   <script>
     (function () {
       var h = location.hostname;

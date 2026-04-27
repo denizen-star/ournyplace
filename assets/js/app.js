@@ -12,7 +12,7 @@
   var NA_OMIT_DEADLINE_KEY = 'nyhomeNextActionsOmitDeadline';
   var NA_OMIT_MOVEIN_KEY = 'nyhomeNextActionsOmitMoveIn';
   var NA_CAL_DENSITY_KEY = 'nyhomeNextActionsCalendarDensity';
-  var VALID_SORTS = { workflow: 1, avg: 1, peter: 1, kerv: 1, updated: 1 };
+  var VALID_SORTS = { workflow: 1, avg: 1, peter: 1, kerv: 1, updated: 1, star: 1 };
   var VALID_VIEWS = { cards: 1, finalist: 1, 'next-actions': 1 };
   var VALID_NA_LAYOUTS = { list: 1, calendar: 1 };
   var VALID_NA_CAL_DENSITY = { summary: 1, details: 1, prospect: 1 };
@@ -421,6 +421,19 @@
     return updatedAtMs(b) - updatedAtMs(a);
   }
 
+  /**
+   * Star sort: higher `listing_star` tier first (3 → 0), then workflow (desc) as tiebreaker.
+   */
+  function compareListingStarSort(a, b) {
+    if (typeof NyhomeListingStar === 'undefined') {
+      return compareWorkflowDesc(a, b);
+    }
+    var ta = NyhomeListingStar.normalizeTier(a);
+    var tb = NyhomeListingStar.normalizeTier(b);
+    if (tb !== ta) return tb - ta;
+    return compareWorkflowDesc(a, b);
+  }
+
   function compareLastUpdated(a, b) {
     return updatedAtMs(b) - updatedAtMs(a);
   }
@@ -520,6 +533,7 @@
     else if (sortMode === 'avg') cmp = compareScoreDesc('combined');
     else if (sortMode === 'peter') cmp = compareScoreDesc('peter');
     else if (sortMode === 'kerv') cmp = compareScoreDesc('kerv');
+    else if (sortMode === 'star') cmp = compareListingStarSort;
     else cmp = compareWorkflowDesc;
     return list.slice().sort(cmp);
   }
@@ -889,6 +903,8 @@
         } else {
           timeStr = formatEventTimeOrAllDay(ev);
         }
+        var starToc =
+          typeof NyhomeListingStar !== 'undefined' ? NyhomeListingStar.displayHtmlIfStarred(apt) : '';
         chunks.push(
           '<tr class="shortlist-na-toc-tr">' +
           '<td class="shortlist-na-toc-td shortlist-na-toc-td--num">' +
@@ -905,7 +921,10 @@
           '</span></td>' +
           '<td class="shortlist-na-toc-td shortlist-na-toc-td--listing">' +
           '<span class="shortlist-na-toc-titlecell">' +
+          starToc +
+          '<span class="shortlist-na-toc-listingname">' +
           escapeHtml(title) +
+          '</span>' +
           '</span>' +
           (hood
             ? '<span class="shortlist-na-toc-hoodcell">' + escapeHtml(hood) + '</span>'
@@ -1208,6 +1227,7 @@
       '</div>' +
       '<div class="finalist-mobile-expanded-actions">' +
       '<a class="link-button" href="' + escapeAttr(href) + '">Details</a>' +
+      actionLink('Listing', apartment.listing_url, true) +
       '</div>'
     );
   }
@@ -1217,6 +1237,7 @@
     listEl.querySelectorAll('.shortlist-finalist-line[data-finalist-id]').forEach(function (anchor) {
       anchor.addEventListener('click', function (e) {
         if (!isShortlistMobile()) return;
+        if (e.target.closest && e.target.closest('.shortlist-finalist-external-listing')) return;
         e.preventDefault();
         e.stopPropagation();
         var cluster = anchor.closest('.shortlist-finalist-cluster');
@@ -1258,6 +1279,63 @@
           return String(a.id) === String(id);
         });
         if (apt) showDuplicateSheet(apt);
+      });
+    });
+  }
+
+  /** Cards only: click star cycles DB value via shared save payload + refetch. */
+  function wireCardListingStars() {
+    if (!listEl || typeof NyhomeListingStar === 'undefined') return;
+    listEl.querySelectorAll('[data-listing-star-cycle]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var id = btn.getAttribute('data-listing-star-cycle');
+        var apt = allApartments.find(function (a) {
+          return String(a.id) === String(id);
+        });
+        if (!apt) return;
+        var tier = NyhomeListingStar.normalizeTier(apt);
+        var next = NyhomeListingStar.cycleDbValue(tier);
+        NyhomeAPI.saveApartment(
+          NyhomeApartmentPayload.apartmentToSavePayload(apt, {
+            listingStar: next,
+            /** Updates to existing listings at a blacklisted building should still be allowed (parity with Duplicate flow using ignore flags). Starring alone should not trap users in blacklist modal territory. */
+            ignoreBlacklist: true,
+          })
+        )
+          .then(function () {
+            return NyhomeAPI.getApartments();
+          })
+          .then(function (data) {
+            // If `listing_star` is missing on rows (stale cache / old GET), `normalizeTier` stayed 0 and every
+            // save sent 1=Peter. Merge the value we just persisted so the UI and tier cycle match reality.
+            var idStr = String(id);
+            var merged = (data.apartments || []).map(function (a) {
+              if (String(a.id) !== idStr) return a;
+              var row = Object.assign({}, a);
+              row.listing_star = next == null ? null : next;
+              return row;
+            });
+            var payload = {
+              apartments: merged,
+              criteria: data.criteria,
+              neighborhoods: data.neighborhoods,
+            };
+            if (typeof NyhomeAPI.setApartmentsCache === 'function') {
+              NyhomeAPI.setApartmentsCache(payload);
+            }
+            render(payload);
+          })
+          .catch(function (err) {
+            console.error('[nyhome-shortlist] listing star', err);
+            if (!window.alert) return;
+            var parts = [];
+            if (err && err.message) parts.push(err.message);
+            if (err && err.status) parts.push('HTTP ' + err.status);
+            if (err && err.code && parts.indexOf(String(err.code)) < 0) parts.push(err.code);
+            window.alert('Could not save star:\n\n' + parts.filter(Boolean).join('\n'));
+          });
       });
     });
   }
@@ -1465,7 +1543,26 @@
     return '<span class="' + cls + '"' + colAttr + '>' + inner + '</span>';
   }
 
-  function buildFinalistRowInnerHtml(apartment, ord) {
+  /** One grid cell: external site. Not inside the row-to-details link(s). Column sits before Avg. */
+  function finalistExternalListingCell(apartment) {
+    var u = apartment.listing_url && String(apartment.listing_url).trim();
+    if (u) {
+      return (
+        '<span class="shortlist-finalist-c shortlist-finalist-c--ext" data-finalist-col="ext">' +
+        '<a class="shortlist-finalist-external-listing shortlist-finalist-ext-link" href="' +
+        escapeAttr(u) +
+        '" target="_blank" rel="noreferrer">Listing</a>' +
+        '</span>'
+      );
+    }
+    return (
+      '<span class="shortlist-finalist-c shortlist-finalist-c--ext" data-finalist-col="ext">' +
+      '<span class="shortlist-finalist-ext-missing" aria-hidden="true">—</span>' +
+      '</span>'
+    );
+  }
+
+  function buildFinalistRowBeforeUrlHtml(apartment, ord) {
     var t = (apartment.title || 'Untitled apartment').trim();
     var h = (apartment.neighborhood || '').trim();
     var place = h ? t + ' ' + h : t;
@@ -1481,20 +1578,28 @@
     var bStr = formatOneDecimal(apartment.bedrooms);
     var bathStr = formatOneDecimal(apartment.bathrooms);
     var bedBath = (bStr == null ? '—' : bStr + ' bed') + ' ' + (bathStr == null ? '—' : bathStr + ' bath');
-    var s = apartment.scores || {};
-    var status = NyhomeStatus.normalizeStatus(apartment.status || 'new');
-    var label = formatStatusLabel(status);
+    var starDisplay =
+      typeof NyhomeListingStar !== 'undefined' ? NyhomeListingStar.displayHtmlIfStarred(apartment) : '';
     return (
       '<span class="shortlist-finalist-c shortlist-finalist-c--ord">' + escapeHtml(String(ord)) + '</span>' +
       '<span class="shortlist-finalist-c shortlist-finalist-c--place">' +
         '<span class="shortlist-finalist-place-row">' +
+        starDisplay +
         '<span class="shortlist-finalist-place-txt">' + escapeHtml(place) + '</span>' +
         listingThumbsMarkup(apartment) +
         '</span></span>' +
       '<span class="shortlist-finalist-c shortlist-finalist-c--money shortlist-finalist-c--right" data-finalist-col="rent">' + escapeHtml(rentCell) + '</span>' +
       '<span class="shortlist-finalist-c shortlist-finalist-c--money shortlist-finalist-c--right" data-finalist-col="net">' + escapeHtml(netCell) + '</span>' +
       '<span class="shortlist-finalist-c shortlist-finalist-c--money shortlist-finalist-c--right" data-finalist-col="move">' + escapeHtml(moveInCell) + '</span>' +
-      '<span class="shortlist-finalist-c shortlist-finalist-c--bed" data-finalist-col="bed">' + escapeHtml(bedBath) + '</span>' +
+      '<span class="shortlist-finalist-c shortlist-finalist-c--bed" data-finalist-col="bed">' + escapeHtml(bedBath) + '</span>'
+    );
+  }
+
+  function buildFinalistRowAfterUrlHtml(apartment) {
+    var s = apartment.scores || {};
+    var status = NyhomeStatus.normalizeStatus(apartment.status || 'new');
+    var label = formatStatusLabel(status);
+    return (
       finalistScoreSpan('combined', s.combined) +
       finalistScoreSpan('kerv', s.kerv) +
       finalistScoreSpan('peter', s.peter) +
@@ -1522,23 +1627,48 @@
   }
 
   function renderSummary(apartments) {
-    var active = apartments.filter(function (a) { return a.status !== 'archived' && a.status !== 'rejected'; });
-    var finalists = apartments.filter(function (a) { return a.status === 'finalist'; });
-    var applied = apartments.filter(function (a) { return ['applied', 'approved', 'lease_review', 'signed'].includes(a.status); });
-    var best = apartments.slice().sort(function (a, b) {
-      return (b.scores.combined || 0) - (a.scores.combined || 0);
-    })[0];
-
-    summaryEl.innerHTML =
-      summaryCard(active.length, 'active options') +
-      summaryCard(finalists.length, 'finalists') +
-      summaryCard(applied.length, 'applications') +
-      summaryCard(best && best.scores.combined ? Math.round(best.scores.combined) : '-', 'top avg score', 'summary-value--vote-combined');
+    var groups =
+      typeof NyhomeStatusFilterGroups !== 'undefined' && NyhomeStatusFilterGroups.GROUPS
+        ? NyhomeStatusFilterGroups.GROUPS
+        : [];
+    if (!summaryEl) return;
+    if (!groups.length) {
+      summaryEl.innerHTML = '';
+      return;
+    }
+    var html = groups
+      .map(function (g) {
+        return summaryKpiCard(
+          countListingsInStatusGroup(apartments, g.statuses),
+          g.label,
+          g.id
+        );
+      })
+      .join('');
+    summaryEl.innerHTML = html;
   }
 
-  function summaryCard(value, label, valueClass) {
-    var valueCls = 'summary-value' + (valueClass ? ' ' + valueClass : '');
-    return '<article class="summary-card"><span class="' + valueCls + '">' + escapeHtml(value) + '</span><span class="summary-label">' + escapeHtml(label) + '</span></article>';
+  /** How many loaded listings fall into a pipeline group (same buckets as the filters drawer). */
+  function countListingsInStatusGroup(apartments, statuses) {
+    if (!apartments || !statuses || !statuses.length) return 0;
+    var n = 0;
+    for (var i = 0; i < apartments.length; i++) {
+      var s = NyhomeStatus.normalizeStatus(apartments[i].status);
+      if (statuses.indexOf(s) >= 0) n += 1;
+    }
+    return n;
+  }
+
+  function summaryKpiCard(value, label, groupId) {
+    return (
+      '<article class="summary-card summary-kpi summary-kpi--' +
+      escapeAttr(groupId) +
+      '"><span class="summary-value">' +
+      escapeHtml(String(value)) +
+      '</span><span class="summary-label">' +
+      escapeHtml(label) +
+      '</span></article>'
+    );
   }
 
   function buildStatusFilterButtonHtml(status, counts) {
@@ -1772,6 +1902,7 @@
     });
     wireListingThumbHovers();
     wireCardDupButtons();
+    wireCardListingStars();
     syncMobileSortPanel();
   }
 
@@ -1784,6 +1915,7 @@
       '<div class="shortlist-finalist-c shortlist-finalist-c--h shortlist-finalist-c--right" data-finalist-col="net">Net eff.</div>' +
       '<div class="shortlist-finalist-c shortlist-finalist-c--h shortlist-finalist-c--right shortlist-finalist-c--h-move" data-finalist-col="move" title="Total move-in amount">Move-in</div>' +
       '<div class="shortlist-finalist-c shortlist-finalist-c--h" data-finalist-col="bed">Beds / baths</div>' +
+      '<div class="shortlist-finalist-c shortlist-finalist-c--h shortlist-finalist-c--h-ext" data-finalist-col="ext">URL</div>' +
       '<div class="shortlist-finalist-c shortlist-finalist-c--h shortlist-finalist-c--right">Avg</div>' +
       '<div class="shortlist-finalist-c shortlist-finalist-c--h shortlist-finalist-c--right" data-finalist-col="kerv">Kerv</div>' +
       '<div class="shortlist-finalist-c shortlist-finalist-c--h shortlist-finalist-c--right" data-finalist-col="peter">Peter</div>' +
@@ -1791,15 +1923,29 @@
     var body = sorted.map(function (apartment, i) {
       var ord = i + 1;
       var href = apartment.id != null ? '/details/?id=' + encodeURIComponent(apartment.id) : '#';
+      var t = (apartment.title || 'Untitled apartment').trim();
+      var lineAria = 'View details for ' + t;
       return (
         '<div class="shortlist-finalist-cluster">' +
-        '<a class="shortlist-finalist-line shortlist-finalist-cols" href="' +
-        escapeAttr(href) +
-        '" data-finalist-id="' +
+        '<div class="shortlist-finalist-cols shortlist-finalist-line" data-finalist-id="' +
         escapeAttr(String(apartment.id)) +
         '">' +
-        buildFinalistRowInnerHtml(apartment, ord) +
-        '</a></div>'
+        '<a class="shortlist-finalist-line-main" href="' +
+        escapeAttr(href) +
+        '" aria-label="' +
+        escapeAttr(lineAria) +
+        '">' +
+        buildFinalistRowBeforeUrlHtml(apartment, ord) +
+        '</a>' +
+        finalistExternalListingCell(apartment) +
+        '<a class="shortlist-finalist-line-main" href="' +
+        escapeAttr(href) +
+        '" aria-label="' +
+        escapeAttr(lineAria) +
+        '">' +
+        buildFinalistRowAfterUrlHtml(apartment) +
+        '</a>' +
+        '</div></div>'
       );
     }).join('');
     listEl.innerHTML =
@@ -1944,6 +2090,8 @@
       ? '<span class="shortlist-na-hood-accent" title="' + escapeAttr('Neighborhood: ' + hood) + '">' + escapeHtml(hood) + '</span>'
       : '<span class="shortlist-na-hood-accent shortlist-na-hood-accent--empty" title="Neighborhood not set">' + escapeHtml(placeholderDash()) + '</span>';
     var notesPanelId = 'shortlist-na-notes-' + String(id) + '-' + ev.kind;
+    var starNaCal =
+      typeof NyhomeListingStar !== 'undefined' ? NyhomeListingStar.displayHtmlIfStarred(apartment) : '';
     return (
       '<article class="shortlist-next-actions-row shortlist-na-event-block ' +
       kindClass +
@@ -1961,6 +2109,7 @@
       escapeHtml(timeLine) +
       '</span></div><div class="shortlist-na-what">' +
       '<div class="shortlist-na-title-row">' +
+      starNaCal +
       '<a class="shortlist-na-titlelink" href="' +
       escapeAttr(href) +
       '"><strong class="shortlist-na-etitle">' +
@@ -2106,11 +2255,14 @@
         escapeHtml(metaBits.join(' · ')) +
         '</span>'
       : '';
+    var starNaList =
+      typeof NyhomeListingStar !== 'undefined' ? NyhomeListingStar.displayHtmlIfStarred(apartment) : '';
     return (
       '<article class="shortlist-next-actions-row" data-apartment-id="' + escapeAttr(String(id)) + '">' +
         '<div class="shortlist-next-actions-row-top">' +
           '<div class="shortlist-next-actions-line">' +
             '<a class="shortlist-next-actions-main" href="' + escapeAttr(href) + '">' +
+              starNaList +
               '<span class="shortlist-next-actions-title">' + escapeHtml(apartment.title || 'Untitled apartment') + '</span>' +
               '<span class="shortlist-next-actions-sep muted">·</span>' +
               '<span class="shortlist-next-actions-loc muted">' + escapeHtml(loc || '—') + '</span>' +
@@ -2206,13 +2358,18 @@
           escapeHtml(String(apartment.neighborhood).trim()) +
           '</div>'
         : '';
+    var starBtn =
+      typeof NyhomeListingStar !== 'undefined' ? NyhomeListingStar.buttonHtml(apartment) : '';
     article.className = 'apartment-card listing-status-' + status.replace(/_/g, '-');
 
     article.innerHTML =
       '<div class="apartment-body">' +
         '<div class="card-topline">' +
-          '<div>' +
-            '<h2 class="apartment-title">' + escapeHtml(apartment.title || 'Untitled apartment') + '</h2>' +
+          '<div class="apartment-title-block">' +
+            '<div class="apartment-title-inner">' +
+            starBtn +
+            '<h2 class="apartment-title apartment-title-text">' + escapeHtml(apartment.title || 'Untitled apartment') + '</h2>' +
+            '</div>' +
             hoodOnly +
           '</div>' +
           '<div class="card-topright">' +

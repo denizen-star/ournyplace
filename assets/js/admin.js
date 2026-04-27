@@ -1127,7 +1127,7 @@
         '<div class="manager-row-identity">' +
           '<h3 class="manager-row-title">' +
           '<span class="manager-row-title-inner">' +
-          (window.NyhomeListingStar ? window.NyhomeListingStar.displayHtml(apartment) : '') +
+          (window.NyhomeListingStar ? window.NyhomeListingStar.displayHtmlIfStarred(apartment) : '') +
           '<span class="manager-row-title-text">' + escapeHtml(apartment.title) + '</span>' +
           '</span></h3>' +
           '<div class="manager-row-sub muted">' + escapeHtml([apartment.neighborhood, apartment.address].filter(Boolean).join(' · ')) + '</div>' +

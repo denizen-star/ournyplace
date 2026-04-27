@@ -28,7 +28,7 @@ Public app:
 - Cards omit full gallery; up to 3 **listing photos** via `/admin/new` or `/details` **Images** (`vibeImages.js` → `nyp_apartment_images`)
 - `Details` / `Listing` on each card (Listing disabled when no URL)
 - `status` art: `/assets/img/<status>.png` on cards. Status **filter** = bottom **Filters** drawer + FAB (not a header strip; no text pill on cards)
-- **View** (Cards / Finalist / Next actions) in hero row under `h1` (no marketing tagline). **Next actions:** tour and/or deadline and/or move-in; **List** / **Calendar**; **Only include with** tour/deadline/move-in; calendar **Summary** / **Details** / **Prospect**; print TOC + density rules; financial line + empty pen box per field on Details/Prospect (`nyhomeNextActions*` + `nyhomeNextActionsCalendarDensity` in `app.js`)
+- **View** (Cards / **Finalist** / Next actions) in hero row under `h1` (no marketing tagline). **Finalist** = table (Avg→workflow); **URL** = external `listing_url` before **Avg**; `≤720px` **Listing** in row expand. **Next actions:** tour and/or deadline and/or move-in; **List** / **Calendar**; **Only include with** tour/deadline/move-in; calendar **Summary** / **Details** / **Prospect**; print TOC + density rules; financial line + empty pen box per field on Details/Prospect (`nyhomeNextActions*` + `nyhomeNextActionsCalendarDensity` in `app.js`)
 
 Details:
 

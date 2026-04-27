@@ -36,6 +36,13 @@ var NyhomeAPI = (function () {
     return null;
   }
 
+  /** Optional: keep localStorage in sync when client corrects a row (e.g. listing_star merge after save). */
+  function setApartmentsCache(data) {
+    try {
+      localStorage.setItem(APARTMENTS_CACHE_KEY, JSON.stringify(data));
+    } catch (e) {}
+  }
+
   function getApartments() {
     return _get('/api/apartments').then(function (data) {
       try { localStorage.setItem(APARTMENTS_CACHE_KEY, JSON.stringify(data)); } catch (e) {}
@@ -105,6 +112,7 @@ var NyhomeAPI = (function () {
 
   return {
     getApartmentsCache: getApartmentsCache,
+    setApartmentsCache: setApartmentsCache,
     getApartments: getApartments,
     saveApartment: saveApartment,
     deleteApartment: deleteApartment,

@@ -203,13 +203,17 @@
           escapeAttr(apartment.listing_url) +
           '" target="_blank" rel="noreferrer">View listing</a>'
         : '';
+    var starMob =
+      typeof NyhomeListingStar !== 'undefined' ? NyhomeListingStar.displayHtmlIfStarred(apartment) : '';
     return (
       '<section class="mobile-summary-card">' +
       '<div class="mobile-summary-topline">' +
       '<div class="mobile-summary-title-block">' +
+      '<div class="mobile-summary-title-row">' +
+      starMob +
       '<h2 class="mobile-summary-title">' +
       escapeHtml(apartment.title || 'Untitled apartment') +
-      '</h2>' +
+      '</h2></div>' +
       '<p class="mobile-summary-sub">' +
       escapeHtml([apartment.neighborhood, statusLabel].filter(Boolean).join(' · ')) +
       '</p></div>' +
@@ -418,6 +422,8 @@
 
   function renderSummaryHeader(apartment) {
     var status = NyhomeStatus.normalizeStatus(apartment.status || 'new');
+    var starHdr =
+      typeof NyhomeListingStar !== 'undefined' ? NyhomeListingStar.displayHtmlIfStarred(apartment) : '';
     return '<section class="app-summary-card">' +
       '<div class="summary-hero-badges">' +
         '<div class="summary-hero-badges-left">' +
@@ -428,10 +434,12 @@
         statusProgressionControls(apartment.status || 'new') +
       '</div>' +
       '<div class="summary-title-row">' +
-        '<div>' +
+        '<div class="apartment-title-inner summary-apartment-title-inner">' +
+        starHdr +
+        '<div class="apartment-title-text-block">' +
           '<h2 class="apartment-title">' + escapeHtml(apartment.title || 'Untitled apartment') + '</h2>' +
           '<div class="apartment-location muted">' + escapeHtml([apartment.neighborhood, apartment.address].filter(Boolean).join(' · ')) + '</div>' +
-        '</div>' +
+        '</div></div>' +
       '</div>' +
       '<div class="app-meta">' +
         metaItem('location', apartment.neighborhood || apartment.address || 'Neighborhood TBD') +
@@ -1265,6 +1273,12 @@
       listingUrl: uForm && listingEl ? listingEl.value : (apartment.listing_url || ''),
       notes: uForm && notesEl ? notesEl.value : (apartment.notes || ''),
       imageUrls: getDetailVibeImageUrls(),
+      listingStar: (function () {
+        var ls = apartment.listing_star;
+        if (ls == null || ls === '' || ls === 0) return null;
+        var n = Number(ls);
+        return n >= 1 && n <= 3 ? n : null;
+      })(),
     };
   }
 
