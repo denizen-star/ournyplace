@@ -1,6 +1,7 @@
 const { getApartmentPayload, saveApartment, deleteApartment } = require('../../lib/apartmentRepository');
 const { normalizeStatus } = require('../../lib/apartmentStatus');
 const { json, parseBody, toCents, numberOrNull, stringOrNull } = require('../../lib/http');
+const { sendListingAddedEmail } = require('../../lib/listingAddedMailer');
 
 exports.handler = async (event) => {
   try {
@@ -49,6 +50,10 @@ exports.handler = async (event) => {
         imageUrls: Array.isArray(body.imageUrls) ? body.imageUrls.map(stringOrNull).filter(Boolean) : [],
         ignoreBlacklist,
       });
+      const incomingId = numberOrNull(body.id);
+      if (event.httpMethod === 'POST' && (!incomingId || incomingId <= 0)) {
+        sendListingAddedEmail(id).catch((e) => console.error('[apartments] listing-added email', e));
+      }
       return json(200, { success: true, id });
     }
 

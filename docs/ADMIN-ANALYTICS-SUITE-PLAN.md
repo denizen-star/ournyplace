@@ -1,7 +1,7 @@
 # Feature Implementation Plan: Admin Analytics tab
 
-**Overall Progress:** `15%`  
-*(Digest email already computes overlapping rollups + Pulse KPIs in `lib/pipelineDigest.js`; admin UI + JSON API not built.)*
+**Overall Progress:** `100%`  
+*(Shipped: shared analytics module, GET API endpoint, Analytics tab with Pulse KPIs + collapsible activity log, docs.)*
 
 ## TLDR
 
@@ -9,8 +9,8 @@ Add an **Analytics** top-level tab on `/admin` that surfaces the same **classes 
 
 ## Critical Decisions
 
-- **Reuse digest logic, don’t fork** — Extract or export pure functions from `lib/pipelineDigest.js` (e.g. rollup, pulse metrics, apartment sheet metrics) and/or add a thin `lib/adminAnalytics.js` that takes `apartments` + optional `listingEventsRange` and returns a **JSON shape** the admin can render. One source of truth with the email.
-- **Data loading** — `getApartmentPayload()` already loads full list + embedded events; **full-day events** use `fetchListingEventsBetweenCreatedAt` + `boundsForInstantInTz` (`lib/etDayBounds.js`). Analytics endpoint should use the **same** patterns; **activity log** needs a **multi-day** window (e.g. last **14** Eastern days, tunable): one SQL range query + join titles (`apartmentRepository`), then **group by `ymdET`** server-side **or** return flat rows + group in JS — prefer **server-grouped** payload `{ days: [{ ymd, events }] }` to keep response shape stable. Cap total rows (e.g. **2k**) with “older history in DB only” note if exceeded.
+- **Reuse digest logic, don't fork** — Extract or export pure functions from `lib/pipelineDigest.js` (e.g. rollup, pulse metrics, apartment sheet metrics) and/or add a thin `lib/adminAnalytics.js` that takes `apartments` + optional `listingEventsRange` and returns a **JSON shape** the admin can render. One source of truth with the email.
+- **Data loading** — `getApartmentPayload()` already loads full list + embedded events; **full-day events** use `fetchListingEventsBetweenCreatedAt` + `boundsForInstantInTz` (`lib/etDayBounds.js`). Analytics endpoint should use the **same** patterns; **activity log** needs a **multi-day** window (e.g. last **14** Eastern days, tunable): one SQL range query + join titles (`apartmentRepository`), then **group by `ymdET`** server-side **or** return flat rows + group in JS — prefer **server-grouped** payload `{ days: [{ ymd, events }] }` to keep response shape stable. Cap total rows (e.g. **2k**) with "older history in DB only" note if exceeded.
 - **Activity UI** — **One column** of **day cards**; collapsed = summary line only (`Mon Apr 27, 2026 · 42 events`); expanded = inner list (reuse row model similar to removed digest table: time, status/score, listing, delta). Chevron rotates or swaps `›`/`∨` with `aria-expanded` + button or `<details>`/`<summary>` if acceptable for styling (chevron in summary).
 - **Scope v1** — Pulse/rollup section: **today (NY)**; activity log: **last N Eastern days** (fixed N in code or query param later). No custom date pickers in v1 unless trivial.
 - **No new auth** — Same as rest of nyhome; document risk if admin URL is ever public.
@@ -18,26 +18,26 @@ Add an **Analytics** top-level tab on `/admin` that surfaces the same **classes 
 
 ## Tasks
 
-- [ ] 🟥 **Step 1: Shared stats module**
-  - [ ] 🟥 Extract JSON builders from `pipelineDigest.js` (or export existing internals) so email + analytics share rollups, transition map, pulse metrics, meta fields — no duplicate SQL/math.
-  - [ ] 🟥 `lib/adminAnalytics.js` (or equivalent): `buildAnalyticsPayload({ apartments, listingEventsRows, digestBounds })` → stable JSON schema; add `groupListingEventsByEasternDay(rows, timeZone)` (or SQL `DATE(CONVERT_TZ(...))` if you standardize on DB TZ — otherwise reuse `calendarDateInTz` from ms in Node).
+- [x] ✅ **Step 1: Shared stats module**
+  - [x] ✅ Export pure functions from `pipelineDigest.js` (`rollupFlatListingEvents`, `buildPulseMetrics`, `collectAttention`, `dedupeAttention`, `dbListingEventRowToFlat`, `calendarDateInTz`, etc.) so email + analytics share rollups — no duplicate SQL/math.
+  - [x] ✅ `lib/adminAnalytics.js`: `buildAnalyticsPayload({ apartments, listingEventsRows, digestBounds })` → `{ pulse, todayRollup, transitions, activityByDay, capped }`; `groupListingEventsByEasternDay(rows, tz)` groups flat rows into `[{ ymd, label, count, events }]` newest-day-first; `ACTIVITY_LOG_DAYS = 14`, `ACTIVITY_ROW_CAP = 2000`.
 
-- [ ] 🟥 **Step 2: API**
-  - [ ] 🟥 `apartmentRepository`: `fetchListingEventsBetweenCreatedAt` already exists — add **`fetchListingEventsBetweenCreatedAt`** overload or **`fetchListingEventsRangeForAnalytics(start, end)`** with same join + **high limit** / streaming not required for v1.
-  - [ ] 🟥 `netlify/functions/admin-analytics.js` — `GET`, load apartments payload + range of events, build grouped **activityByDay** + stats blob; return JSON + errors.
-  - [ ] 🟥 `NyhomeAPI.getAdminAnalytics()` in `assets/js/api.js`.
+- [x] ✅ **Step 2: API**
+  - [x] ✅ `apartmentRepository`: existing `fetchListingEventsBetweenCreatedAt(start, end)` reused as-is — correct join + no per-apt cap.
+  - [x] ✅ `netlify/functions/admin-analytics.js` — `GET /api/admin-analytics`: loads apartments + last 14 ET days of events; calls `buildAnalyticsPayload`; returns JSON; activity query failure non-fatal.
+  - [x] ✅ `NyhomeAPI.getAdminAnalytics()` in `assets/js/api.js`.
 
-- [ ] 🟥 **Step 3: Admin shell — Analytics tab**
-  - [ ] 🟥 `admin/index.html`: fifth top tab **Analytics**; panel `#admin-analytics-panel` with two regions: `#admin-analytics-kpis` (stats) + `#admin-analytics-activity` (log).
-  - [ ] 🟥 `assets/js/admin.js`: tab switch, fetch once, render KPI grid + today/transition tables; render **daily cards** (newest first) — collapsed default, **chevron** on header to toggle body; reuse existing admin CSS tokens; optional **Refresh** control.
+- [x] ✅ **Step 3: Admin shell — Analytics tab**
+  - [x] ✅ `admin/index.html`: fifth top tab **Analytics**; panel `#tab-analytics` with `#admin-analytics-kpis` (pulse + today rollup + transitions + attention) + `#admin-analytics-activity` (collapsible day cards); scoped `<style>` block for analytics CSS tokens.
+  - [x] ✅ `assets/js/admin.js`: lazy fetch on first tab click (`state.adminAnalyticsFetched`); `renderAnalyticsKpis` + `renderAnalyticsActivity`; collapsed day cards using `<details>`/`<summary>` with rotating chevron; **Refresh** button; loading / error / empty states.
 
-- [ ] 🟥 **Step 4: Polish + docs**
-  - [ ] 🟥 Loading / empty / error states; empty day omitted or “No logged events”.
-  - [ ] 🟥 `CLAUDE.md`: Analytics tab + endpoint + activity grouping behavior + row cap.
-  - [ ] 🟥 `CHANGELOG.md` under Unreleased when shipped.
+- [x] ✅ **Step 4: Polish + docs**
+  - [x] ✅ Loading / empty / error states implemented; days with no events omitted from activity (server-side filtering); row cap banner when exceeded.
+  - [x] ✅ `CLAUDE.md`: Analytics tab + endpoint + activity grouping behavior + row cap documented.
+  - [x] ✅ `CHANGELOG.md` Unreleased entry added.
 
 ### Optional (explicitly out of v1 unless you ask)
 
 - [ ] 🟥 Date range picker + multi-day **rollup** charts
 - [ ] 🟥 CSV export
-- [ ] 🟥 Pagination / “load older days” beyond cap
+- [ ] 🟥 Pagination / "load older days" beyond cap

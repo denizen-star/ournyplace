@@ -110,9 +110,21 @@ var NyhomeAPI = (function () {
     return _send('/api/building-blacklist', 'DELETE', { id: id });
   }
 
+  function sendListingScoresEmail(payload) {
+    return _send('/api/listing-scores-email', 'POST', payload || {});
+  }
+
   /** POST pipeline summary email (Netlify `pipeline-digest-email`). See `.env.example`. */
   function sendPipelineDigestEmail(payload) {
     return _send('/api/pipeline-digest-email', 'POST', payload || {});
+  }
+
+  /** GET analytics payload: pulse KPIs + rollup + transitions + activityByDay for the given period.
+   *  period: 'today' | 'yesterday' | '7d' | '30d' | 'all' (default 'today'). */
+  function getAdminAnalytics(period) {
+    var url = '/api/admin-analytics';
+    if (period && period !== 'today') url += '?period=' + encodeURIComponent(period);
+    return _get(url);
   }
 
   return {
@@ -126,6 +138,8 @@ var NyhomeAPI = (function () {
     updateBuildingBlacklist: updateBuildingBlacklist,
     deleteBuildingBlacklist: deleteBuildingBlacklist,
     sendPipelineDigestEmail: sendPipelineDigestEmail,
+    sendListingScoresEmail: sendListingScoresEmail,
+    getAdminAnalytics: getAdminAnalytics,
     saveCriterion: saveCriterion,
     updateCriterion: updateCriterion,
     reorderCriteria: reorderCriteria,

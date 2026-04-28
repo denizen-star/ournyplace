@@ -19,7 +19,7 @@
   var VALID_NA_CAL_DENSITY = { summary: 1, details: 1, prospect: 1 };
   /** Next actions: list vs calendar (calendar = day-grouped agenda). */
   var naLayoutMode = 'list';
-  /** Calendar card density: summary (title row only), details (+ spec & scores), prospect (+ notes). */
+  /** Calendar card density: summary (banner row), details (spec + checklist), prospect (same + Notes &amp; details). */
   var naCalendarDensity = 'prospect';
   /** When true, only include listings that have the corresponding date (AND when multiple checked). */
   var naOmitTour = false;
@@ -569,6 +569,22 @@
     return true;
   }
 
+  function wireNaOmitCheckboxes(scope) {
+    if (!scope || !scope.querySelectorAll) return;
+    scope.querySelectorAll('input[type="checkbox"][data-na-omit]').forEach(function (el) {
+      el.addEventListener('change', function () {
+        var k = el.getAttribute('data-na-omit');
+        var on = el.checked;
+        if (k === 'tour') naOmitTour = on;
+        else if (k === 'deadline') naOmitDeadline = on;
+        else if (k === 'movein') naOmitMoveIn = on;
+        saveNextActionsPrefs();
+        renderFilterBar(allApartments);
+        if (allApartments.length && viewMode === 'next-actions') applyFilters();
+      });
+    });
+  }
+
   function formatListingChipLabel(slug) {
     var s = String(slug || '');
     if (Object.prototype.hasOwnProperty.call(LISTING_CHIP_LABELS, s)) {
@@ -591,7 +607,8 @@
     return formatMoney(cents) + '/mo';
   }
 
-  function nextActionsRatingBox(scores) {
+  /** Inline on calendar banner after status: Avg | Kerv | Peter (pipe-separated). */
+  function nextActionsBannerScoresInlineHtml(scores) {
     var s = scores || {};
     function pct(key) {
       var v = s[key];
@@ -599,14 +616,31 @@
       return Math.round(Number(v)) + '%';
     }
     return (
-      '<div class="shortlist-na-rating-box" aria-label="Listing scores">' +
-      '<span class="shortlist-na-rating-cell"><span class="shortlist-na-rating-lbl">Avg</span>' +
-      '<span class="shortlist-na-rating-val shortlist-na-rating-val--avg">' + escapeHtml(pct('combined')) + '</span></span>' +
-      '<span class="shortlist-na-rating-cell"><span class="shortlist-na-rating-lbl">Kerv</span>' +
-      '<span class="shortlist-na-rating-val shortlist-na-rating-val--kerv">' + escapeHtml(pct('kerv')) + '</span></span>' +
-      '<span class="shortlist-na-rating-cell"><span class="shortlist-na-rating-lbl">Peter</span>' +
-      '<span class="shortlist-na-rating-val shortlist-na-rating-val--peter">' + escapeHtml(pct('peter')) + '</span></span>' +
-      '</div>'
+      '<span class="shortlist-na-banner-scores" aria-label="Listing scores">' +
+      '<span class="shortlist-na-banner-score shortlist-na-banner-score--avg">Avg: <span class="shortlist-na-banner-score-val">' +
+      escapeHtml(pct('combined')) +
+      '</span></span>' +
+      '<span class="shortlist-na-meta-sep" aria-hidden="true">|</span>' +
+      '<span class="shortlist-na-banner-score shortlist-na-banner-score--kerv">Kerv: <span class="shortlist-na-banner-score-val">' +
+      escapeHtml(pct('kerv')) +
+      '</span></span>' +
+      '<span class="shortlist-na-meta-sep" aria-hidden="true">|</span>' +
+      '<span class="shortlist-na-banner-score shortlist-na-banner-score--peter">Peter: <span class="shortlist-na-banner-score-val">' +
+      escapeHtml(pct('peter')) +
+      '</span></span>' +
+      '</span>'
+    );
+  }
+
+  /** Printed-tour style: pen in dashed box (column right of Unit + Financials). */
+  function nextActionsScratchPadHtml() {
+    return (
+      '<div class="shortlist-na-comments-pad" aria-label="Area for handwritten notes">' +
+      '<span class="shortlist-na-comments-pad-inner">' +
+      '<svg class="shortlist-na-comments-pad-pen" width="14" height="14" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">' +
+      '<path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 000-1.41l-2.34-2.34a1 1 0 00-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.83z"/>' +
+      '</svg>' +
+      '</span></div>'
     );
   }
 
@@ -651,7 +685,7 @@
     );
   }
 
-  /** Unit + financials row, then full feature/amenity checklist (every field for every listing). */
+  /** Unit column, Financials chips column, handwritten pad column — then checklist. */
   function nextActionsListingSpecStrip(apartment) {
     var unitVal = (apartment.apt_number && String(apartment.apt_number).trim()) || placeholderDash();
     var finRows = [
@@ -665,28 +699,33 @@
     var finHtml = finRows
       .map(function (row) {
         return (
-          '<div class="shortlist-na-fin-item">' +
-          '<span class="shortlist-na-fin-bit"><span class="shortlist-na-fin-k">' +
+          '<span class="shortlist-na-fin-chip">' +
+          '<span class="shortlist-na-fin-k">' +
           escapeHtml(row.k) +
           '</span> ' +
+          '<span class="shortlist-na-fin-v">' +
           escapeHtml(row.v) +
-          '</span>' +
-          '<div class="shortlist-na-fin-write-slot" role="presentation" aria-hidden="true"></div>' +
-          '</div>'
+          '</span></span>'
         );
       })
       .join('');
     return (
       '<div class="shortlist-na-spec-wrap">' +
       '<div class="shortlist-na-spec-strip">' +
-      '<div class="shortlist-na-spec-cell">' +
+      '<div class="shortlist-na-spec-cell shortlist-na-spec-cell--unit">' +
       '<span class="shortlist-na-spec-label">Unit</span>' +
-      '<span class="shortlist-na-spec-value">' + escapeHtml(unitVal) + '</span></div>' +
+      '<span class="shortlist-na-spec-value">' +
+      escapeHtml(unitVal) +
+      '</span></div>' +
       '<div class="shortlist-na-spec-cell shortlist-na-spec-cell--financials">' +
       '<span class="shortlist-na-spec-label">Financials</span>' +
-      '<span class="shortlist-na-spec-value shortlist-na-spec-value--financials">' +
+      '<div class="shortlist-na-fin-line" role="group" aria-label="Financials">' +
       finHtml +
-      '</span></div>' +
+      '</div></div>' +
+      '<div class="shortlist-na-spec-cell shortlist-na-spec-cell--scratch">' +
+      '<span class="shortlist-na-spec-label shortlist-na-spec-strip-label-spacer" aria-hidden="true">Financials</span>' +
+      nextActionsScratchPadHtml() +
+      '</div>' +
       '</div>' +
       nextActionsFeatureChecklist(apartment) +
       '</div>'
@@ -820,14 +859,44 @@
     return a.toLocaleString('en-US', opt) + ' – ' + b.toLocaleString('en-US', opt);
   }
 
+  function naCalendarMetaSep() {
+    return '<span class="shortlist-na-meta-sep" aria-hidden="true">|</span>';
+  }
+
+  /** One-line subtitle under banner: street (+ unit), neighborhood — e.g. "213 Ash …, Fort Greene". */
+  function formatCalendarSubtitleAddress(apartment) {
+    var addr = apartment.address && String(apartment.address).trim();
+    var unit = apartment.apt_number && String(apartment.apt_number).trim();
+    var hood = apartment.neighborhood && String(apartment.neighborhood).trim();
+    var line = '';
+    if (addr) {
+      line = addr;
+      if (unit) {
+        var uCore = unit.replace(/^#/, '');
+        if (uCore && line.indexOf(uCore) === -1) {
+          line += unit.indexOf('#') === 0 ? ' ' + unit : ' #' + uCore;
+        }
+      }
+    } else if (unit) {
+      line = unit.indexOf('#') === 0 ? unit : '#' + unit.replace(/^#/, '');
+    }
+    if (hood) {
+      return line ? line + ', ' + hood : hood;
+    }
+    return line;
+  }
+
   function renderCalendarFreeSlotRow(row) {
     var range = formatCalendarSlotRange(row.startMs, row.endMs);
     return (
       '<div class="shortlist-na-slot-row shortlist-na-slot-row--free" role="presentation">' +
-      '<div class="shortlist-na-when shortlist-na-when--free">' +
-      '<span class="shortlist-na-etype">Open</span>' +
-      '<span class="shortlist-na-time">' + escapeHtml(range) + '</span></div>' +
-      '<div class="shortlist-na-what muted"><span class="shortlist-na-slot-free-label">30 min · not booked</span></div>' +
+      '<div class="shortlist-na-slot-banner">' +
+      '<span class="shortlist-na-slot-kind">Open</span>' +
+      naCalendarMetaSep() +
+      '<span class="shortlist-na-slot-range">' +
+      escapeHtml(range) +
+      '</span></div>' +
+      '<div class="shortlist-na-slot-sub muted"><span class="shortlist-na-slot-free-label">30 min · not booked</span></div>' +
       '</div>'
     );
   }
@@ -836,11 +905,15 @@
     var range = formatCalendarSlotRange(row.startMs, row.endMs);
     return (
       '<div class="shortlist-na-slot-row shortlist-na-slot-row--travel" role="presentation">' +
-      '<div class="shortlist-na-when shortlist-na-when--travel">' +
-      '<span class="shortlist-na-etype">Travel</span>' +
-      '<span class="shortlist-na-time">' + escapeHtml(range) + '</span></div>' +
-      '<div class="shortlist-na-what muted"><span class="shortlist-na-travel-label">En route (30 min)</span></div>' +
-      '</div>'
+      '<div class="shortlist-na-slot-banner">' +
+      '<span class="shortlist-na-slot-kind">Travel</span>' +
+      naCalendarMetaSep() +
+      '<span class="shortlist-na-slot-range">' +
+      escapeHtml(range) +
+      '</span></div>' +
+      '<div class="shortlist-na-slot-sub muted">' +
+      '<span class="shortlist-na-travel-label">En route (30 min)</span>' +
+      '</div></div>'
     );
   }
 
@@ -848,11 +921,15 @@
     var range = formatCalendarSlotRange(row.startMs, row.endMs);
     return (
       '<div class="shortlist-na-slot-row shortlist-na-slot-row--debrief" role="presentation">' +
-      '<div class="shortlist-na-when shortlist-na-when--debrief">' +
-      '<span class="shortlist-na-etype">Debrief</span>' +
-      '<span class="shortlist-na-time">' + escapeHtml(range) + '</span></div>' +
-      '<div class="shortlist-na-what"><span class="shortlist-na-debrief-label">Post-tour debrief (30 min)</span></div>' +
-      '</div>'
+      '<div class="shortlist-na-slot-banner">' +
+      '<span class="shortlist-na-slot-kind">Debrief</span>' +
+      naCalendarMetaSep() +
+      '<span class="shortlist-na-slot-range">' +
+      escapeHtml(range) +
+      '</span></div>' +
+      '<div class="shortlist-na-slot-sub">' +
+      '<span class="shortlist-na-debrief-label">Post-tour debrief (30 min)</span>' +
+      '</div></div>'
     );
   }
 
@@ -1024,8 +1101,10 @@
     return out;
   }
 
-  /** Shared Next / Reject controls for next-actions list + calendar. */
-  function nextActionsAdvanceRejectHtml(apartment) {
+  /** Shared Next / Reject controls for next-actions list + calendar.
+   * @param {{sepBeforeReject?: boolean}} opts - if true, insert a '|' divider before reject (compact banner row). */
+  function nextActionsAdvanceRejectHtml(apartment, opts) {
+    opts = opts || {};
     var id = apartment.id;
     var status = NyhomeStatus.normalizeStatus(apartment.status || 'new');
     var nextS = nextNavStatus(status);
@@ -1051,7 +1130,11 @@
       : '<button type="button" class="shortlist-next-actions-reject link-button" data-reject-apartment data-apartment-id="' +
         escapeAttr(String(id)) +
         '">Reject</button>';
-    return advanceBtn + rejectCtrl;
+    var pipe =
+      opts.sepBeforeReject && !isRejected
+        ? '<span class="shortlist-na-meta-sep" aria-hidden="true">|</span>'
+        : '';
+    return advanceBtn + pipe + rejectCtrl;
   }
 
   function formatOneDecimal(n) {
@@ -1795,6 +1878,22 @@
         neighborhoodBlock +
       '</div>';
 
+    var naNextActionsDatesDrawer =
+      '<section class="status-filter-na-row" aria-labelledby="status-filter-na-title">' +
+      '<h3 class="status-filter-group-title" id="status-filter-na-title">Next actions</h3>' +
+      '<div class="status-filter-na-checks" role="group" aria-labelledby="status-filter-na-title">' +
+      '<label class="shortlist-na-check status-filter-na-label"><input type="checkbox" data-na-omit="tour"' +
+      (naOmitTour ? ' checked' : '') +
+      '> Tour</label>' +
+      '<label class="shortlist-na-check status-filter-na-label"><input type="checkbox" data-na-omit="deadline"' +
+      (naOmitDeadline ? ' checked' : '') +
+      '> App deadline</label>' +
+      '<label class="shortlist-na-check status-filter-na-label"><input type="checkbox" data-na-omit="movein"' +
+      (naOmitMoveIn ? ' checked' : '') +
+      '> Move-in</label>' +
+      '</div>' +
+      '</section>';
+
     filterEl.innerHTML =
       '<div class="filters-panel">' +
         '<div class="filters-panel-header">' +
@@ -1805,6 +1904,7 @@
         '</div>' +
         '<div class="status-filter-body">' +
         extraLine +
+        naNextActionsDatesDrawer +
         '<div class="status-filter-groups">' +
         (hasClear
           ? '<div class="status-filter-clear-wrap"><a href="#" class="status-filter-clear" data-filter-clear-link>Clear status filters</a></div>'
@@ -1884,26 +1984,31 @@
       });
     }
 
+    wireNaOmitCheckboxes(filterEl);
+
     if (wasDrawerOpen) {
       setFiltersDrawerOpen(true);
     }
   }
 
   function applyFilters() {
-    var visible = activeFilters.size === 0
-      ? allApartments
-      : allApartments.filter(function (a) {
-          return activeFilters.has(NyhomeStatus.normalizeStatus(a.status));
+    var visible;
+    if (activeFilters.size === 0) {
+      visible = allApartments;
+      /** Cards / Compare (finalist table): omit terminal rows until user taps them in Filters. */
+      if (viewMode === 'cards' || viewMode === 'finalist') {
+        visible = visible.filter(function (a) {
+          var s = NyhomeStatus.normalizeStatus(a.status);
+          return s !== 'rejected' && s !== 'blacklisted' && s !== 'archived';
         });
-
-    visible = visible.filter(apartmentPassesExtraFilters);
-
-    if (viewMode === 'cards' || viewMode === 'finalist') {
-      visible = visible.filter(function (a) {
-        var s = NyhomeStatus.normalizeStatus(a.status);
-        return s !== 'rejected' && s !== 'archived';
+      }
+    } else {
+      visible = allApartments.filter(function (a) {
+        return activeFilters.has(NyhomeStatus.normalizeStatus(a.status));
       });
     }
+
+    visible = visible.filter(apartmentPassesExtraFilters);
 
     if (viewMode === 'next-actions') {
       visible = visible.filter(passesNextActionsOmitFilters);
@@ -1991,19 +2096,14 @@
   }
 
   function renderNextActionsToolbarHtml() {
-    var statusFilterExtra =
-      activeFilters.size > 0
-        ? ' <span class="shortlist-na-filter-count">(' + activeFilters.size + ')</span>'
-        : '';
     return (
       '<div class="shortlist-next-actions-toolbar">' +
         '<button type="button" class="na-mobile-toolbar-toggle" aria-expanded="false">' +
-        '<span class="na-mobile-toolbar-title">Filters and layout</span>' +
+        '<span class="na-mobile-toolbar-title">Calendar options</span>' +
         '<span class="na-mobile-toolbar-hint">Show</span>' +
         '</button>' +
         '<div class="shortlist-next-actions-toolbar-row">' +
           '<div class="shortlist-next-actions-layout" role="group" aria-label="Next actions layout">' +
-            '<span class="shortlist-na-toolbar-label">Layout</span>' +
             '<div class="shortlist-view-segment shortlist-na-segment" role="presentation">' +
               '<button type="button" class="shortlist-view-btn" data-na-layout="list" aria-pressed="' +
               (naLayoutMode === 'list' ? 'true' : 'false') +
@@ -2013,32 +2113,9 @@
               '">Calendar</button>' +
             '</div>' +
           '</div>' +
-          '<div class="shortlist-next-actions-status-filter">' +
-            '<span class="shortlist-na-toolbar-label">Status</span>' +
-            '<button type="button" class="secondary-btn shortlist-na-open-filters" data-open-status-filters>' +
-            'Filter by status' +
-            statusFilterExtra +
-            '</button>' +
-          '</div>' +
-          '<div class="shortlist-next-actions-omit" role="group" aria-label="Only include listings that have this date">' +
-            '<span class="shortlist-na-toolbar-label">Only include with</span>' +
-            '<label class="shortlist-na-check">' +
-              '<input type="checkbox" data-na-omit="tour"' +
-              (naOmitTour ? ' checked' : '') +
-              '> Tour</label>' +
-            '<label class="shortlist-na-check">' +
-              '<input type="checkbox" data-na-omit="deadline"' +
-              (naOmitDeadline ? ' checked' : '') +
-              '> App deadline</label>' +
-            '<label class="shortlist-na-check">' +
-              '<input type="checkbox" data-na-omit="movein"' +
-              (naOmitMoveIn ? ' checked' : '') +
-              '> Move-in</label>' +
-          '</div>' +
           (naLayoutMode === 'calendar'
-            ? '<div class="shortlist-next-actions-cal-density" role="group" aria-label="How much to show on each card">' +
-              '<span class="shortlist-na-toolbar-label">Card view</span>' +
-              '<div class="shortlist-view-segment shortlist-na-segment" role="presentation">' +
+            ? '<div class="shortlist-next-actions-cal-density" role="group" aria-label="Summary, details, or prospect on each card">' +
+              '<div class="shortlist-view-segment shortlist-view-segment--density shortlist-na-segment" role="presentation">' +
               '<button type="button" class="shortlist-view-btn" data-na-cal-density="summary" aria-pressed="' +
               (naCalendarDensity === 'summary' ? 'true' : 'false') +
               '">Summary</button>' +
@@ -2118,10 +2195,8 @@
         ? formatCalendarSlotRange(tourTimeRange.startMs, tourTimeRange.endMs)
         : formatEventTimeOrAllDay(ev);
     var title = String(apartment.title || 'Untitled apartment').trim();
-    var hood = (apartment.neighborhood && String(apartment.neighborhood).trim()) || '';
-    var hoodHtml = hood
-      ? '<span class="shortlist-na-hood-accent" title="' + escapeAttr('Neighborhood: ' + hood) + '">' + escapeHtml(hood) + '</span>'
-      : '<span class="shortlist-na-hood-accent shortlist-na-hood-accent--empty" title="Neighborhood not set">' + escapeHtml(placeholderDash()) + '</span>';
+    var subtitleLine = formatCalendarSubtitleAddress(apartment);
+    if (!subtitleLine) subtitleLine = title || '—';
     var notesPanelId = 'shortlist-na-notes-' + String(id) + '-' + ev.kind;
     var starNaCal =
       typeof NyhomeListingStar !== 'undefined' ? NyhomeListingStar.displayHtmlIfStarred(apartment) : '';
@@ -2133,36 +2208,39 @@
       '" data-apartment-id="' +
       escapeAttr(String(id)) +
       '">' +
-      '<div class="shortlist-na-line">' +
-      '<div class="shortlist-na-when">' +
-      '<span class="shortlist-na-etype">' +
+      '<div class="shortlist-na-line shortlist-na-line--event-banner">' +
+      '<div class="shortlist-na-what">' +
+      '<div class="shortlist-na-event-head">' +
+      '<div class="shortlist-na-banner-line">' +
+      starNaCal +
+      '<span class="shortlist-na-banner-kind">' +
       escapeHtml(kindLabel) +
       '</span>' +
-      '<span class="shortlist-na-time">' +
+      naCalendarMetaSep() +
+      '<span class="shortlist-na-banner-time">' +
       escapeHtml(timeLine) +
-      '</span></div><div class="shortlist-na-what">' +
-      '<div class="shortlist-na-title-row">' +
-      starNaCal +
-      '<a class="shortlist-na-titlelink" href="' +
-      escapeAttr(href) +
-      '"><strong class="shortlist-na-etitle">' +
-      escapeHtml(title) +
-      '</strong>' +
-      '<span class="shortlist-na-title-sep" aria-hidden="true"> — </span>' +
-      hoodHtml +
-      '</a>' +
+      '</span>' +
+      naCalendarMetaSep() +
       '<span class="status-pill ' +
       NyhomeStatus.statusClass(status) +
       ' shortlist-next-actions-pill">' +
       escapeHtml(statusLabel) +
       '</span>' +
-      '<div class="shortlist-na-title-actions">' +
-      nextActionsAdvanceRejectHtml(apartment) +
+      naCalendarMetaSep() +
+      nextActionsBannerScoresInlineHtml(apartment.scores) +
+      naCalendarMetaSep() +
+      '<span class="shortlist-na-banner-actions">' +
+      nextActionsAdvanceRejectHtml(apartment, { sepBeforeReject: true }) +
+      '</span>' +
       '</div>' +
+      '<a class="shortlist-na-address-line" href="' +
+      escapeAttr(href) +
+      '">' +
+      escapeHtml(subtitleLine) +
+      '</a>' +
       '</div>' +
       nextActionsListingSpecStrip(apartment) +
-      nextActionsRatingBox(apartment.scores) +
-      renderNotesDetailsCollapsible(apartment, ev, notesPanelId) +
+      (naCalendarDensity === 'prospect' ? renderNotesDetailsCollapsible(apartment, ev, notesPanelId) : '') +
       (naLayoutMode === 'calendar' && naCalendarDensity === 'details' && ev.kind === 'tour'
         ? '<button type="button" class="m-tour-screen-btn" data-tour-screen-apartment-id="' +
           escapeAttr(String(id)) +
@@ -2218,28 +2296,11 @@
   function wireNextActionsChrome() {
     wireNextActionsListInteractions();
     if (!listEl) return;
-    listEl.querySelectorAll('[data-open-status-filters]').forEach(function (btn) {
-      btn.addEventListener('click', function (e) {
-        e.preventDefault();
-        setFiltersDrawerOpen(true);
-      });
-    });
     listEl.querySelectorAll('[data-na-layout]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var m = btn.getAttribute('data-na-layout');
         if (!m || m === naLayoutMode || !VALID_NA_LAYOUTS[m]) return;
         naLayoutMode = m;
-        saveNextActionsPrefs();
-        if (allApartments.length) applyFilters();
-      });
-    });
-    listEl.querySelectorAll('input[type="checkbox"][data-na-omit]').forEach(function (el) {
-      el.addEventListener('change', function () {
-        var k = el.getAttribute('data-na-omit');
-        var on = el.checked;
-        if (k === 'tour') naOmitTour = on;
-        else if (k === 'deadline') naOmitDeadline = on;
-        else if (k === 'movein') naOmitMoveIn = on;
         saveNextActionsPrefs();
         if (allApartments.length) applyFilters();
       });

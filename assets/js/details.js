@@ -239,7 +239,10 @@
       '<div class="mobile-score-cell mobile-score-cell--peter"><span class="mobile-score-lbl">Peter</span>' +
       '<span class="mobile-score-val">' +
       scoreText(s.peter) +
-      '</span></div></div>' +
+      '</span></div>' +
+      '<div class="mobile-summary-email-inline">' +
+      buildEmailScoresButton(apartment) +
+      '</div></div>' +
       (metaHtml ? '<div class="mobile-summary-meta">' + metaHtml + '</div>' : '') +
       '<button type="button" class="mobile-summary-expand-toggle">Show more</button>' +
       '<div class="mobile-summary-expanded-body" hidden>' +
@@ -433,6 +436,15 @@
     }
   }
 
+  function buildEmailScoresButton(apartment) {
+    return (
+      '<button type="button" class="summary-email-scores-btn" id="detail-email-scores-btn"' +
+      ' title="' +
+      escapeAttr('Send Peter and Kerv the scoring summary by email') +
+      '">e-mail summary</button>'
+    );
+  }
+
   function renderSummaryHeader(apartment) {
     var status = NyhomeStatus.normalizeStatus(apartment.status || 'new');
     var starHdr =
@@ -462,6 +474,9 @@
         metaItem('refresh', apartment.updated_at ? 'Updated ' + formatDate(apartment.updated_at) : 'Updated TBD') +
         linkMetaItem(apartment.listing_url) +
         renderScores(apartment.scores || {}, 'score-grid--meta-inline') +
+        '<span class="app-meta-email-wrap">' +
+        buildEmailScoresButton(apartment) +
+        '</span>' +
       '</div>' +
     '</section>';
   }
@@ -887,6 +902,36 @@
     if (state.apartment) {
       syncStatusControls(NyhomeStatus.normalizeStatus(state.apartment.status || 'new'));
     }
+    bindEmailScoresButton();
+  }
+
+  function bindEmailScoresButton() {
+    var btn = rootEl.querySelector('#detail-email-scores-btn');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      if (!state.apartment || !state.apartment.id) return;
+      if (btn.disabled) return;
+      btn.disabled = true;
+      NyhomeAPI.sendListingScoresEmail({ id: state.apartment.id })
+        .then(function (res) {
+          if (typeof NyhomeUiFeedback !== 'undefined' && NyhomeUiFeedback.showToast) {
+            NyhomeUiFeedback.showToast('Scoring summary sent: ' + (res && res.subject ? res.subject : 'OK'));
+          } else if (typeof NyhomeUiFeedback !== 'undefined' && NyhomeUiFeedback.alert) {
+            NyhomeUiFeedback.alert('Sent: ' + ((res && res.subject) || 'OK'), { title: 'Email sent' });
+          }
+        })
+        .catch(function (err) {
+          var msg = (err && err.message) || 'Could not send email.';
+          if (typeof NyhomeUiFeedback !== 'undefined' && NyhomeUiFeedback.alert) {
+            NyhomeUiFeedback.alert(msg, { title: 'Email failed' });
+          } else if (window.alert) {
+            window.alert(msg);
+          }
+        })
+        .then(function () {
+          btn.disabled = false;
+        });
+    });
   }
 
   function bindUnitPanel() {
@@ -1022,8 +1067,11 @@
 
         pending[pendingKey] = true;
         NyhomeAPI.saveRating(payload)
-          .then(function () {
+          .then(function (res) {
             finalizeRatingSave(partnerKey, criterionId, scoreVal);
+            if (res && res.scoresCompleteEmailSent && state.apartment) {
+              state.apartment.listing_scores_complete_email_sent = 1;
+            }
           })
           .catch(function (err) {
             console.error('[nyhome-details] save rating', err);

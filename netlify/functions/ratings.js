@@ -1,5 +1,7 @@
-const { saveRating } = require('../../lib/apartmentRepository');
+const { saveRating, getApartmentById, setListingScoresCompleteEmailSent } = require('../../lib/apartmentRepository');
 const { json, parseBody, numberOrNull, stringOrNull } = require('../../lib/http');
+const { sendListingScoresCompleteEmail } = require('../../lib/listingAddedMailer');
+const { isBothPartnersVotingComplete } = require('../../lib/votingComplete');
 
 const ALLOWED_PARTNERS = new Set(['kerv', 'peter']);
 
@@ -33,14 +35,36 @@ exports.handler = async (event) => {
       score = n;
     }
 
-    await saveRating({
+    const voteChanged = await saveRating({
       apartmentId,
       partnerKey,
       criterionId,
       score,
       notes: stringOrNull(body.notes),
     });
-    return json(200, { success: true });
+
+    const out = { success: true };
+    if (voteChanged) {
+      try {
+        const data = await getApartmentById(apartmentId);
+        if (data) {
+          const complete = isBothPartnersVotingComplete(data.criteria, data.apartment.ratings);
+          if (!complete) {
+            await setListingScoresCompleteEmailSent(apartmentId, false);
+          } else {
+            const sentFlag = data.apartment.listing_scores_complete_email_sent;
+            const alreadySent = sentFlag === true || sentFlag === 1 || sentFlag === '1';
+            if (!alreadySent) {
+              const r = await sendListingScoresCompleteEmail(apartmentId, { auto: true });
+              if (r.sent) out.scoresCompleteEmailSent = true;
+            }
+          }
+        }
+      } catch (e) {
+        console.error('[ratings] scores-complete email', e);
+      }
+    }
+    return json(200, out);
   } catch (err) {
     console.error('[ratings] Error:', err.message);
     return json(500, { error: 'Something went wrong' });

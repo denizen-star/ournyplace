@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="/assets/css/app.css?v=99">
+  <link rel="stylesheet" href="/assets/css/app.css?v=115">
 </head>
 <body>
   <header class="app-header app-header--admin">
@@ -29,7 +29,7 @@
       </div>
     </div>
     <div class="app-header-actions">
-      <a class="link-button" href="/admin/new">New listing</a><span class="app-header-actions-sep" aria-hidden="true">|</span><a class="link-button" href="/">View cards</a>
+      <a class="link-button" href="/admin/new">Add listing</a><span class="app-header-actions-sep" aria-hidden="true">|</span><a class="link-button" href="/">View cards</a>
     </div>
   </header>
 
@@ -39,6 +39,8 @@
       <button class="summary-tab tab" data-tab="blacklist">Building blacklist</button>
       <button class="summary-tab tab" data-tab="criteria">Criteria</button>
       <button class="summary-tab tab" data-tab="settings">Settings</button>
+      <button class="summary-tab tab" data-tab="analytics">Analytics</button>
+      <button class="summary-tab tab" data-tab="activity-log">Activity</button>
     </nav>
 
     <section id="tab-saved" class="tab-panel active">
@@ -139,7 +141,456 @@
       </section>
     </section>
 
+    <section id="tab-analytics" class="tab-panel">
+      <div class="analytics-period-bar">
+        <span class="analytics-period-label">Period</span>
+        <div class="shortlist-sort-segment" role="radiogroup" aria-label="Analytics period">
+          <button type="button" class="shortlist-sort-btn" role="radio" data-analytics-period="today" aria-checked="true">Today</button>
+          <button type="button" class="shortlist-sort-btn" role="radio" data-analytics-period="yesterday" aria-checked="false">Yesterday</button>
+          <button type="button" class="shortlist-sort-btn" role="radio" data-analytics-period="7d" aria-checked="false">7D</button>
+          <button type="button" class="shortlist-sort-btn" role="radio" data-analytics-period="30d" aria-checked="false">30D</button>
+          <button type="button" class="shortlist-sort-btn" role="radio" data-analytics-period="all" aria-checked="false">All time</button>
+        </div>
+        <button type="button" id="analytics-refresh-btn" class="secondary-btn analytics-period-refresh">Refresh</button>
+      </div>
+      <section class="content-section">
+        <div class="section-header">
+          <h2 class="section-title">Pipeline pulse</h2>
+        </div>
+        <div id="admin-analytics-kpis"></div>
+      </section>
+      <section class="content-section">
+        <div class="section-header">
+          <h2 class="section-title">Activity trend</h2>
+        </div>
+        <div id="admin-analytics-charts"></div>
+      </section>
+      <section class="content-section">
+        <div class="section-header">
+          <h2 class="section-title">Scoring gaps</h2>
+        </div>
+        <div id="admin-analytics-least-voted"></div>
+      </section>
+      <section class="content-section">
+        <div class="section-header">
+          <h2 class="section-title">Criteria ratings</h2>
+          <div class="shortlist-sort-segment" role="radiogroup" aria-label="Partner filter" id="criteria-partner-filter">
+            <button type="button" class="shortlist-sort-btn" role="radio" data-criteria-partner="both" aria-checked="true">Both</button>
+            <button type="button" class="shortlist-sort-btn" role="radio" data-criteria-partner="kerv" aria-checked="false">Kerv</button>
+            <button type="button" class="shortlist-sort-btn" role="radio" data-criteria-partner="peter" aria-checked="false">Peter</button>
+          </div>
+        </div>
+        <div id="admin-analytics-criteria-dist"></div>
+        <div id="admin-analytics-criteria-list"></div>
+      </section>
+    </section>
+
+    <section id="tab-activity-log" class="tab-panel">
+      <div class="analytics-period-bar">
+        <span class="analytics-period-label">Period</span>
+        <div class="shortlist-sort-segment" role="radiogroup" aria-label="Activity log period">
+          <button type="button" class="shortlist-sort-btn" role="radio" data-activity-period="today" aria-checked="false">Today</button>
+          <button type="button" class="shortlist-sort-btn" role="radio" data-activity-period="yesterday" aria-checked="false">Yesterday</button>
+          <button type="button" class="shortlist-sort-btn" role="radio" data-activity-period="7d" aria-checked="true">7D</button>
+          <button type="button" class="shortlist-sort-btn" role="radio" data-activity-period="30d" aria-checked="false">30D</button>
+          <button type="button" class="shortlist-sort-btn" role="radio" data-activity-period="all" aria-checked="false">All time</button>
+        </div>
+        <button type="button" id="activity-refresh-btn" class="secondary-btn analytics-period-refresh">Refresh</button>
+      </div>
+      <section class="content-section">
+        <div id="admin-activity-summary"></div>
+      </section>
+      <section class="content-section">
+        <div class="section-header">
+          <h2 class="section-title">Activity log <span id="analytics-day-range" class="analytics-day-range muted"></span></h2>
+        </div>
+        <div id="admin-analytics-activity"></div>
+      </section>
+    </section>
+
   </main>
+
+  <style>
+    /* ── Analytics + Activity tabs ───────────────────────────────────── */
+    .analytics-loading, .analytics-error, .analytics-empty {
+      padding: 32px 0;
+      text-align: center;
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .analytics-error { color: #c0392b; text-align: left; }
+
+    /* Period filter bar */
+    .analytics-period-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 14px 0 6px;
+    }
+    .analytics-period-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      flex-shrink: 0;
+    }
+    .analytics-period-refresh { margin-left: auto; }
+
+    /* KPI tiles grid */
+    .analytics-kpi-tiles {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .analytics-kpi-tile {
+      border-radius: 10px;
+      padding: 14px 16px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+    }
+    .analytics-kpi-tile-value {
+      font-size: 26px;
+      font-weight: 700;
+      line-height: 1.1;
+      color: var(--accent-dark);
+    }
+    .analytics-kpi-tile-label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .analytics-kpi-tile--active  { border-color: #0fb8a9; background: #edfcfa; }
+    .analytics-kpi-tile--active .analytics-kpi-tile-value { color: #0a8a80; }
+    .analytics-kpi-tile--attention { border-color: #f59e0b; background: #fffbea; }
+    .analytics-kpi-tile--attention .analytics-kpi-tile-value { color: #b45309; }
+    .analytics-kpi-tile--starred { border-color: #fbbf24; background: #fffdf0; }
+    .analytics-kpi-tile--starred .analytics-kpi-tile-value { color: #92400e; }
+    .analytics-kpi-tile--avg { border-color: #818cf8; background: #f5f3ff; }
+    .analytics-kpi-tile--avg .analytics-kpi-tile-value { color: #4338ca; }
+    .analytics-kpi-tile--tour { border-color: #34d399; background: #f0fdf4; }
+    .analytics-kpi-tile--tour .analytics-kpi-tile-value { color: #065f46; }
+    .analytics-kpi-tile--late { border-color: #f472b6; background: #fdf2f8; }
+    .analytics-kpi-tile--late .analytics-kpi-tile-value { color: #9d174d; }
+    .analytics-kpi-tile--signed { border-color: #6ee7b7; background: #ecfdf5; }
+    .analytics-kpi-tile--signed .analytics-kpi-tile-value { color: #065f46; }
+    .analytics-kpi-tile--kerv { border-color: #0fb8a9; background: #edfcfa; }
+    .analytics-kpi-tile--kerv .analytics-kpi-tile-value { color: #0a8a80; }
+    .analytics-kpi-tile--peter { border-color: #f15b9a; background: #fff0f7; }
+    .analytics-kpi-tile--peter .analytics-kpi-tile-value { color: #9d174d; }
+    .analytics-kpi-tile--status-ev { border-color: #93c5fd; background: #eff6ff; }
+    .analytics-kpi-tile--status-ev .analytics-kpi-tile-value { color: #1d4ed8; }
+    .analytics-kpi-tile--vote-ev { border-color: #c4b5fd; background: #f5f3ff; }
+    .analytics-kpi-tile--vote-ev .analytics-kpi-tile-value { color: #6d28d9; }
+
+    /* KPI section header */
+    .analytics-kpi-section { margin-bottom: 24px; }
+    .analytics-kpi-section-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 0 0 10px;
+    }
+    .analytics-kpi-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .analytics-kpi-table td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: middle;
+    }
+    .analytics-kpi-table tr:last-child td { border-bottom: none; }
+    .analytics-kpi-table td:first-child { color: var(--ink); }
+    .analytics-kpi-table td:last-child {
+      font-weight: 700;
+      text-align: right;
+      color: var(--accent-dark);
+    }
+
+    /* Chart grid */
+    .analytics-charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .analytics-chart-card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .analytics-chart-card--full { grid-column: 1 / -1; }
+    .analytics-chart-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 0 0 10px;
+    }
+    @media (max-width: 600px) {
+      .analytics-charts-grid { grid-template-columns: 1fr; }
+      .analytics-chart-card--full { grid-column: 1; }
+    }
+
+    /* Chart area */
+    .analytics-chart-wrap {
+      position: relative;
+      height: 220px;
+      width: 100%;
+    }
+
+    /* Activity summary bar */
+    .analytics-summary-bar {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      padding: 4px 0 8px;
+    }
+    .analytics-summary-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 10px 16px;
+      border-radius: 8px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      min-width: 80px;
+    }
+    .analytics-summary-item--kerv  { border-color: #0fb8a9; background: #edfcfa; }
+    .analytics-summary-item--peter { border-color: #f15b9a; background: #fff0f7; }
+    .analytics-summary-item--status-ev { border-color: #93c5fd; background: #eff6ff; }
+    .analytics-summary-item--vote-ev   { border-color: #c4b5fd; background: #f5f3ff; }
+    .analytics-summary-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--accent-dark);
+      line-height: 1.1;
+    }
+    .analytics-summary-item--kerv  .analytics-summary-value { color: #0a8a80; }
+    .analytics-summary-item--peter .analytics-summary-value { color: #9d174d; }
+    .analytics-summary-item--status-ev .analytics-summary-value { color: #1d4ed8; }
+    .analytics-summary-item--vote-ev   .analytics-summary-value { color: #6d28d9; }
+    .analytics-summary-label {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    /* Attention list */
+    .analytics-attention-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .analytics-attention-item {
+      padding: 10px 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    .analytics-attention-item:last-child { border-bottom: none; }
+    .analytics-attention-title { display: block; font-weight: 600; }
+    .analytics-attention-reasons { display: block; color: var(--ink); }
+    .analytics-attention-suggest { display: block; color: var(--muted); font-size: 13px; }
+    .analytics-attention-link { color: var(--accent-dark); font-weight: 600; font-size: 13px; }
+
+    .analytics-capped-note {
+      padding: 9px 13px;
+      background: #fffbea;
+      border: 1px solid #f0d060;
+      border-radius: 7px;
+      font-size: 13px;
+      color: #6b5200;
+      margin-bottom: 12px;
+    }
+    .analytics-day-range { font-size: 13px; font-weight: 400; margin-left: 6px; }
+
+    /* Day cards */
+    .analytics-day-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin-bottom: 7px;
+      overflow: hidden;
+      background: var(--paper);
+    }
+    .analytics-day-card > summary {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 14px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 14px;
+      font-weight: 600;
+      list-style: none;
+    }
+    .analytics-day-card > summary::-webkit-details-marker { display: none; }
+    .analytics-day-chevron {
+      font-size: 16px;
+      line-height: 1;
+      color: var(--muted);
+      transition: transform 0.15s;
+      flex-shrink: 0;
+    }
+    .analytics-day-card[open] > summary .analytics-day-chevron {
+      transform: rotate(90deg);
+    }
+    .analytics-day-label { flex: 1; }
+    .analytics-day-count { font-size: 13px; font-weight: 400; color: var(--muted); }
+    .analytics-day-body { border-top: 1px solid var(--line); }
+
+    /* Event rows */
+    .analytics-event-row {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      padding: 7px 14px;
+      font-size: 13px;
+      border-bottom: 1px solid var(--line-light);
+      line-height: 1.45;
+    }
+    .analytics-event-row:last-child { border-bottom: none; }
+    .analytics-event-time {
+      flex-shrink: 0;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      min-width: 66px;
+    }
+    .analytics-event-type-badge {
+      flex-shrink: 0;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      padding: 2px 7px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      min-width: 46px;
+      text-align: center;
+    }
+    .analytics-event-type-badge--status { background: #e8f9ff; color: #123a4d; }
+    .analytics-event-type-badge--vote   { background: #f5f0ff; color: #3d3278; }
+    .analytics-event-col {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 10px;
+      min-width: 0;
+    }
+    .analytics-event-title {
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 220px;
+    }
+    .analytics-event-title-link {
+      color: inherit;
+      text-decoration: none;
+    }
+    .analytics-event-title-link:hover { text-decoration: underline; }
+    .analytics-event-summary { color: var(--muted); }
+
+    /* ── Scoring gaps table ──────────────────────────────────────────── */
+    .analytics-voted-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .analytics-voted-table th {
+      padding: 6px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted);
+      border-bottom: 2px solid var(--line);
+      text-align: left;
+    }
+    .analytics-voted-table td {
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--line-light);
+      vertical-align: middle;
+    }
+    .analytics-voted-table tr:last-child td { border-bottom: none; }
+    .analytics-status-chip {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: capitalize;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--line);
+      color: var(--ink);
+      white-space: nowrap;
+    }
+    .analytics-vote-bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 100px;
+    }
+    .analytics-vote-bar-track {
+      flex: 1;
+      height: 6px;
+      border-radius: 3px;
+      background: var(--line);
+      overflow: hidden;
+    }
+    .analytics-vote-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.3s;
+    }
+    .analytics-vote-count {
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    /* ── Criteria ratings table ──────────────────────────────────────── */
+    .analytics-chart-wrap--sm { height: 150px; }
+    .analytics-criteria-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 14px; }
+    .analytics-criteria-table th {
+      padding: 6px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted);
+      border-bottom: 2px solid var(--line);
+      text-align: left;
+    }
+    .analytics-criteria-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--line-light);
+      vertical-align: middle;
+    }
+    .analytics-criteria-table tr:last-child td { border-bottom: none; }
+    .criteria-th-kerv { color: #0a8a80 !important; }
+    .criteria-th-peter { color: #9d174d !important; }
+    .criteria-label-cell { min-width: 140px; }
+    .criteria-label { display: block; font-weight: 500; margin-bottom: 4px; }
+    .analytics-score-bar-wrap {
+      height: 4px;
+      border-radius: 2px;
+      background: var(--line);
+      overflow: hidden;
+      max-width: 120px;
+    }
+    .analytics-score-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      background: linear-gradient(90deg, #0fb8a9, #818cf8);
+    }
+    .criteria-score-kerv { color: #0a8a80; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .criteria-score-peter { color: #9d174d; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .criteria-votes { color: var(--muted); font-variant-numeric: tabular-nums; }
+    .criteria-pct { color: var(--muted); font-variant-numeric: tabular-nums; }
+  </style>
 
   <dialog id="nyhome-blacklist-dialog" class="nyhome-modal">
     <div class="nyhome-modal-inner">
@@ -152,15 +603,16 @@
     </div>
   </dialog>
 
-  <script src="/assets/js/apartmentStatus.js?v=99"></script>
-  <script src="/assets/js/listingTextParse.js?v=99"></script>
-  <script src="/assets/js/listingStar.js?v=99"></script>
-  <script src="/assets/js/shortlistSort.js?v=99"></script>
-  <script src="/assets/js/apartmentSavePayload.js?v=99"></script>
-  <script src="/assets/js/nyhomeUiFeedback.js?v=99"></script>
-  <script src="/assets/js/saveApartmentWorkflow.js?v=99"></script>
-  <script src="/assets/js/api.js?v=99"></script>
-  <script src="/assets/js/vibeImages.js?v=99"></script>
-  <script src="/assets/js/admin.js?v=99"></script>
+  <script src="/assets/js/apartmentStatus.js?v=115"></script>
+  <script src="/assets/js/listingTextParse.js?v=115"></script>
+  <script src="/assets/js/listingStar.js?v=115"></script>
+  <script src="/assets/js/shortlistSort.js?v=115"></script>
+  <script src="/assets/js/apartmentSavePayload.js?v=115"></script>
+  <script src="/assets/js/nyhomeUiFeedback.js?v=115"></script>
+  <script src="/assets/js/saveApartmentWorkflow.js?v=115"></script>
+  <script src="/assets/js/api.js?v=115"></script>
+  <script src="/assets/js/vibeImages.js?v=115"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="/assets/js/admin.js?v=115"></script>
 </body>
 </html>

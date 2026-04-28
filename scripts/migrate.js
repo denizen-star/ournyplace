@@ -268,6 +268,11 @@ async function migrate() {
     'nyp_apartments.listing_star (1 Peter, 2 Kerv, 3 both)'
   );
 
+  await safeAlter(
+    'ALTER TABLE nyp_apartments ADD COLUMN listing_scores_complete_email_sent TINYINT(1) NOT NULL DEFAULT 0',
+    'nyp_apartments.listing_scores_complete_email_sent (auto scores-complete digest)'
+  );
+
   console.log('[MIGRATE] Complete.');
 }
 

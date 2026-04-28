@@ -6,6 +6,13 @@
     buildingBlacklist: [],
     adminCriteriaPainted: false,
     adminBlacklistPainted: false,
+    adminAnalyticsFetched: false,
+    analyticsData: null,
+    analyticsPeriod: 'today',
+    adminActivityFetched: false,
+    activityData: null,
+    activityPeriod: '7d',
+    criteriaDistFilter: 'both',
   };
   var form = document.getElementById('apartment-form');
   var listEl = document.getElementById('admin-apartment-list');
@@ -15,6 +22,22 @@
   var vibeSlots = ['', '', ''];
   var vibeActiveSlot = 0;
 
+  /** API rows may use string or number ids; DOM uses numeric attributes — match loosely. */
+  function findCriterionInState(id) {
+    return state.criteria.find(function (c) {
+      return String(c.id) === String(id);
+    });
+  }
+
+  function patchApartmentsCacheCriteria(mutator) {
+    try {
+      var cached = NyhomeAPI.getApartmentsCache();
+      if (!cached || !Array.isArray(cached.criteria)) return;
+      mutator(cached.criteria);
+      NyhomeAPI.setApartmentsCache(cached);
+    } catch (e) {}
+  }
+
   var ADMIN_SORT_STORAGE_KEY = 'nyhomeAdminApartmentSort';
   var PUBLIC_BASE_STORAGE_KEY = 'nyhomePublicBaseUrl';
   var ADMIN_VALID_SORTS = { default: 1, updated: 1, avg: 1, workflow: 1, ranked: 1 };
@@ -23,8 +46,20 @@
   document.addEventListener('DOMContentLoaded', boot);
 
   function boot() {
+    var formEl = document.getElementById('apartment-form');
+    if (formEl) {
+      var qid = new URLSearchParams(window.location.search).get('id');
+      if (qid && String(qid).trim()) {
+        window.location.replace('/details/?id=' + encodeURIComponent(String(qid).trim()));
+        return;
+      }
+    }
     bindTabs();
     bindApartmentSearch();
+    bindAnalyticsRefresh();
+    bindAnalyticsPeriodFilter();
+    bindActivityPeriodFilter();
+    bindCriteriaPartnerFilter();
     initAdminSort();
     bindApartmentForm();
     bindCriterionForm();
@@ -77,19 +112,10 @@
         state.neighborhoods = data.neighborhoods || [];
         state.buildingBlacklist = (bl && bl.entries) || [];
         applyAdminListPaint();
-        maybeApplyEditFromQuery();
       })
       .catch(function (err) {
         console.error('[nyhome-admin] load', err);
       });
-  }
-
-  function maybeApplyEditFromQuery() {
-    if (!form) return;
-    var id = new URLSearchParams(window.location.search).get('id');
-    if (!id) return;
-    var a = state.apartments.find(function (x) { return String(x.id) === String(id); });
-    if (a) fillApartmentForm(a);
   }
 
   function bindPipelineDigestSettings() {
@@ -176,6 +202,10 @@
         } else if (tab === 'blacklist' && !state.adminBlacklistPainted) {
           state.adminBlacklistPainted = true;
           renderBlacklist();
+        } else if (tab === 'analytics' && !state.adminAnalyticsFetched) {
+          fetchAndRenderAnalytics();
+        } else if (tab === 'activity-log' && !state.adminActivityFetched) {
+          fetchAndRenderActivity();
         }
       });
     });
@@ -323,7 +353,12 @@
         if (forRetry) p.ignoreBlacklist = true;
         return p;
       })
-        .then(function () {
+        .then(function (res) {
+          var rid = res && res.id != null ? res.id : null;
+          if (rid != null && String(rid).trim() !== '') {
+            window.location.href = '/details/?id=' + encodeURIComponent(String(rid));
+            return;
+          }
           clearApartmentForm();
           return load();
         })
@@ -434,6 +469,11 @@
       NyhomeAPI.reorderCriteria(ids).then(function () {
         state.criteria.sort(function (a, b) {
           return ids.indexOf(Number(a.id)) - ids.indexOf(Number(b.id));
+        });
+        patchApartmentsCacheCriteria(function (arr) {
+          arr.sort(function (a, b) {
+            return ids.indexOf(Number(a.id)) - ids.indexOf(Number(b.id));
+          });
         });
         renderApartments();
       }).catch(function (err) {
@@ -726,7 +766,7 @@
 
   function syncCriterionDisplayFromState(row) {
     var id = Number(row.getAttribute('data-criterion-id'));
-    var prev = state.criteria.find(function (c) { return c.id === id; });
+    var prev = findCriterionInState(id);
     if (!prev) return;
     var labelD = row.querySelector('.criterion-display--label');
     var labelI = row.querySelector('.criterion-input--label');
@@ -777,18 +817,18 @@
     if (!labelEl || !defEl || !weightEl) return Promise.resolve();
     var label = labelEl.value.trim();
     if (!label) {
-      var blankPrev = state.criteria.find(function (c) { return c.id === id; });
+      var blankPrev = findCriterionInState(id);
       if (blankPrev) labelEl.value = blankPrev.label;
       return Promise.resolve();
     }
     var definition = defEl.value;
     var weight = Number(weightEl.value);
     if (!Number.isFinite(weight) || weight < 0) {
-      var badPrev = state.criteria.find(function (c) { return c.id === id; });
+      var badPrev = findCriterionInState(id);
       if (badPrev) weightEl.value = String(Number(badPrev.weight));
       return Promise.resolve();
     }
-    var prev = state.criteria.find(function (c) { return c.id === id; });
+    var prev = findCriterionInState(id);
     if (prev && prev.label === label && String(prev.definition || '') === definition && Number(prev.weight) === weight) {
       return Promise.resolve();
     }
@@ -798,6 +838,16 @@
         prev.definition = definition;
         prev.weight = weight;
       }
+      patchApartmentsCacheCriteria(function (arr) {
+        var c = arr.find(function (x) {
+          return String(x.id) === String(id);
+        });
+        if (c) {
+          c.label = label;
+          c.definition = definition;
+          c.weight = weight;
+        }
+      });
     });
   }
 
@@ -1579,4 +1629,706 @@
   function escapeAttr(value) {
     return escapeHtml(value);
   }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Analytics + Activity tabs
+  // ─────────────────────────────────────────────────────────────────────────
+
+  var chartTimelineInstance = null;
+  var chartFunnelInstance = null;
+  var chartTransitionsInstance = null;
+  var chartPartnerInstance = null;
+  var chartCriteriaDistInstance = null;
+
+  function bindAnalyticsRefresh() {
+    var btn = document.getElementById('analytics-refresh-btn');
+    if (btn) {
+      btn.addEventListener('click', function () {
+        state.adminAnalyticsFetched = false;
+        fetchAndRenderAnalytics();
+      });
+    }
+    var actBtn = document.getElementById('activity-refresh-btn');
+    if (actBtn) {
+      actBtn.addEventListener('click', function () {
+        state.adminActivityFetched = false;
+        fetchAndRenderActivity();
+      });
+    }
+  }
+
+  function bindAnalyticsPeriodFilter() {
+    var btns = document.querySelectorAll('[data-analytics-period]');
+    btns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var period = btn.getAttribute('data-analytics-period');
+        if (period === state.analyticsPeriod) return;
+        state.analyticsPeriod = period;
+        btns.forEach(function (b) { b.setAttribute('aria-checked', 'false'); });
+        btn.setAttribute('aria-checked', 'true');
+        state.adminAnalyticsFetched = false;
+        fetchAndRenderAnalytics();
+      });
+    });
+  }
+
+  function bindActivityPeriodFilter() {
+    var btns = document.querySelectorAll('[data-activity-period]');
+    btns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var period = btn.getAttribute('data-activity-period');
+        if (period === state.activityPeriod) return;
+        state.activityPeriod = period;
+        btns.forEach(function (b) { b.setAttribute('aria-checked', 'false'); });
+        btn.setAttribute('aria-checked', 'true');
+        state.adminActivityFetched = false;
+        fetchAndRenderActivity();
+      });
+    });
+  }
+
+  function fetchAndRenderAnalytics() {
+    var kpisEl = document.getElementById('admin-analytics-kpis');
+    var chartsEl = document.getElementById('admin-analytics-charts');
+    if (kpisEl) kpisEl.innerHTML = '<div class="analytics-loading">Loading…</div>';
+    if (chartsEl) chartsEl.innerHTML = '';
+
+    state.adminAnalyticsFetched = true;
+    NyhomeAPI.getAdminAnalytics(state.analyticsPeriod)
+      .then(function (data) {
+        state.analyticsData = data;
+        renderAnalyticsKpis(data.pulse, data.todayRollup, data.transitions);
+        renderAnalyticsCharts(data);
+        renderLeastVotedListings(data.leastVotedListings);
+        renderCriterionStats(data.criterionStats, state.criteriaDistFilter);
+        renderCriteriaDist(data.criterionStats, state.criteriaDistFilter);
+      })
+      .catch(function (err) {
+        console.error('[nyhome-admin] getAdminAnalytics', err);
+        var msg = err.message || 'Could not load analytics';
+        if (kpisEl) kpisEl.innerHTML = '<div class="analytics-error">' + escapeHtml(msg) + '</div>';
+        state.adminAnalyticsFetched = false;
+      });
+  }
+
+  function fetchAndRenderActivity() {
+    var actEl = document.getElementById('admin-analytics-activity');
+    var summaryEl = document.getElementById('admin-activity-summary');
+    if (actEl) actEl.innerHTML = '<div class="analytics-loading">Loading…</div>';
+    if (summaryEl) summaryEl.innerHTML = '';
+
+    state.adminActivityFetched = true;
+    NyhomeAPI.getAdminAnalytics(state.activityPeriod)
+      .then(function (data) {
+        state.activityData = data;
+        renderActivitySummary(data.activityByDay, data.todayRollup);
+        renderAnalyticsActivity(data.activityByDay, data.capped);
+      })
+      .catch(function (err) {
+        console.error('[nyhome-admin] getAdminAnalytics (activity)', err);
+        var msg = err.message || 'Could not load activity log';
+        if (actEl) actEl.innerHTML = '<div class="analytics-error">' + escapeHtml(msg) + '</div>';
+        state.adminActivityFetched = false;
+      });
+  }
+
+  /** Build a colored KPI tile. */
+  function kpiTile(value, label, variant) {
+    var cls = 'analytics-kpi-tile' + (variant ? ' analytics-kpi-tile--' + variant : '');
+    return '<div class="' + cls + '">' +
+      '<div class="analytics-kpi-tile-value">' + escapeHtml(String(value)) + '</div>' +
+      '<div class="analytics-kpi-tile-label">' + escapeHtml(label) + '</div>' +
+      '</div>';
+  }
+
+  /** Render colorful KPI tiles + period activity + transitions + attention. */
+  function renderAnalyticsKpis(pulse, todayRollup, transitions) {
+    var el = document.getElementById('admin-analytics-kpis');
+    if (!el) return;
+    if (!pulse) { el.innerHTML = '<div class="analytics-empty">No data.</div>'; return; }
+
+    var html = '';
+
+    // ── Pipeline state tiles ──────────────────────────────────────────────
+    html += '<div class="analytics-kpi-section">';
+    html += '<p class="analytics-kpi-section-label">Pipeline state</p>';
+    html += '<div class="analytics-kpi-tiles">';
+    html += kpiTile(pulse.activeCount, 'Active', 'active');
+    html += kpiTile(pulse.attentionCount, 'Need attention', 'attention');
+    html += kpiTile(pulse.starred, 'Starred', 'starred');
+    html += kpiTile(pulse.avgCombined != null ? pulse.avgCombined + '%' : '—', 'Avg score', 'avg');
+    html += kpiTile(pulse.early, 'Early stage', '');
+    html += kpiTile(pulse.tourFlow, 'In tours', 'tour');
+    html += kpiTile(pulse.late, 'Late stage', 'late');
+    html += kpiTile(pulse.tours7d, 'Tours (7d)', '');
+    html += kpiTile(pulse.signedCount, 'Signed', 'signed');
+    html += '</div></div>';
+
+    // ── Period activity tiles ─────────────────────────────────────────────
+    if (todayRollup) {
+      html += '<div class="analytics-kpi-section">';
+      html += '<p class="analytics-kpi-section-label">Period activity</p>';
+      html += '<div class="analytics-kpi-tiles">';
+      html += kpiTile(todayRollup.status, 'Status changes', 'status-ev');
+      html += kpiTile(todayRollup.vote, 'Score changes', 'vote-ev');
+      html += kpiTile(todayRollup.kerv, 'Kerv votes', 'kerv');
+      html += kpiTile(todayRollup.peter, 'Peter votes', 'peter');
+      html += kpiTile(todayRollup.listingsAddedToday, 'New listings', '');
+      html += '</div></div>';
+    }
+
+    // ── Status transitions ────────────────────────────────────────────────
+    if (transitions && transitions.length) {
+      html += '<div class="analytics-kpi-section">';
+      html += '<p class="analytics-kpi-section-label">Status transitions</p>';
+      html += '<table class="analytics-kpi-table" role="presentation">';
+      transitions.forEach(function (t) {
+        html += '<tr><td>' + escapeHtml(t.label) + '</td><td>' + escapeHtml(String(t.count)) + '</td></tr>';
+      });
+      html += '</table></div>';
+    }
+
+    // ── Attention list ────────────────────────────────────────────────────
+    if (pulse.attention && pulse.attention.length) {
+      html += '<div class="analytics-kpi-section">';
+      html += '<p class="analytics-kpi-section-label">Needs attention (' + escapeHtml(String(pulse.attentionCount)) + ')</p>';
+      html += '<ul class="analytics-attention-list">';
+      pulse.attention.forEach(function (item) {
+        var link = item.id != null ? '/details/?id=' + encodeURIComponent(item.id) : null;
+        html +=
+          '<li class="analytics-attention-item">' +
+          '<span class="analytics-attention-title">' + escapeHtml(item.title) + '</span>' +
+          '<span class="analytics-attention-reasons">' + escapeHtml((item.reasons || []).join('; ')) + '</span>' +
+          (item.suggest ? '<span class="analytics-attention-suggest">Next: ' + escapeHtml(item.suggest) + '</span>' : '') +
+          (link ? '<a href="' + escapeAttr(link) + '" class="analytics-attention-link">Open listing</a>' : '') +
+          '</li>';
+      });
+      html += '</ul></div>';
+    } else {
+      html += '<div class="analytics-kpi-section">';
+      html += '<p class="analytics-kpi-section-label">Needs attention</p>';
+      html += '<p class="muted" style="font-size:14px;margin:0;">All clear — no flagged listings.</p>';
+      html += '</div>';
+    }
+
+    el.innerHTML = html;
+  }
+
+  /** Render a stacked bar chart: events per day broken down by status vs vote. */
+  function renderAnalyticsCharts(data) {
+    var el = document.getElementById('admin-analytics-charts');
+    if (!el) return;
+
+    if (typeof Chart === 'undefined') {
+      el.innerHTML = '<div class="analytics-error">Chart.js failed to load.</div>';
+      return;
+    }
+
+    // Destroy all existing instances before rebuilding the DOM
+    [chartTimelineInstance, chartFunnelInstance, chartTransitionsInstance, chartPartnerInstance].forEach(function (c) {
+      if (c) c.destroy();
+    });
+    chartTimelineInstance = chartFunnelInstance = chartTransitionsInstance = chartPartnerInstance = null;
+
+    var activityByDay = (data && data.activityByDay) || [];
+    var pulse = (data && data.pulse) || null;
+    var criterionStats = (data && data.criterionStats) || [];
+
+    // Derive period transitions from activityByDay events so they reflect the full selected period.
+    var transMap = {};
+    activityByDay.forEach(function (day) {
+      (day.events || []).forEach(function (ev) {
+        if (ev.eventType !== 'status') return;
+        var label = ev.summary || (ev.fromStatus + ' → ' + ev.toStatus);
+        transMap[label] = (transMap[label] || 0) + 1;
+      });
+    });
+    var periodTransitions = Object.keys(transMap)
+      .map(function (label) { return { label: label, count: transMap[label] }; })
+      .sort(function (a, b) { return b.count - a.count; })
+      .slice(0, 12);
+
+    var days = activityByDay.slice().reverse();
+    var hasActivity = days.length > 0;
+    var hasFunnel = pulse != null;
+    var hasTransitions = periodTransitions.length > 0;
+    var hasPartner = criterionStats.length > 0;
+
+    if (!hasActivity && !hasFunnel && !hasTransitions && !hasPartner) {
+      el.innerHTML = '<div class="analytics-empty">No chart data for this period.</div>';
+      return;
+    }
+
+    // Dynamic heights
+    var transH = Math.max(120, periodTransitions.length * 32);
+    var partnerH = Math.max(140, criterionStats.length * 30);
+
+    // Build chart grid HTML
+    var grid = '<div class="analytics-charts-grid">';
+
+    if (hasActivity) {
+      grid +=
+        '<div class="analytics-chart-card analytics-chart-card--full">' +
+        '<p class="analytics-chart-label">Events over time</p>' +
+        '<div class="analytics-chart-wrap"><canvas id="chart-timeline"></canvas></div>' +
+        '</div>';
+    }
+
+    if (hasFunnel) {
+      grid +=
+        '<div class="analytics-chart-card">' +
+        '<p class="analytics-chart-label">Pipeline funnel</p>' +
+        '<div class="analytics-chart-wrap analytics-chart-wrap--sm"><canvas id="chart-funnel"></canvas></div>' +
+        '</div>';
+    }
+
+    if (hasTransitions) {
+      grid +=
+        '<div class="analytics-chart-card">' +
+        '<p class="analytics-chart-label">Status transitions</p>' +
+        '<div class="analytics-chart-wrap" style="height:' + transH + 'px"><canvas id="chart-transitions"></canvas></div>' +
+        '</div>';
+    }
+
+    if (hasPartner) {
+      grid +=
+        '<div class="analytics-chart-card analytics-chart-card--full">' +
+        '<p class="analytics-chart-label">Kerv vs Peter — by criterion</p>' +
+        '<div class="analytics-chart-wrap" style="height:' + partnerH + 'px"><canvas id="chart-partner"></canvas></div>' +
+        '</div>';
+    }
+
+    grid += '</div>';
+    el.innerHTML = grid;
+
+    // ── 1. Timeline area chart ─────────────────────────────────────────
+    if (hasActivity) {
+      var tlLabels = days.map(function (d) {
+        return d.label.replace(/,\s*\d{4}$/, '').split(' ').slice(1).join(' ');
+      });
+      var statusCounts = days.map(function (d) {
+        return (d.events || []).filter(function (e) { return e.eventType === 'status'; }).length;
+      });
+      var voteCounts = days.map(function (d) {
+        return (d.events || []).filter(function (e) { return e.eventType === 'vote'; }).length;
+      });
+      var tlCanvas = document.getElementById('chart-timeline');
+      if (tlCanvas) {
+        chartTimelineInstance = new Chart(tlCanvas, {
+          type: 'line',
+          data: {
+            labels: tlLabels,
+            datasets: [
+              {
+                label: 'Status changes',
+                data: statusCounts,
+                borderColor: '#4898f5',
+                backgroundColor: 'rgba(72,152,245,0.15)',
+                fill: true, tension: 0.35, pointRadius: 2, borderWidth: 2,
+              },
+              {
+                label: 'Score changes',
+                data: voteCounts,
+                borderColor: '#a175f0',
+                backgroundColor: 'rgba(161,117,240,0.12)',
+                fill: true, tension: 0.35, pointRadius: 2, borderWidth: 2,
+              },
+            ],
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'top', labels: { font: { size: 12 }, boxWidth: 12 } } },
+            scales: {
+              x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+              y: { beginAtZero: true, ticks: { precision: 0, font: { size: 11 } } },
+            },
+          },
+        });
+      }
+    }
+
+    // ── 2. Pipeline funnel (horizontal bar) ────────────────────────────
+    if (hasFunnel) {
+      var fnCanvas = document.getElementById('chart-funnel');
+      if (fnCanvas) {
+        chartFunnelInstance = new Chart(fnCanvas, {
+          type: 'bar',
+          data: {
+            labels: ['Early stage', 'Tours', 'Finalist+', 'Signed'],
+            datasets: [{
+              data: [pulse.early || 0, pulse.tourFlow || 0, pulse.late || 0, pulse.signedCount || 0],
+              backgroundColor: [
+                'rgba(72,152,245,0.78)',
+                'rgba(52,211,153,0.78)',
+                'rgba(244,114,182,0.78)',
+                'rgba(110,231,183,0.78)',
+              ],
+              borderRadius: 5,
+              borderSkipped: false,
+            }],
+          },
+          options: {
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { beginAtZero: true, ticks: { precision: 0, font: { size: 11 } } },
+              y: { grid: { display: false }, ticks: { font: { size: 13 } } },
+            },
+          },
+        });
+      }
+    }
+
+    // ── 3. Status transitions (horizontal bar) ─────────────────────────
+    if (hasTransitions) {
+      var trCanvas = document.getElementById('chart-transitions');
+      if (trCanvas) {
+        chartTransitionsInstance = new Chart(trCanvas, {
+          type: 'bar',
+          data: {
+            labels: periodTransitions.map(function (t) { return t.label; }),
+            datasets: [{
+              data: periodTransitions.map(function (t) { return t.count; }),
+              backgroundColor: 'rgba(129,140,248,0.78)',
+              borderRadius: 4,
+              borderSkipped: false,
+            }],
+          },
+          options: {
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { beginAtZero: true, ticks: { precision: 0, font: { size: 11 } } },
+              y: { grid: { display: false }, ticks: { font: { size: 11 } } },
+            },
+          },
+        });
+      }
+    }
+
+    // ── 4. Partner comparison (grouped horizontal bar) ─────────────────
+    if (hasPartner) {
+      var ptCanvas = document.getElementById('chart-partner');
+      if (ptCanvas) {
+        chartPartnerInstance = new Chart(ptCanvas, {
+          type: 'bar',
+          data: {
+            labels: criterionStats.map(function (c) { return c.label; }),
+            datasets: [
+              {
+                label: 'Kerv',
+                data: criterionStats.map(function (c) { return c.kervAvg; }),
+                backgroundColor: 'rgba(15,184,169,0.75)',
+                borderRadius: 3,
+              },
+              {
+                label: 'Peter',
+                data: criterionStats.map(function (c) { return c.peterAvg; }),
+                backgroundColor: 'rgba(241,91,154,0.75)',
+                borderRadius: 3,
+              },
+            ],
+          },
+          options: {
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'top', labels: { font: { size: 12 }, boxWidth: 12 } } },
+            scales: {
+              x: { beginAtZero: true, max: 5, ticks: { precision: 1, font: { size: 11 } } },
+              y: { grid: { display: false }, ticks: { font: { size: 12 } } },
+            },
+          },
+        });
+      }
+    }
+  }
+
+  /** Build a summary item cell for the activity summary bar. */
+  function summaryItem(value, label, variant) {
+    var cls = 'analytics-summary-item' + (variant ? ' analytics-summary-item--' + variant : '');
+    return '<div class="' + cls + '">' +
+      '<div class="analytics-summary-value">' + escapeHtml(String(value)) + '</div>' +
+      '<div class="analytics-summary-label">' + escapeHtml(label) + '</div>' +
+      '</div>';
+  }
+
+  /** Render the summary bar above the activity log (totals for the period). */
+  function renderActivitySummary(activityByDay, todayRollup) {
+    var el = document.getElementById('admin-activity-summary');
+    if (!el) return;
+
+    var total = 0, statusCount = 0, voteCount = 0, kervCount = 0, peterCount = 0;
+    (activityByDay || []).forEach(function (day) {
+      (day.events || []).forEach(function (ev) {
+        total++;
+        if (ev.eventType === 'status') statusCount++;
+        if (ev.eventType === 'vote') {
+          voteCount++;
+          if (ev.partnerKey === 'kerv') kervCount++;
+          if (ev.partnerKey === 'peter') peterCount++;
+        }
+      });
+    });
+
+    var newListings = todayRollup ? (todayRollup.listingsAddedToday || 0) : 0;
+
+    var html = '<div class="analytics-summary-bar">';
+    html += summaryItem(total, 'Total events', '');
+    html += summaryItem(statusCount, 'Status changes', 'status-ev');
+    html += summaryItem(voteCount, 'Score changes', 'vote-ev');
+    html += summaryItem(kervCount, 'Kerv votes', 'kerv');
+    html += summaryItem(peterCount, 'Peter votes', 'peter');
+    if (newListings > 0) html += summaryItem(newListings, 'New listings', '');
+    html += '</div>';
+    el.innerHTML = html;
+  }
+
+  // ── Scoring gaps ──────────────────────────────────────────────────────────
+
+  function bindCriteriaPartnerFilter() {
+    var btns = document.querySelectorAll('[data-criteria-partner]');
+    btns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var filter = btn.getAttribute('data-criteria-partner');
+        if (filter === state.criteriaDistFilter) return;
+        state.criteriaDistFilter = filter;
+        btns.forEach(function (b) { b.setAttribute('aria-checked', 'false'); });
+        btn.setAttribute('aria-checked', 'true');
+        if (state.analyticsData) {
+          renderCriterionStats(state.analyticsData.criterionStats, filter);
+          renderCriteriaDist(state.analyticsData.criterionStats, filter);
+        }
+      });
+    });
+  }
+
+  /** Listing title + colored vote-progress bars showing scoring completeness. */
+  function renderLeastVotedListings(listings) {
+    var el = document.getElementById('admin-analytics-least-voted');
+    if (!el) return;
+    if (!listings || !listings.length) {
+      el.innerHTML = '<div class="analytics-empty">No active listings to show.</div>';
+      return;
+    }
+
+    var html = '<table class="analytics-voted-table" role="table">';
+    html += '<thead><tr><th>Listing</th><th>Status</th>' +
+      '<th style="color:#0a8a80">Kerv</th><th style="color:#9d174d">Peter</th></tr></thead>';
+    html += '<tbody>';
+
+    listings.forEach(function (apt) {
+      var link = '/details/?id=' + encodeURIComponent(apt.id);
+      var kPct = apt.total > 0 ? Math.round(apt.kervVoted / apt.total * 100) : 0;
+      var pPct = apt.total > 0 ? Math.round(apt.peterVoted / apt.total * 100) : 0;
+      var statusLabel = String(apt.status || 'new').replace(/_/g, ' ');
+
+      html += '<tr>' +
+        '<td><a href="' + escapeAttr(link) + '" class="analytics-event-title-link">' + escapeHtml(apt.title) + '</a></td>' +
+        '<td><span class="analytics-status-chip">' + escapeHtml(statusLabel) + '</span></td>' +
+        '<td>' + voteProgressBar(apt.kervVoted, apt.total, kPct, '#0fb8a9') + '</td>' +
+        '<td>' + voteProgressBar(apt.peterVoted, apt.total, pPct, '#f15b9a') + '</td>' +
+        '</tr>';
+    });
+
+    html += '</tbody></table>';
+    el.innerHTML = html;
+  }
+
+  function voteProgressBar(voted, total, pct, color) {
+    return '<div class="analytics-vote-bar-wrap">' +
+      '<div class="analytics-vote-bar-track">' +
+      '<div class="analytics-vote-bar-fill" style="width:' + pct + '%;background:' + color + '"></div>' +
+      '</div>' +
+      '<span class="analytics-vote-count">' + voted + '/' + total + '</span>' +
+      '</div>';
+  }
+
+  // ── Criteria ratings ──────────────────────────────────────────────────────
+
+  /** Stacked bell-curve area chart: score distribution (0–5) aggregated across all criteria. */
+  function renderCriteriaDist(criterionStats, filter) {
+    var el = document.getElementById('admin-analytics-criteria-dist');
+    if (!el) return;
+
+    if (!criterionStats || !criterionStats.length || typeof Chart === 'undefined') {
+      el.innerHTML = '';
+      if (chartCriteriaDistInstance) { chartCriteriaDistInstance.destroy(); chartCriteriaDistInstance = null; }
+      return;
+    }
+
+    if (!el.querySelector('canvas')) {
+      el.innerHTML = '<div class="analytics-chart-wrap analytics-chart-wrap--sm"><canvas id="chart-criteria-dist"></canvas></div>';
+    }
+
+    // Aggregate distribution across all criteria
+    var kervTotal = [0, 0, 0, 0, 0, 0];
+    var peterTotal = [0, 0, 0, 0, 0, 0];
+    criterionStats.forEach(function (c) {
+      for (var i = 0; i < 6; i++) {
+        kervTotal[i] += c.kervDist[i];
+        peterTotal[i] += c.peterDist[i];
+      }
+    });
+
+    var datasets = [];
+    if (filter !== 'peter') {
+      datasets.push({
+        label: 'Kerv',
+        data: kervTotal,
+        borderColor: '#0fb8a9',
+        backgroundColor: 'rgba(15,184,169,0.18)',
+        fill: true, tension: 0.42, pointRadius: 3, borderWidth: 2,
+      });
+    }
+    if (filter !== 'kerv') {
+      datasets.push({
+        label: 'Peter',
+        data: peterTotal,
+        borderColor: '#f15b9a',
+        backgroundColor: 'rgba(241,91,154,0.14)',
+        fill: true, tension: 0.42, pointRadius: 3, borderWidth: 2,
+      });
+    }
+
+    var canvas = document.getElementById('chart-criteria-dist');
+    if (!canvas) return;
+
+    if (chartCriteriaDistInstance) { chartCriteriaDistInstance.destroy(); chartCriteriaDistInstance = null; }
+
+    chartCriteriaDistInstance = new Chart(canvas, {
+      type: 'line',
+      data: { labels: ['0', '1', '2', '3', '4', '5'], datasets: datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'top', labels: { font: { size: 11 }, boxWidth: 10 } },
+          tooltip: { callbacks: { title: function (items) { return 'Score ' + items[0].label; } } },
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { font: { size: 11 } },
+            title: { display: true, text: 'Score (0–5)', font: { size: 11 }, color: '#888' },
+          },
+          y: { beginAtZero: true, ticks: { precision: 0, font: { size: 11 } } },
+        },
+      },
+    });
+  }
+
+  /** Criteria sorted highest → lowest by avg, with per-row score bars and counts. */
+  function renderCriterionStats(criterionStats, filter) {
+    var el = document.getElementById('admin-analytics-criteria-list');
+    if (!el) return;
+    if (!criterionStats || !criterionStats.length) {
+      el.innerHTML = '<div class="analytics-empty">No criteria data.</div>';
+      return;
+    }
+
+    var showKerv = filter !== 'peter';
+    var showPeter = filter !== 'kerv';
+
+    var html = '<table class="analytics-criteria-table" role="table">';
+    html += '<thead><tr><th>Criterion</th>';
+    if (showKerv) html += '<th class="criteria-th-kerv">Kerv avg</th>';
+    if (showPeter) html += '<th class="criteria-th-peter">Peter avg</th>';
+    html += '<th>Votes</th><th>% total</th></tr></thead><tbody>';
+
+    criterionStats.forEach(function (c) {
+      var displayAvg = filter === 'kerv' ? c.kervAvg : filter === 'peter' ? c.peterAvg : c.combinedAvg;
+      var barPct = displayAvg != null ? Math.round(displayAvg / 5 * 100) : 0;
+      var votes = filter === 'kerv' ? c.kervCount : filter === 'peter' ? c.peterCount : c.bothCount;
+
+      html += '<tr>';
+      html += '<td class="criteria-label-cell">' +
+        '<span class="criteria-label">' + escapeHtml(c.label) + '</span>' +
+        '<div class="analytics-score-bar-wrap"><div class="analytics-score-bar-fill" style="width:' + barPct + '%"></div></div>' +
+        '</td>';
+      if (showKerv) {
+        html += '<td class="criteria-score-kerv">' + (c.kervAvg != null ? c.kervAvg + '/5' : '—') + '</td>';
+      }
+      if (showPeter) {
+        html += '<td class="criteria-score-peter">' + (c.peterAvg != null ? c.peterAvg + '/5' : '—') + '</td>';
+      }
+      html += '<td class="criteria-votes">' + votes + '</td>';
+      html += '<td class="criteria-pct">' + c.pctOfTotal + '%</td>';
+      html += '</tr>';
+    });
+
+    html += '</tbody></table>';
+    el.innerHTML = html;
+  }
+
+  /** Render the collapsible day-card activity log (used by both Analytics and Activity tabs). */
+  function renderAnalyticsActivity(activityByDay, capped) {
+    var el = document.getElementById('admin-analytics-activity');
+    if (!el) return;
+
+    if (!activityByDay || activityByDay.length === 0) {
+      el.innerHTML = '<div class="analytics-empty">No logged events for this period.</div>';
+      return;
+    }
+
+    var rangeEl = document.getElementById('analytics-day-range');
+    if (rangeEl) {
+      var oldest = activityByDay[activityByDay.length - 1];
+      var newest = activityByDay[0];
+      if (oldest && newest && oldest.ymd !== newest.ymd) {
+        rangeEl.textContent = '(' + oldest.ymd + ' – ' + newest.ymd + ')';
+      } else if (newest) {
+        rangeEl.textContent = '(' + newest.ymd + ')';
+      }
+    }
+
+    var html = '';
+    if (capped) {
+      html += '<div class="analytics-capped-note">Showing the most recent 2,000 events — older history is in the DB.</div>';
+    }
+
+    activityByDay.forEach(function (day) {
+      var summaryText = escapeHtml(day.label) +
+        '<span class="analytics-day-count">&ensp;' + escapeHtml(String(day.count)) +
+        ' event' + (day.count === 1 ? '' : 's') + '</span>';
+
+      html +=
+        '<details class="analytics-day-card">' +
+        '<summary><span class="analytics-day-chevron" aria-hidden="true">›</span>' +
+        '<span class="analytics-day-label">' + summaryText + '</span>' +
+        '</summary>' +
+        '<div class="analytics-day-body">';
+
+      if (!day.events || day.events.length === 0) {
+        html += '<div class="analytics-empty">No logged events.</div>';
+      } else {
+        day.events.forEach(function (ev) {
+          var typeBadgeClass = ev.eventType === 'vote'
+            ? 'analytics-event-type-badge--vote'
+            : 'analytics-event-type-badge--status';
+          var typeLabel = ev.eventType === 'vote' ? 'Vote' : 'Status';
+          var detailLink = ev.id != null
+            ? '/details/?id=' + encodeURIComponent(ev.id) + '&tab=activity'
+            : null;
+
+          html +=
+            '<div class="analytics-event-row">' +
+            '<span class="analytics-event-time">' + escapeHtml(ev.timeLabel || '') + '</span>' +
+            '<span class="analytics-event-type-badge ' + escapeAttr(typeBadgeClass) + '">' + escapeHtml(typeLabel) + '</span>' +
+            '<span class="analytics-event-col">' +
+            '<span class="analytics-event-title">' +
+            (detailLink
+              ? '<a href="' + escapeAttr(detailLink) + '" class="analytics-event-title-link">' + escapeHtml(ev.title || 'Listing') + '</a>'
+              : escapeHtml(ev.title || 'Listing')) +
+            '</span>' +
+            '<span class="analytics-event-summary">' + escapeHtml(ev.summary || '') + '</span>' +
+            '</span>' +
+            '</div>';
+        });
+      }
+
+      html += '</div></details>';
+    });
+
+    el.innerHTML = html;
+  }
+
 })();
