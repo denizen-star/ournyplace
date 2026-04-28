@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "npx netlify dev",
     "migrate": "node scripts/migrate.js",
-    "split-badges": "python3 scripts/split_status_sprites.py assets/img/status-badges-sheet.png"
+    "split-badges": "python3 scripts/split_status_sprites.py assets/img/status-badges-sheet.png",
+    "release:github": "node scripts/create-github-release.mjs"
   },
   "dependencies": {
     "@planetscale/database": "^1.20.1",
