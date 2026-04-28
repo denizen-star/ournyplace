@@ -17,7 +17,7 @@ For each changed file:
 
 ## 3. Update Relevant Documentation
 
-- If the change touches **loved-one** UI (classic or scroll), verify **`CLAUDE.md`** Key Constraints and **`docs/SCROLL-MODE-IMPLEMENTATION-PLAN.md`** still match behavior; update **both** mode docs when shared behavior changes.
+- If the change touches **shortlist**, **Next actions**, **`/details`**, or **`/admin`**, verify **`CLAUDE.md`** (and touched pages) still describe actual behavior before updating narratives.
 - **CHANGELOG.md**: Add entry under "Unreleased" section
   - Use categories: Added, Changed, Fixed, Security, Removed
   - Be concise, user-facing language

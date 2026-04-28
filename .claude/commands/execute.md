@@ -30,11 +30,10 @@ Implementation Requirements:
 - Changes must be scoped to what is required — avoid unrelated edits
 - If a change risks breaking existing behavior, flag it before proceeding
 
-**MyDay:** The loved-one app has **classic** and **scroll** modes (`CLAUDE.md`). Implementing scroll must **not** regress classic behavior; reuse shared APIs (e.g. task completion, offline queue) where possible.
+**nyhome:** Follow **`CLAUDE.md`** for routes, shortlist views, and API shape. Keep changes scoped; do not invent tables or env vars outside existing patterns.
 
-## Bug Diagnosis — Always Read Application Context First
-When diagnosing a bug tied to a specific application (scoring, matching, documents):
-1. Read `application.yaml` in the application folder **before** writing any test code
-2. Confirm `resume_id` — never assume base resume; alternate resumes have their own `skills.yaml`
-3. Run tests against the **exact resume and job description** that produced the bug
-4. Confirm the data source matches before drawing any conclusions
+## Bug Diagnosis — Read Real Data First
+When reproducing a data bug (listings, visits, ratings):
+1. Trace the code path from UI → `NyhomeAPI` / fetch → handler in `netlify/functions/`.
+2. Confirm IDs and payloads (apartment id, timestamps) match what the UI sends.
+3. Prefer a minimal repro against local `netlify dev` before changing shared helpers.

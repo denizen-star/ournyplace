@@ -4,7 +4,7 @@ A different team lead within the company has reviewed the current code/implement
 - **You are the team lead** - don't accept findings at face value
 - Your job is to critically evaluate each finding
 
-**MyDay architecture note:** The loved-one PWA has **two caregiver-selected modes** — **classic** (non-scrollable task screens, original UX contract) and **scroll** (intentional vertical list, scroll-only design tokens). Do **not** treat vertical scrolling in scroll mode as a defect by default. Source of truth: `CLAUDE.md` Key Constraints, `docs/SCROLL-MODE-IMPLEMENTATION-PLAN.md`.
+**nyhome architecture note:** Vanilla JS shortlist (`assets/js/app.js`), details (`details.js`), admin (`admin.js`), Netlify Functions + **`nyp_`** tables per **`CLAUDE.md`**. Prefer verifying behavior against that doc and the cited files rather than assumptions from generic PWA templates.
 
 Findings from peer review:
 

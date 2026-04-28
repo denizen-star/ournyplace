@@ -220,7 +220,7 @@
       escapeHtml(apartment.title || 'Untitled apartment') +
       '</h2></div>' +
       '<p class="mobile-summary-sub">' +
-      escapeHtml([apartment.neighborhood, statusLabel].filter(Boolean).join(' · ')) +
+      escapeHtml([detailLocationSubtitle(apartment), statusLabel].filter(Boolean).join(' · ')) +
       '</p></div>' +
       '<span class="status-pill ' +
       NyhomeStatus.statusClass(status) +
@@ -463,11 +463,11 @@
         starHdr +
         '<div class="apartment-title-text-block">' +
           '<h2 class="apartment-title">' + escapeHtml(apartment.title || 'Untitled apartment') + '</h2>' +
-          '<div class="apartment-location muted">' + escapeHtml([apartment.neighborhood, apartment.address].filter(Boolean).join(' · ')) + '</div>' +
+          '<div class="apartment-location muted">' + escapeHtml(detailLocationSubtitle(apartment) || '—') + '</div>' +
         '</div></div>' +
       '</div>' +
       '<div class="app-meta">' +
-        metaItem('location', apartment.neighborhood || apartment.address || 'Neighborhood TBD') +
+        metaItem('location', detailLocationSubtitle(apartment) || 'Location TBD') +
         metaItem('money', formatMoney(apartment.rent_cents) || 'Rent TBD') +
         metaItem('home', unitSummary(apartment) || 'Unit details TBD') +
         metaItem('calendar', apartment.move_in_date ? 'Move-in ' + apartment.move_in_date : 'Move-in TBD') +
@@ -682,7 +682,6 @@
           ['Move-in date', apartment.move_in_date],
         ], 'No cost details yet.')) +
         contentSection('Unit Snapshot', renderList([
-          ['Unit', unitSummary(apartment)],
           ['Unit features', (apartment.unit_features || []).map(formatChipDisplayLabel).join(', ')],
           ['Amenities', (apartment.amenities || []).map(formatChipDisplayLabel).join(', ')],
         ], 'No unit details yet.')) +
@@ -749,14 +748,13 @@
       '<form data-apartment-form class="content-section detail-unit-setup-form">' +
         '<div class="section-header"><h3 class="section-title">Location</h3></div>' +
         '<div class="form-grid">' +
-          '<label>Neighborhood<input data-detail-neighborhood list="detail-neighborhood-options" value="' + escapeAttr(apartment.neighborhood || '') + '" placeholder="Neighborhood" autocomplete="off"></label>' +
-          '<datalist id="detail-neighborhood-options">' + detailNeighborhoodOptionsHtml() + '</datalist>' +
           '<label>Address<input data-detail-address required value="' + escapeAttr(apartment.address || '') + '" placeholder="Street address" autocomplete="street-address"></label>' +
           '<label>Apt number<input data-detail-apt value="' + escapeAttr(apartment.apt_number || '') + '" placeholder="Unit" autocomplete="off"></label>' +
+          '<label>Neighborhood<input data-detail-neighborhood list="detail-neighborhood-options" value="' + escapeAttr(apartment.neighborhood || '') + '" placeholder="Neighborhood" autocomplete="off"></label>' +
+          '<datalist id="detail-neighborhood-options">' + detailNeighborhoodOptionsHtml() + '</datalist>' +
           '<label>Move-in date<input data-detail-move-in type="date" value="' + escapeAttr(apartment.move_in_date || '') + '"></label>' +
           '<label class="span-2">Listing URL<input data-listing-url type="url" value="' + escapeAttr(apartment.listing_url || '') + '" placeholder="https://..."></label>' +
         '</div>' +
-        '<div class="section-header"><h3 class="section-title">Financials</h3></div>' +
         '<div class="form-grid">' +
           '<label>Rent<input data-detail-rent type="number" min="0" step="1" placeholder="3840" value="' + escapeAttr(detailDollarsField(apartment.rent_cents)) + '"></label>' +
           '<label>Net effective<input data-detail-net-effective type="number" min="0" step="1" placeholder="optional" value="' + escapeAttr(detailDollarsField(apartment.net_effective_cents)) + '"></label>' +
@@ -799,17 +797,28 @@
 
   function renderTourTab(apartment, activeTab) {
     var visit = apartment.next_visit || {};
-    return '<section id="tab-tour" class="summary-tab-content' + (activeTab === 'tour' ? ' active' : '') + '">' +
+    return (
+      '<section id="tab-tour" class="summary-tab-content' + (activeTab === 'tour' ? ' active' : '') + '">' +
       '<h2>Tour</h2>' +
-      '<form data-visit-form class="content-section">' +
-        '<div class="section-header"><h3 class="section-title">Tour Details</h3></div>' +
-        '<div class="form-grid">' +
-          '<label>Visit time<input data-visit-at type="datetime-local" value="' + escapeAttr(toDateTimeLocal(visit.visit_at)) + '"></label>' +
-          '<label class="span-2">Visit notes<textarea data-visit-notes rows="5">' + escapeHtml(visit.notes || '') + '</textarea></label>' +
-        '</div>' +
-        '<button class="primary-btn" type="submit">Save Tour</button>' +
+      '<p class="muted tab-intro">Scheduled visit time and notes for this listing (saved here and used on the shortlist Next actions calendar).</p>' +
+      '<form data-visit-form class="content-section detail-tour-form">' +
+      '<div class="section-header"><h3 class="section-title">Visit &amp; tour notes</h3></div>' +
+      '<div class="form-grid detail-tour-form-grid">' +
+      '<label>Visit time<input data-visit-at type="datetime-local" value="' +
+      escapeAttr(toDateTimeLocal(visit.visit_at)) +
+      '"></label>' +
+      '<label class="span-2 tour-notes-field">' +
+      'Tour notes' +
+      '<textarea data-visit-notes rows="12" placeholder="What you saw — access, noise, finishes, concierge, standout pros/cons.">' +
+      escapeHtml(visit.notes || '') +
+      '</textarea></label>' +
+      '</div>' +
+      '<div class="button-row detail-tour-save-row">' +
+      '<button class="primary-btn" type="submit">Save tour</button>' +
+      '</div>' +
       '</form>' +
-    '</section>';
+      '</section>'
+    );
   }
 
   function renderApplicationTab(apartment, activeTab) {
@@ -1466,7 +1475,7 @@
     if (!url) {
       return '<div class="meta-item meta-item--no-listing" role="status">' + iconSvg('link') + '<span>Listing unavailable</span></div>';
     }
-    return '<div class="meta-item">' + iconSvg('link') + '<a href="' + escapeAttr(url) + '" target="_blank" rel="noreferrer">View Listing</a></div>';
+    return '<div class="meta-item">' + iconSvg('link') + '<a href="' + escapeAttr(url) + '" target="_blank" rel="noreferrer">Listing</a></div>';
   }
 
   function iconSvg(name) {
@@ -1479,6 +1488,23 @@
       home: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m3 12 9-9 9 9M5 10v10h14V10M9 20v-6h6v6"></path>',
     };
     return '<svg class="meta-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">' + (paths[name] || paths.home) + '</svg>';
+  }
+
+  /** Street · unit (#) · neighborhood for summary subtitle and meta row. */
+  function detailLocationSubtitle(apartment) {
+    var addr = apartment.address && String(apartment.address).trim();
+    var unitRaw = apartment.apt_number && String(apartment.apt_number).trim();
+    var hood = apartment.neighborhood && String(apartment.neighborhood).trim();
+    var parts = [];
+    if (addr) parts.push(addr);
+    if (unitRaw) {
+      var uCore = unitRaw.replace(/^#/, '');
+      if (uCore && (!addr || addr.indexOf(uCore) === -1)) {
+        parts.push(unitRaw.indexOf('#') === 0 ? unitRaw : '#' + uCore);
+      }
+    }
+    if (hood) parts.push(hood);
+    return parts.join(' · ');
   }
 
   function unitSummary(apartment) {

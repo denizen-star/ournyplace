@@ -7,8 +7,8 @@
   <link rel="icon" href="/assets/img/favicon1.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="/assets/css/app.css?v=115">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400&display=swap">
+  <link rel="stylesheet" href="/assets/css/app.css?v=135">
 </head>
 <body>
   <header class="app-header app-header--admin">
@@ -220,23 +220,7 @@
     }
     .analytics-error { color: #c0392b; text-align: left; }
 
-    /* Period filter bar */
-    .analytics-period-bar {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-      padding: 14px 0 6px;
-    }
-    .analytics-period-label {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      flex-shrink: 0;
-    }
-    .analytics-period-refresh { margin-left: auto; }
+    /* Period bar + KPI/chart shells: `.admin-shell .analytics-*` in app.css */
 
     /* KPI tiles grid */
     .analytics-kpi-tiles {
@@ -245,15 +229,9 @@
       gap: 10px;
       margin-bottom: 20px;
     }
-    .analytics-kpi-tile {
-      border-radius: 10px;
-      padding: 14px 16px;
-      background: var(--paper);
-      border: 1px solid var(--line);
-    }
     .analytics-kpi-tile-value {
       font-size: 26px;
-      font-weight: 700;
+      font-weight: 400;
       line-height: 1.1;
       color: var(--accent-dark);
     }
@@ -287,14 +265,6 @@
 
     /* KPI section header */
     .analytics-kpi-section { margin-bottom: 24px; }
-    .analytics-kpi-section-label {
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.07em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin: 0 0 10px;
-    }
     .analytics-kpi-table {
       width: 100%;
       border-collapse: collapse;
@@ -308,7 +278,7 @@
     .analytics-kpi-table tr:last-child td { border-bottom: none; }
     .analytics-kpi-table td:first-child { color: var(--ink); }
     .analytics-kpi-table td:last-child {
-      font-weight: 700;
+      font-weight: 400;
       text-align: right;
       color: var(--accent-dark);
     }
@@ -319,21 +289,7 @@
       grid-template-columns: 1fr 1fr;
       gap: 14px;
     }
-    .analytics-chart-card {
-      background: var(--paper);
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 14px 16px;
-    }
     .analytics-chart-card--full { grid-column: 1 / -1; }
-    .analytics-chart-label {
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.07em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin: 0 0 10px;
-    }
     @media (max-width: 600px) {
       .analytics-charts-grid { grid-template-columns: 1fr; }
       .analytics-chart-card--full { grid-column: 1; }
@@ -369,7 +325,7 @@
     .analytics-summary-item--vote-ev   { border-color: #c4b5fd; background: #f5f3ff; }
     .analytics-summary-value {
       font-size: 22px;
-      font-weight: 700;
+      font-weight: 400;
       color: var(--accent-dark);
       line-height: 1.1;
     }
@@ -380,7 +336,7 @@
     .analytics-summary-label {
       font-size: 11px;
       color: var(--muted);
-      font-weight: 500;
+      font-weight: 400;
     }
 
     /* Attention list */
@@ -396,10 +352,10 @@
       line-height: 1.55;
     }
     .analytics-attention-item:last-child { border-bottom: none; }
-    .analytics-attention-title { display: block; font-weight: 600; }
+    .analytics-attention-title { display: block; font-weight: 400; }
     .analytics-attention-reasons { display: block; color: var(--ink); }
     .analytics-attention-suggest { display: block; color: var(--muted); font-size: 13px; }
-    .analytics-attention-link { color: var(--accent-dark); font-weight: 600; font-size: 13px; }
+    .analytics-attention-link { color: var(--accent-dark); font-weight: 400; font-size: 13px; }
 
     .analytics-capped-note {
       padding: 9px 13px;
@@ -428,7 +384,7 @@
       cursor: pointer;
       user-select: none;
       font-size: 14px;
-      font-weight: 600;
+      font-weight: 400;
       list-style: none;
     }
     .analytics-day-card > summary::-webkit-details-marker { display: none; }
@@ -466,7 +422,7 @@
     .analytics-event-type-badge {
       flex-shrink: 0;
       font-size: 10px;
-      font-weight: 700;
+      font-weight: 400;
       letter-spacing: 0.05em;
       padding: 2px 7px;
       border-radius: 999px;
@@ -483,7 +439,7 @@
       min-width: 0;
     }
     .analytics-event-title {
-      font-weight: 600;
+      font-weight: 400;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -500,11 +456,7 @@
     .analytics-voted-table { width: 100%; border-collapse: collapse; font-size: 13px; }
     .analytics-voted-table th {
       padding: 6px 10px;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      color: var(--muted);
+      font-weight: 400;
       border-bottom: 2px solid var(--line);
       text-align: left;
     }
@@ -517,7 +469,7 @@
     .analytics-status-chip {
       display: inline-block;
       font-size: 10px;
-      font-weight: 600;
+      font-weight: 400;
       letter-spacing: 0.04em;
       text-transform: capitalize;
       padding: 2px 8px;
@@ -556,11 +508,7 @@
     .analytics-criteria-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 14px; }
     .analytics-criteria-table th {
       padding: 6px 10px;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      color: var(--muted);
+      font-weight: 400;
       border-bottom: 2px solid var(--line);
       text-align: left;
     }
@@ -573,7 +521,7 @@
     .criteria-th-kerv { color: #0a8a80 !important; }
     .criteria-th-peter { color: #9d174d !important; }
     .criteria-label-cell { min-width: 140px; }
-    .criteria-label { display: block; font-weight: 500; margin-bottom: 4px; }
+    .criteria-label { display: block; font-weight: 400; margin-bottom: 4px; }
     .analytics-score-bar-wrap {
       height: 4px;
       border-radius: 2px;
@@ -586,8 +534,8 @@
       border-radius: 2px;
       background: linear-gradient(90deg, #0fb8a9, #818cf8);
     }
-    .criteria-score-kerv { color: #0a8a80; font-weight: 600; font-variant-numeric: tabular-nums; }
-    .criteria-score-peter { color: #9d174d; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .criteria-score-kerv { color: #0a8a80; font-weight: 400; font-variant-numeric: tabular-nums; }
+    .criteria-score-peter { color: #9d174d; font-weight: 400; font-variant-numeric: tabular-nums; }
     .criteria-votes { color: var(--muted); font-variant-numeric: tabular-nums; }
     .criteria-pct { color: var(--muted); font-variant-numeric: tabular-nums; }
   </style>
@@ -603,16 +551,16 @@
     </div>
   </dialog>
 
-  <script src="/assets/js/apartmentStatus.js?v=115"></script>
-  <script src="/assets/js/listingTextParse.js?v=115"></script>
-  <script src="/assets/js/listingStar.js?v=115"></script>
-  <script src="/assets/js/shortlistSort.js?v=115"></script>
-  <script src="/assets/js/apartmentSavePayload.js?v=115"></script>
-  <script src="/assets/js/nyhomeUiFeedback.js?v=115"></script>
-  <script src="/assets/js/saveApartmentWorkflow.js?v=115"></script>
-  <script src="/assets/js/api.js?v=115"></script>
-  <script src="/assets/js/vibeImages.js?v=115"></script>
+  <script src="/assets/js/apartmentStatus.js?v=135"></script>
+  <script src="/assets/js/listingTextParse.js?v=135"></script>
+  <script src="/assets/js/listingStar.js?v=135"></script>
+  <script src="/assets/js/shortlistSort.js?v=135"></script>
+  <script src="/assets/js/apartmentSavePayload.js?v=135"></script>
+  <script src="/assets/js/nyhomeUiFeedback.js?v=135"></script>
+  <script src="/assets/js/saveApartmentWorkflow.js?v=135"></script>
+  <script src="/assets/js/api.js?v=135"></script>
+  <script src="/assets/js/vibeImages.js?v=135"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <script src="/assets/js/admin.js?v=115"></script>
+  <script src="/assets/js/admin.js?v=135"></script>
 </body>
 </html>

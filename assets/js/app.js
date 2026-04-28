@@ -70,6 +70,9 @@
   var CAL_TOUR_MS = 30 * 60 * 1000;
   var CAL_DEBRIEF_MS = 30 * 60 * 1000;
   var CAL_SLOT_MS = 30 * 60 * 1000;
+  /** Summary calendar: vertical timeline height scale (px per minute). */
+  var NA_TIMELINE_PX_PER_MIN = 3.05;
+  var NA_TIMELINE_MIN_HEIGHT = 132;
   var activeFilters = new Set();
   /** When true, show only listings where at least one partner has no score rollup. */
   var extraFilterNotVoted = false;
@@ -632,7 +635,7 @@
     );
   }
 
-  /** Printed-tour style: pen in dashed box (column right of Unit + Financials). */
+  /** Printed-tour style: pen in dashed box beside the rent/fee chips column. */
   function nextActionsScratchPadHtml() {
     return (
       '<div class="shortlist-na-comments-pad" aria-label="Area for handwritten notes">' +
@@ -685,9 +688,8 @@
     );
   }
 
-  /** Unit column, Financials chips column, handwritten pad column — then checklist. */
+  /** Rent/fees chip row + handwritten pad column — then checklist. */
   function nextActionsListingSpecStrip(apartment) {
-    var unitVal = (apartment.apt_number && String(apartment.apt_number).trim()) || placeholderDash();
     var finRows = [
       { k: 'Rent', v: formatRentNetOrDash(apartment.rent_cents) },
       { k: 'Net', v: formatRentNetOrDash(apartment.net_effective_cents) },
@@ -712,18 +714,11 @@
     return (
       '<div class="shortlist-na-spec-wrap">' +
       '<div class="shortlist-na-spec-strip">' +
-      '<div class="shortlist-na-spec-cell shortlist-na-spec-cell--unit">' +
-      '<span class="shortlist-na-spec-label">Unit</span>' +
-      '<span class="shortlist-na-spec-value">' +
-      escapeHtml(unitVal) +
-      '</span></div>' +
       '<div class="shortlist-na-spec-cell shortlist-na-spec-cell--financials">' +
-      '<span class="shortlist-na-spec-label">Financials</span>' +
-      '<div class="shortlist-na-fin-line" role="group" aria-label="Financials">' +
+      '<div class="shortlist-na-fin-line" role="group" aria-label="Rent and fees">' +
       finHtml +
       '</div></div>' +
       '<div class="shortlist-na-spec-cell shortlist-na-spec-cell--scratch">' +
-      '<span class="shortlist-na-spec-label shortlist-na-spec-strip-label-spacer" aria-hidden="true">Financials</span>' +
       nextActionsScratchPadHtml() +
       '</div>' +
       '</div>' +
@@ -734,21 +729,14 @@
 
   function renderNotesDetailsCollapsible(apartment, ev, panelId) {
     var parts = [];
-    var addr = apartment.address && String(apartment.address).trim();
-    if (addr) {
-      parts.push(
-        '<p class="shortlist-na-detail-line"><span class="shortlist-na-detail-k">Address</span> ' + escapeHtml(addr) + '</p>'
-      );
-    }
     var listingUrl = apartment.listing_url && String(apartment.listing_url).trim();
     if (listingUrl) {
       parts.push(
-        '<p class="shortlist-na-detail-line"><span class="shortlist-na-detail-k">Listing</span> ' +
+        '<p class="shortlist-na-detail-line">' +
         '<a href="' +
         escapeAttr(listingUrl) +
-        '" target="_blank" rel="noreferrer" class="shortlist-na-detail-link">' +
-        escapeHtml(listingUrl) +
-        '</a></p>'
+        '" target="_blank" rel="noreferrer" class="shortlist-na-detail-link shortlist-na-detail-link--listing">' +
+        'Listing</a></p>'
       );
     }
     var notes = apartment.notes && String(apartment.notes).trim();
@@ -772,7 +760,7 @@
     }
     if (!parts.length) {
       parts.push(
-        '<p class="shortlist-na-detail-empty muted">No address, listing link, or notes yet. Add them in Manage or Details.</p>'
+        '<p class="shortlist-na-detail-empty muted">No listing link or notes yet. Add them in Manage or Details.</p>'
       );
     }
     var toggleLabel = 'Notes and details for ' + String(apartment.title || 'listing').trim();
@@ -813,7 +801,7 @@
 
   /**
    * Tours: 30 min travel (before visit_at) → 30 min tour (visit_at) → 30 min debrief.
-   * visit_at = tour start. Other events: point-in-time; gaps filled with open 30 min slots.
+   * visit_at = tour start. Other events: 30 min travel → 30 min block at sortTs → 30 min debrief; gaps = open 30 min slots.
    */
   function buildCalendarDayRows(sortedEvents) {
     var rows = [];
@@ -840,15 +828,212 @@
         });
         prevEnd = blockEnd;
       } else {
-        if (prevEnd != null && ev.sortTs > prevEnd) {
+        var D = ev.sortTs;
+        var travelStart2 = D - CAL_TRAVEL_MS;
+        var eventEnd = D + CAL_SLOT_MS;
+        var blockEnd2 = eventEnd + CAL_DEBRIEF_MS;
+        if (prevEnd != null && travelStart2 > prevEnd) {
           rows.push({ type: 'break' });
-          rows.push.apply(rows, freeSlotsBetweenMs(prevEnd, ev.sortTs));
+          rows.push.apply(rows, freeSlotsBetweenMs(prevEnd, travelStart2));
         }
+        rows.push({ type: 'travel', startMs: travelStart2, endMs: D });
         rows.push({ type: 'event', ev: ev });
-        prevEnd = ev.sortTs;
+        rows.push({
+          type: 'debrief',
+          startMs: eventEnd,
+          endMs: blockEnd2,
+        });
+        prevEnd = blockEnd2;
       }
     });
     return rows;
+  }
+
+  function pushTimelineOpenSlots(t0, t1, segments) {
+    var gap = t1 - t0;
+    var n = Math.floor(gap / CAL_SLOT_MS);
+    for (var i = 0; i < n; i++) {
+      var s = t0 + i * CAL_SLOT_MS;
+      segments.push({ kind: 'open', startMs: s, endMs: s + CAL_SLOT_MS, ev: null });
+    }
+  }
+
+  /**
+   * Segments for Summary calendar timeline: first event → last event, 30 min open gaps, purple travel/debrief, core slices for tour/deadline/move-in.
+   */
+  function buildDayTimelinePlan(sortedEvents) {
+    var segments = [];
+    var prevEnd = null;
+    sortedEvents.forEach(function (ev) {
+      if (ev.kind === 'tour') {
+        var T = ev.sortTs;
+        var travelStart = T - CAL_TRAVEL_MS;
+        var blockEnd = tourBlockEndAfterStart(T);
+        if (prevEnd != null && travelStart > prevEnd) {
+          pushTimelineOpenSlots(prevEnd, travelStart, segments);
+        }
+        segments.push({ kind: 'travel', startMs: travelStart, endMs: T, ev: ev });
+        segments.push({ kind: 'tour', startMs: T, endMs: T + CAL_TOUR_MS, ev: ev });
+        segments.push({ kind: 'debrief', startMs: T + CAL_TOUR_MS, endMs: blockEnd, ev: ev });
+        prevEnd = blockEnd;
+      } else {
+        var D = ev.sortTs;
+        var travelStart2 = D - CAL_TRAVEL_MS;
+        var eventEnd = D + CAL_SLOT_MS;
+        var blockEnd2 = eventEnd + CAL_DEBRIEF_MS;
+        if (prevEnd != null && travelStart2 > prevEnd) {
+          pushTimelineOpenSlots(prevEnd, travelStart2, segments);
+        }
+        segments.push({ kind: 'travel', startMs: travelStart2, endMs: D, ev: ev });
+        if (ev.kind === 'deadline') {
+          segments.push({ kind: 'deadline', startMs: D, endMs: eventEnd, ev: ev });
+        } else {
+          segments.push({ kind: 'movein', startMs: D, endMs: eventEnd, ev: ev });
+        }
+        segments.push({ kind: 'debrief', startMs: eventEnd, endMs: blockEnd2, ev: ev });
+        prevEnd = blockEnd2;
+      }
+    });
+    if (!segments.length) return null;
+    return {
+      dayStartMs: segments[0].startMs,
+      dayEndMs: segments[segments.length - 1].endMs,
+      segments: segments,
+    };
+  }
+
+  function renderNextActionsCalendarDaySummaryHtml(dk, sortedList) {
+    var plan = buildDayTimelinePlan(sortedList);
+    if (!plan) return '';
+    var durMs = plan.dayEndMs - plan.dayStartMs;
+    if (durMs <= 0) return '';
+    var totalMin = durMs / 60000;
+    var trackH = Math.max(NA_TIMELINE_MIN_HEIGHT, totalMin * NA_TIMELINE_PX_PER_MIN);
+    var stepPct = (CAL_SLOT_MS / durMs) * 100;
+
+    function pct(ms) {
+      return ((ms - plan.dayStartMs) / durMs) * 100;
+    }
+    function hPct(ms0, ms1) {
+      return ((ms1 - ms0) / durMs) * 100;
+    }
+
+    var labelChunks = [];
+    for (var t = plan.dayStartMs; t < plan.dayEndMs; t += CAL_SLOT_MS) {
+      var lab = new Date(t);
+      if (Number.isNaN(lab.getTime())) continue;
+      var timeStr = lab.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' });
+      var topPct = pct(t);
+      labelChunks.push(
+        '<div class="shortlist-na-tl-tick" style="top:' +
+        topPct +
+        '%"><span class="shortlist-na-tl-tick-label">' +
+        escapeHtml(timeStr) +
+        '</span></div>'
+      );
+    }
+
+    var segChunks = plan.segments.map(function (seg) {
+      var extra =
+        seg.kind === 'travel' || seg.kind === 'debrief'
+          ? ' shortlist-na-tl-seg--admin'
+          : seg.kind === 'open'
+            ? ' shortlist-na-tl-seg--open'
+            : ' shortlist-na-tl-seg--core';
+      return (
+        '<div class="shortlist-na-tl-seg' +
+        extra +
+        '" style="top:' +
+        pct(seg.startMs) +
+        '%;height:' +
+        hPct(seg.startMs, seg.endMs) +
+        '%"></div>'
+      );
+    });
+
+    var auxChunks = [];
+    plan.segments.forEach(function (seg) {
+      if (seg.kind !== 'travel' && seg.kind !== 'debrief') return;
+      var hp = hPct(seg.startMs, seg.endMs);
+      var slotH = Math.max(40, (hp / 100) * trackH);
+      var range = formatCalendarSlotRange(seg.startMs, seg.endMs);
+      var kindLabel = seg.kind === 'travel' ? 'Travel' : 'Debrief';
+      var hint =
+        seg.kind === 'travel' ? 'En route (30 min)' : 'Post-tour debrief (30 min)';
+      auxChunks.push(
+        '<div class="shortlist-na-tl-aux-slot" style="top:' +
+        pct(seg.startMs) +
+        '%;min-height:' +
+        Math.round(slotH) +
+        'px">' +
+        '<div class="shortlist-na-tl-aux shortlist-na-tl-aux--' +
+        seg.kind +
+        '" role="group" aria-label="' +
+        escapeAttr(kindLabel + ', ' + range) +
+        '">' +
+        '<span class="shortlist-na-tl-aux-kind">' +
+        escapeHtml(kindLabel) +
+        '</span>' +
+        '<span class="shortlist-na-tl-aux-meta">' +
+        escapeHtml(range) +
+        '</span>' +
+        '<span class="shortlist-na-tl-aux-hint">' +
+        escapeHtml(hint) +
+        '</span>' +
+        '</div></div>'
+      );
+    });
+
+    var cardChunks = [];
+    sortedList.forEach(function (ev) {
+      var topMs;
+      var hMs;
+      var tourTimeForBlock = null;
+      if (ev.kind === 'tour') {
+        topMs = ev.sortTs;
+        hMs = CAL_TOUR_MS;
+        tourTimeForBlock = { startMs: topMs, endMs: topMs + CAL_TOUR_MS };
+      } else {
+        topMs = ev.sortTs;
+        hMs = CAL_SLOT_MS;
+        tourTimeForBlock = null;
+      }
+      var topPctC = pct(topMs);
+      var slotHpx = Math.max(52, (hMs / durMs) * trackH);
+      var blockHtml = renderNextActionsEventBlock(ev, tourTimeForBlock);
+      cardChunks.push(
+        '<div class="shortlist-na-tl-card-slot" style="top:' +
+        topPctC +
+        '%;min-height:' +
+        Math.round(slotHpx) +
+        'px">' +
+        blockHtml +
+        '</div>'
+      );
+    });
+
+    return (
+      '<div class="shortlist-na-day-summary-shell" role="region" aria-label="Day timeline for ' +
+      escapeAttr(formatCalendarDayHeading(dk)) +
+      '">' +
+      '<div class="shortlist-na-tl-wrap" style="height:' +
+      Math.round(trackH) +
+      'px;--na-tl-step-pct:' +
+      stepPct +
+      '%">' +
+      '<div class="shortlist-na-tl-times">' +
+      labelChunks.join('') +
+      '</div>' +
+      '<div class="shortlist-na-tl-rail" role="presentation">' +
+      '<div class="shortlist-na-tl-grid"></div>' +
+      segChunks.join('') +
+      '</div>' +
+      '<div class="shortlist-na-tl-cards">' +
+      auxChunks.join('') +
+      cardChunks.join('') +
+      '</div>' +
+      '</div></div>'
+    );
   }
 
   function formatCalendarSlotRange(startMs, endMs) {
@@ -2152,17 +2337,20 @@
       });
       var uid = 'na-day-' + dk.replace(/[^0-9a-z-]/gi, '');
       var rows = buildCalendarDayRows(list);
-      var body = rows
-        .map(function (row) {
-          if (row.type === 'event') return renderNextActionsEventBlock(row.ev, row.tourTime || null);
-          if (row.type === 'travel') return renderCalendarTravelRow(row);
-          if (row.type === 'debrief') return renderCalendarDebriefRow(row);
-          if (row.type === 'free') return renderCalendarFreeSlotRow(row);
-          if (row.type === 'break') return renderCalendarAgendaBreak();
-          if (row.type === 'hr') return '<hr class="shortlist-na-timeline-hr" />';
-          return '';
-        })
-        .join('');
+      var body =
+        naCalendarDensity === 'summary'
+          ? renderNextActionsCalendarDaySummaryHtml(dk, list)
+          : rows
+              .map(function (row) {
+                if (row.type === 'event') return renderNextActionsEventBlock(row.ev, row.tourTime || null);
+                if (row.type === 'travel') return renderCalendarTravelRow(row);
+                if (row.type === 'debrief') return renderCalendarDebriefRow(row);
+                if (row.type === 'free') return renderCalendarFreeSlotRow(row);
+                if (row.type === 'break') return renderCalendarAgendaBreak();
+                if (row.type === 'hr') return '<hr class="shortlist-na-timeline-hr" />';
+                return '';
+              })
+              .join('');
       html +=
         '<section class="shortlist-na-day" aria-labelledby="' +
         escapeAttr(uid) +

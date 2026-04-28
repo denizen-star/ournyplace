@@ -42,7 +42,7 @@ body {
   text-align: center;
   color: #fff;
   font-size: 1.1rem;
-  font-weight: 600;
+  font-weight: 400;
   letter-spacing: .03em;
   margin-bottom: 8px;
 }
@@ -71,7 +71,7 @@ body {
 .screen-label {
   color: rgba(255,255,255,.75);
   font-size: .75rem;
-  font-weight: 600;
+  font-weight: 400;
   letter-spacing: .07em;
   text-transform: uppercase;
   text-align: center;
@@ -116,7 +116,7 @@ body {
   justify-content: space-between;
   padding: 0 24px 6px;
   font-size: .72rem;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--ink);
   flex-shrink: 0;
   position: sticky;
@@ -148,7 +148,7 @@ body {
 }
 .m-eyebrow {
   font-size: .68rem;
-  font-weight: 600;
+  font-weight: 400;
   letter-spacing: .1em;
   color: var(--muted);
   text-transform: uppercase;
@@ -156,7 +156,7 @@ body {
 }
 .m-h1 {
   font-size: 1.25rem;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.15;
   margin-bottom: 10px;
 }
@@ -175,7 +175,7 @@ body {
   background: transparent;
   border-radius: 7px;
   font-size: .78rem;
-  font-weight: 500;
+  font-weight: 400;
   color: var(--muted);
   cursor: pointer;
   text-align: center;
@@ -185,7 +185,7 @@ body {
   background: var(--paper);
   color: var(--ink);
   box-shadow: var(--shadow);
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .pill {
@@ -196,7 +196,7 @@ body {
   background: var(--line-light);
   color: var(--muted);
   font-size: .72rem;
-  font-weight: 500;
+  font-weight: 400;
   white-space: nowrap;
 }
 .pill-status { background: #f3f4f6; }
@@ -208,9 +208,9 @@ body {
 .pill-new { background: #f3f4f6; color: var(--muted); }
 .pill-applying { background: #ede9fe; color: #5b21b6; }
 
-.score-kerv { color: var(--kerv); font-weight: 700; }
-.score-peter { color: var(--peter); font-weight: 700; }
-.score-avg { color: var(--vote-combined); font-weight: 700; }
+.score-kerv { color: var(--kerv); font-weight: 400; }
+.score-peter { color: var(--peter); font-weight: 400; }
+.score-avg { color: var(--vote-combined); font-weight: 400; }
 
 .icon-btn {
   width: 36px; height: 36px;
@@ -230,7 +230,7 @@ body {
   border-radius: 10px;
   padding: 11px 18px;
   font-size: .88rem;
-  font-weight: 600;
+  font-weight: 400;
   cursor: pointer;
 }
 .secondary-btn {
@@ -240,7 +240,7 @@ body {
   border-radius: 10px;
   padding: 10px 16px;
   font-size: .82rem;
-  font-weight: 500;
+  font-weight: 400;
   cursor: pointer;
 }
 .ghost-btn {
@@ -249,7 +249,7 @@ body {
   border: none;
   padding: 6px 0;
   font-size: .82rem;
-  font-weight: 500;
+  font-weight: 400;
   cursor: pointer;
 }
 
@@ -286,8 +286,8 @@ body {
   cursor: pointer;
 }
 .m-nav-icon { font-size: 1.3rem; line-height: 1; }
-.m-nav-label { font-size: .62rem; font-weight: 500; color: var(--muted); }
-.m-nav-item.active .m-nav-label { color: var(--accent-dark); font-weight: 600; }
+.m-nav-label { font-size: .62rem; font-weight: 400; color: var(--muted); }
+.m-nav-item.active .m-nav-label { color: var(--accent-dark); font-weight: 400; }
 .m-nav-item.active .m-nav-icon { filter: none; }
 
 /* Section divider label */
@@ -295,7 +295,7 @@ body {
   background: #1a1a2e;
   color: rgba(255,255,255,.7);
   font-size: .7rem;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: .08em;
   text-transform: uppercase;
   text-align: center;
@@ -309,7 +309,7 @@ body {
   background: #fbbf24;
   color: #000;
   font-size: .66rem;
-  font-weight: 700;
+  font-weight: 400;
   padding: 3px 7px;
   border-radius: 4px;
   white-space: nowrap;

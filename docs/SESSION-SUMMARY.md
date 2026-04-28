@@ -2,7 +2,7 @@
 
 ## What We Built
 
-`nyhome` is a separate local PWA/admin app for choosing NYC apartments together. It lives outside MyDay at:
+`nyhome` is a local PWA/admin app for scoring and tracking NYC apartment listings together (`README`, `CLAUDE.md`).
 
 ```text
 /Users/kervinleacock/Documents/Development/nyhome
@@ -241,4 +241,4 @@ There is intentionally no auth because this is local-only for now. Before public
 
 ## Cleanup Completed
 
-Runtime code does not contain old MyDay concepts. `PLAN.md` was also cleaned so it no longer mentions MyDay or old seed-app wording.
+Runtime code targets this repository only. Older cross-app references have been removed from project docs where applicable.

@@ -36,7 +36,7 @@ Reduce redundant shortlist navigation by treating **compare** (grid and table) a
 
 - Next actions feature changes (layout, copy, or filters beyond remaining on its own tab).
 - Details page, criteria tab, blacklist, stars, or image paste behavior.
-- MyDay / PWA classic vs scroll mode (unrelated to this work).
+- Other products’ PWA constraints (unrelated to this work).
 
 ## Progress legend
 

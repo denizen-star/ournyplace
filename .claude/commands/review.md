@@ -1,29 +1,25 @@
 # Code Review Task
 Perform comprehensive code review. Be thorough but concise.
 
-**Loved-one UI context:** MyDay has **classic** (non-scrollable, original rules) and **scroll** (vertical card list, scroll-only tokens). See `CLAUDE.md` Key Constraints and `docs/SCROLL-MODE-IMPLEMENTATION-PLAN.md`. Judge the PR against the **mode it touches**; loved-one changes should consider **both** modes for consistency unless explicitly single-mode.
+**Application:** This repository is **nyhome** — a partner-facing apartment shortlist PWA (`/`) plus **`/admin`**, **`/admin/new`**, **`/details`**. UX and routing are described in **`CLAUDE.md`** and **`README.md`** (no alternate “modes”; treat ambiguity by reading affected files).
 
 ## Check For:
 
-**UX Contract** — Mom-facing screens: comply with `Myday Design.md` **and** the correct mode in `CLAUDE.md`:
+**Consistency with nyhome UX** — shortlist Views (Cards, Table, Next actions); Next actions Calendar List vs Summary/Details/Prospect density; filtering and sort behavior as documented.
 
-**Both modes:** No swipe/long-press/double-tap for core flows; no spinners; errors never shown to Mom; linear forward flow (no Back).
+**Logging** — Server-side prefers `console.log('[COMPONENT] message')` pattern where logging is needed.
+**Error Handling** — Async paths handle failures; Netlify functions return sensible HTTP statuses.
+**Production Readiness** — No stray debug prints, no secrets in source, no accidental TODOs left for production.
+**Architecture** — Follow existing patterns:
+- **Vanilla JS (frontend):** No framework, no build step. DOM in `assets/js/`.
+- **Netlify Functions:** Under `netlify/functions/`; shared logic in `lib/`.
+- **Database (PlanetScale):** Use `lib/db.js` for queries. Tables prefixed **`nyp_`**.
+- **PWA:** `sw.js` caches shell assets; bump **`CACHE_VERSION`** with HTML `?v=` when cached assets change.
+- **Email/digest:** Pipeline digest and related mailers live under `lib/` + `netlify/functions/` as in `CLAUDE.md`.
 
-**Classic loved-one mode:** 60px+ touch targets; **no scrolling** on task views; no pop-ups; full-screen transitions; 24pt+ body, 32pt+ headers.
+**Security:** Parameterized SQL; env vars for secrets; no auth layer yet — do not assume a public deploy without one. Escape user-controlled strings in HTML (existing helpers in `app.js` / `admin.js` / `details.js`).
 
-**Scroll loved-one mode:** Vertical scrolling allowed; scroll-only layout/typography (not classic’s no-scroll/24pt-everywhere); inline/card feedback (no error pop-ups); still no spinners for Mom.
-
-**Logging** - Server-side uses `console.log('[COMPONENT] message')` pattern; no raw untagged logs
-**Error Handling** - Try-catch for all async functions; Netlify functions return proper HTTP status codes
-**Production Readiness** - No debug statements, no TODOs, no hardcoded secrets or credentials
-**Architecture** - Follows existing patterns:
-- **Vanilla JS (frontend):** No framework, no build step. DOM manipulation only. Modules in `assets/js/`.
-- **Netlify Functions:** Each function is self-contained. Shared DB/email logic imported from `lib/`.
-- **Database (PlanetScale):** Use `lib/db.js` for all queries. No raw SQL outside that file. All tables prefixed `md_`.
-- **PWA:** Service Worker in `sw.js` pre-caches all assets. No network-dependent rendering for Mom-facing screens.
-- **Email:** All email sending through `lib/emailService.js`. Templates in `lib/emailTemplates.js`.
-**Security:** No SQL injection -- use parameterized queries. Env vars for all secrets. Admin routes check `ADMIN_PASSWORD`. No user-supplied data rendered unescaped into HTML.
-**Accessibility:** High-contrast color palette (Forest Green #228B22, Safety Orange #FF8C00, Navy headers). Temporal color coding must match time block.
+**Accessibility:** Sensible focus and labels on interactive controls; readable contrast for status and calendar UI.
 
 ## Output Format
 
@@ -35,21 +31,5 @@ Perform comprehensive code review. Be thorough but concise.
 - **[Severity]** [[File:line](File:line)] - [Issue description]
   - Fix: [Suggested fix]
 
-### UX Compliance
-- [Pass/Fail] Touch targets appropriate for mode (classic: >= 60px where applicable)
-- [Pass/Fail] Classic: no scrolling on task views | Scroll: scrolling only where scroll mode is implemented (not a bug)
-- [Pass/Fail] No spinners or loading states (Mom-facing)
-- [Pass/Fail] No error messages shown to user
-- [Pass/Fail] Linear flow (no back navigation)
-- [Pass/Fail] If loved-one UI changed: both classic and scroll considered, or scope stated
-
-### Summary
-- Files reviewed: X
-- Critical issues: X
-- Warnings: X
-
-## Severity Levels
-- **CRITICAL** - Security, data loss, crashes, UX contract violation (Mom sees an error/spinner/gets stuck)
-- **HIGH** - Bugs, performance issues, bad UX
-- **MEDIUM** - Code quality, maintainability
-- **LOW** - Style, minor improvements
+### Risk / regression
+- [Note anything that could break shortlist, details, admin, or API consumers]
