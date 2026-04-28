@@ -115,10 +115,19 @@
     }
     NyhomeAPI.sendPipelineDigestEmail({ publicBaseUrl: base })
       .then(function (res) {
-        window.alert('Digest sent: ' + (res.subject || 'OK'));
+        var subj = res.subject || 'OK';
+        if (typeof NyhomeUiFeedback !== 'undefined' && NyhomeUiFeedback.showToast) {
+          NyhomeUiFeedback.showToast('Digest sent: ' + subj);
+        } else {
+          window.alert('Digest sent: ' + subj);
+        }
       })
       .catch(function (err) {
-        window.alert(err.message || 'Send failed');
+        var msg = err.message || 'Send failed';
+        if (typeof NyhomeUiFeedback !== 'undefined' && NyhomeUiFeedback.alert) {
+          return NyhomeUiFeedback.alert(msg, { title: 'Email digest' });
+        }
+        window.alert(msg);
       })
       .then(function () {
         if (el) {
@@ -1322,12 +1331,16 @@
           })
           .catch(function (err) {
             console.error('[nyhome-shortlist] listing star', err);
-            if (!window.alert) return;
             var parts = [];
             if (err && err.message) parts.push(err.message);
             if (err && err.status) parts.push('HTTP ' + err.status);
             if (err && err.code && parts.indexOf(String(err.code)) < 0) parts.push(err.code);
-            window.alert('Could not save star:\n\n' + parts.filter(Boolean).join('\n'));
+            var msg = 'Could not save star:\n\n' + parts.filter(Boolean).join('\n');
+            if (typeof NyhomeUiFeedback !== 'undefined' && NyhomeUiFeedback.alert) {
+              NyhomeUiFeedback.alert(msg, { title: 'Could not save star' });
+            } else if (window.alert) {
+              window.alert(msg);
+            }
           });
       });
     });
@@ -1379,7 +1392,11 @@
     var input = document.getElementById('m-dup-apt-input');
     var unit = input && input.value.trim();
     if (!unit) {
-      if (window.alert) window.alert('Enter a unit number for the duplicate.');
+      if (typeof NyhomeUiFeedback !== 'undefined' && NyhomeUiFeedback.alert) {
+        NyhomeUiFeedback.alert('Enter a unit number for the duplicate.', { title: 'Duplicate listing' });
+      } else if (window.alert) {
+        window.alert('Enter a unit number for the duplicate.');
+      }
       return;
     }
     var payload = NyhomeApartmentPayload.apartmentToSavePayload(apt, { aptNumber: unit });
@@ -1399,7 +1416,11 @@
       })
       .catch(function (err) {
         console.error('[nyhome-shortlist] duplicate', err);
-        if (window.alert) window.alert('Could not duplicate listing.');
+        if (typeof NyhomeUiFeedback !== 'undefined' && NyhomeUiFeedback.alert) {
+          NyhomeUiFeedback.alert('Could not duplicate listing.', { title: 'Duplicate listing' });
+        } else if (window.alert) {
+          window.alert('Could not duplicate listing.');
+        }
       });
   }
 
@@ -1478,7 +1499,11 @@
       })
       .catch(function (err) {
         console.error('[nyhome-shortlist] tour worksheet save', err);
-        if (window.alert) window.alert('Could not save tour notes.');
+        if (typeof NyhomeUiFeedback !== 'undefined' && NyhomeUiFeedback.alert) {
+          NyhomeUiFeedback.alert('Could not save tour notes.', { title: 'Tour notes' });
+        } else if (window.alert) {
+          window.alert('Could not save tour notes.');
+        }
       });
   }
 
@@ -2337,21 +2362,34 @@
       btn.addEventListener('click', function (e) {
         e.preventDefault();
         e.stopPropagation();
-        if (!confirm('Mark this apartment as rejected?')) return;
         var rawId = btn.getAttribute('data-apartment-id');
         var id = Number(rawId);
         var apt = allApartments.find(function (a) { return Number(a.id) === id; });
         if (!apt) return;
-        btn.disabled = true;
-        NyhomeAPI.saveApartment(NyhomeApartmentPayload.apartmentToSavePayload(apt, { status: 'rejected' }))
-          .then(function () {
-            return NyhomeAPI.getApartments();
-          })
-          .then(render)
-          .catch(function (err) {
-            console.error('[nyhome-shortlist] reject', err);
-            btn.disabled = false;
+        function doReject() {
+          btn.disabled = true;
+          NyhomeAPI.saveApartment(NyhomeApartmentPayload.apartmentToSavePayload(apt, { status: 'rejected' }))
+            .then(function () {
+              return NyhomeAPI.getApartments();
+            })
+            .then(render)
+            .catch(function (err) {
+              console.error('[nyhome-shortlist] reject', err);
+              btn.disabled = false;
+            });
+        }
+        if (typeof NyhomeUiFeedback !== 'undefined' && NyhomeUiFeedback.confirm) {
+          NyhomeUiFeedback.confirm('Mark this apartment as rejected?', {
+            title: 'Reject listing',
+            destructive: true,
+            confirmLabel: 'Reject',
+          }).then(function (ok) {
+            if (ok) doReject();
           });
+          return;
+        }
+        if (!confirm('Mark this apartment as rejected?')) return;
+        doReject();
       });
     });
   }

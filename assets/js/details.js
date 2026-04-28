@@ -56,7 +56,12 @@
   function catchSaveApartment(err) {
     console.error('[nyhome-details] save apartment', err);
     if (err.status === 409) return;
-    if (window.alert) window.alert('Could not save. Check your connection and try again.');
+    var msg = 'Could not save. Check your connection and try again.';
+    if (typeof NyhomeUiFeedback !== 'undefined' && NyhomeUiFeedback.alert) {
+      NyhomeUiFeedback.alert(msg, { title: 'Could not save' });
+    } else if (window.alert) {
+      window.alert(msg);
+    }
   }
 
   function saveDetailApartment() {
@@ -348,7 +353,11 @@
     var input = document.getElementById('m-dup-apt-input');
     var unit = input && input.value.trim();
     if (!unit) {
-      if (window.alert) window.alert('Enter a unit number for the duplicate.');
+      if (typeof NyhomeUiFeedback !== 'undefined' && NyhomeUiFeedback.alert) {
+        NyhomeUiFeedback.alert('Enter a unit number for the duplicate.', { title: 'Duplicate listing' });
+      } else if (window.alert) {
+        window.alert('Enter a unit number for the duplicate.');
+      }
       return;
     }
     var payload = NyhomeApartmentPayload.apartmentToSavePayload(apt, { aptNumber: unit });
@@ -370,7 +379,11 @@
       })
       .catch(function (err) {
         console.error('[nyhome-details] duplicate', err);
-        if (window.alert) window.alert('Could not duplicate listing.');
+        if (typeof NyhomeUiFeedback !== 'undefined' && NyhomeUiFeedback.alert) {
+          NyhomeUiFeedback.alert('Could not duplicate listing.', { title: 'Duplicate listing' });
+        } else if (window.alert) {
+          window.alert('Could not duplicate listing.');
+        }
       });
   }
 
@@ -848,10 +861,23 @@
     if (prev) prev.addEventListener('click', function () { stepStatus(-1, true); });
     if (next) next.addEventListener('click', function () { stepStatus(1, true); });
     if (reject) reject.addEventListener('click', function () {
+      function proceed() {
+        setStatusValue('rejected');
+        syncStatusControls('rejected');
+        saveDetailApartment().then(function () { load(currentTab() || 'scorecard'); }).catch(catchSaveApartment);
+      }
+      if (typeof NyhomeUiFeedback !== 'undefined' && NyhomeUiFeedback.confirm) {
+        NyhomeUiFeedback.confirm('Mark this apartment as rejected?', {
+          title: 'Reject listing',
+          destructive: true,
+          confirmLabel: 'Reject',
+        }).then(function (ok) {
+          if (ok) proceed();
+        });
+        return;
+      }
       if (!confirm('Mark this apartment as rejected?')) return;
-      setStatusValue('rejected');
-      syncStatusControls('rejected');
-      saveDetailApartment().then(function () { load(currentTab() || 'scorecard'); }).catch(catchSaveApartment);
+      proceed();
     });
     if (status) status.addEventListener('change', function () {
       syncStatusControls(status.value || 'new');
@@ -1007,7 +1033,11 @@
             if (prevActive && rootEl.contains(prevActive)) {
               prevActive.classList.add('active');
             }
-            if (window.alert) window.alert('Could not save score. Check your connection and try again.');
+            if (typeof NyhomeUiFeedback !== 'undefined' && NyhomeUiFeedback.alert) {
+              NyhomeUiFeedback.alert('Could not save score. Check your connection and try again.', { title: 'Could not save score' });
+            } else if (window.alert) {
+              window.alert('Could not save score. Check your connection and try again.');
+            }
           })
           .then(function () {
             delete pending[pendingKey];

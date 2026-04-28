@@ -1,4 +1,4 @@
-var CACHE_VERSION = 98;
+var CACHE_VERSION = 99;
 var CACHE_NAME = 'nyhome-v' + CACHE_VERSION;
 
 var APP_SHELL = [
@@ -21,6 +21,7 @@ var APP_SHELL = [
   '/assets/js/shortlistSort.js?v=' + CACHE_VERSION,
   '/assets/js/listingTextParse.js?v=' + CACHE_VERSION,
   '/assets/js/apartmentSavePayload.js?v=' + CACHE_VERSION,
+  '/assets/js/nyhomeUiFeedback.js?v=' + CACHE_VERSION,
   '/assets/js/saveApartmentWorkflow.js?v=' + CACHE_VERSION,
   '/assets/js/api.js?v=' + CACHE_VERSION,
   '/assets/js/app.js?v=' + CACHE_VERSION,

@@ -1,13 +1,25 @@
 /**
- * Blacklist confirmation + retry with ignoreBlacklist; duplicate listings surface as alerts.
+ * Blacklist confirmation + retry with ignoreBlacklist; duplicate listings surface as in-app modals.
  */
 (function (global) {
+  function fallbackConfirm(message) {
+    var FB = global.NyhomeUiFeedback;
+    if (FB && typeof FB.confirm === 'function') {
+      return FB.confirm(String(message || '') + '\n\nSave anyway?', {
+        title: 'Blacklisted building',
+        confirmLabel: 'Save anyway',
+        cancelLabel: 'Go back',
+      });
+    }
+    return Promise.resolve(global.confirm(String(message || '') + '\n\nSave anyway?'));
+  }
+
   function confirmBlacklistDialog(message) {
     return new Promise(function (resolve) {
       var dlg = document.getElementById('nyhome-blacklist-dialog');
       var msgEl = document.getElementById('nyhome-blacklist-dialog-msg');
       if (!dlg || !msgEl) {
-        resolve(global.confirm(String(message || '') + '\n\nSave anyway?'));
+        fallbackConfirm(message).then(resolve);
         return;
       }
       msgEl.textContent = message || 'This building is on your blacklist.';
@@ -43,7 +55,7 @@
       }
 
       if (typeof dlg.showModal !== 'function') {
-        resolve(global.confirm(String(message || '') + '\n\nSave anyway?'));
+        fallbackConfirm(message).then(resolve);
         return;
       }
 
@@ -59,7 +71,7 @@
         dlg.removeEventListener('cancel', onEsc);
         if (cancel) cancel.removeEventListener('click', onCancelClick);
         if (ok) ok.removeEventListener('click', onOkClick);
-        resolve(global.confirm(String(message || '') + '\n\nSave anyway?'));
+        fallbackConfirm(message).then(resolve);
       }
     });
   }
@@ -72,6 +84,12 @@
     var payload = buildPayload(false);
     return saveFn(payload).catch(function (err) {
       if (err.status === 409 && err.code === 'DUPLICATE_LISTING') {
+        var FB = global.NyhomeUiFeedback;
+        if (FB && typeof FB.alert === 'function') {
+          return FB.alert(err.message || 'Duplicate listing.', { title: 'Duplicate' }).then(function () {
+            throw err;
+          });
+        }
         if (global.alert) global.alert(err.message);
         throw err;
       }

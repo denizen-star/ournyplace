@@ -110,6 +110,11 @@ var NyhomeAPI = (function () {
     return _send('/api/building-blacklist', 'DELETE', { id: id });
   }
 
+  /** POST pipeline summary email (Netlify `pipeline-digest-email`). See `.env.example`. */
+  function sendPipelineDigestEmail(payload) {
+    return _send('/api/pipeline-digest-email', 'POST', payload || {});
+  }
+
   return {
     getApartmentsCache: getApartmentsCache,
     setApartmentsCache: setApartmentsCache,
@@ -120,6 +125,7 @@ var NyhomeAPI = (function () {
     createBuildingBlacklist: createBuildingBlacklist,
     updateBuildingBlacklist: updateBuildingBlacklist,
     deleteBuildingBlacklist: deleteBuildingBlacklist,
+    sendPipelineDigestEmail: sendPipelineDigestEmail,
     saveCriterion: saveCriterion,
     updateCriterion: updateCriterion,
     reorderCriteria: reorderCriteria,

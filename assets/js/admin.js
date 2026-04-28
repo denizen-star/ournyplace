@@ -133,11 +133,22 @@
       if (statusEl) statusEl.textContent = '';
       NyhomeAPI.sendPipelineDigestEmail({ publicBaseUrl: base })
         .then(function (res) {
-          if (statusEl) statusEl.textContent = 'Sent: ' + (res.subject || 'OK') + ' (to ' + (res.to && res.to.length ? res.to.join(', ') : 'recipients') + ').';
+          if (statusEl) {
+            statusEl.textContent =
+              'Sent: ' + (res.subject || 'OK') + ' (to ' + (res.to && res.to.length ? res.to.join(', ') : 'recipients') + ').';
+          }
+          if (typeof NyhomeUiFeedback !== 'undefined' && NyhomeUiFeedback.showToast) {
+            NyhomeUiFeedback.showToast('Digest sent: ' + (res.subject || 'OK'));
+          }
         })
         .catch(function (err) {
-          if (statusEl) statusEl.textContent = err.message || 'Send failed';
-          else alert(err.message || 'Send failed');
+          var msg = err.message || 'Send failed';
+          if (statusEl) statusEl.textContent = msg;
+          else if (typeof NyhomeUiFeedback !== 'undefined' && NyhomeUiFeedback.alert) {
+            NyhomeUiFeedback.alert(msg, { title: 'Email digest' });
+          } else {
+            alert(msg);
+          }
         })
         .then(function () {
           sendBtn.disabled = false;
@@ -319,7 +330,13 @@
         .catch(function (err) {
           console.error('[nyhome-admin] save apartment', err);
           if (err.status === 409) return;
-          window.alert('Could not save this apartment. Confirm the address field is filled, you are online, and the API is reachable. Details are in the browser console.');
+          var msg =
+            'Could not save this apartment. Confirm the address field is filled, you are online, and the API is reachable. Details are in the browser console.';
+          if (typeof NyhomeUiFeedback !== 'undefined' && NyhomeUiFeedback.alert) {
+            NyhomeUiFeedback.alert(msg, { title: 'Could not save' });
+          } else {
+            window.alert(msg);
+          }
         });
     });
 
@@ -444,7 +461,13 @@
       var addr = manual && manual.value.trim();
       var paste = pasteEl && pasteEl.value.trim();
       if (!addr && !paste) {
-        window.alert('Enter a street address or paste listing text that includes an address line.');
+        if (typeof NyhomeUiFeedback !== 'undefined' && NyhomeUiFeedback.alert) {
+          NyhomeUiFeedback.alert('Enter a street address or paste listing text that includes an address line.', {
+            title: 'Blacklist',
+          });
+        } else {
+          window.alert('Enter a street address or paste listing text that includes an address line.');
+        }
         return;
       }
       NyhomeAPI.createBuildingBlacklist({
@@ -460,7 +483,12 @@
         })
         .catch(function (err) {
           console.error('[nyhome-admin] blacklist add', err);
-          window.alert(err.message || 'Could not add to blacklist.');
+          var msg = err.message || 'Could not add to blacklist.';
+          if (typeof NyhomeUiFeedback !== 'undefined' && NyhomeUiFeedback.alert) {
+            NyhomeUiFeedback.alert(msg, { title: 'Blacklist' });
+          } else {
+            window.alert(msg);
+          }
         });
     });
   }
@@ -473,10 +501,22 @@
         var rowDel = del.closest('[data-blacklist-id]');
         var bid = rowDel ? Number(rowDel.getAttribute('data-blacklist-id')) : 0;
         if (!bid) return;
+        function doRemove() {
+          NyhomeAPI.deleteBuildingBlacklist(bid).then(load).catch(function (err) {
+            console.error('[nyhome-admin] blacklist delete', err);
+          });
+        }
+        if (typeof NyhomeUiFeedback !== 'undefined' && NyhomeUiFeedback.confirm) {
+          NyhomeUiFeedback.confirm('Remove this building from the blacklist?', {
+            title: 'Remove from blacklist',
+            confirmLabel: 'Remove',
+          }).then(function (ok) {
+            if (ok) doRemove();
+          });
+          return;
+        }
         if (!window.confirm('Remove this building from the blacklist?')) return;
-        NyhomeAPI.deleteBuildingBlacklist(bid).then(load).catch(function (err) {
-          console.error('[nyhome-admin] blacklist delete', err);
-        });
+        doRemove();
         return;
       }
       var disp = event.target.closest('.criterion-display');
@@ -766,9 +806,22 @@
     var status = document.getElementById('status');
 
     if (reject) reject.addEventListener('click', function () {
+      function applyReject() {
+        setValue('status', 'rejected');
+        syncStatusControls('rejected');
+      }
+      if (typeof NyhomeUiFeedback !== 'undefined' && NyhomeUiFeedback.confirm) {
+        NyhomeUiFeedback.confirm('Mark this apartment as rejected?', {
+          title: 'Reject listing',
+          destructive: true,
+          confirmLabel: 'Reject',
+        }).then(function (ok) {
+          if (ok) applyReject();
+        });
+        return;
+      }
       if (!confirm('Mark this apartment as rejected?')) return;
-      setValue('status', 'rejected');
-      syncStatusControls('rejected');
+      applyReject();
     });
     if (status) status.addEventListener('change', function () {
       syncStatusControls(status.value || 'new');
@@ -1291,10 +1344,23 @@
     }
 
     card.querySelector('[data-action="delete"]').addEventListener('click', function () {
+      function doDelete() {
+        return NyhomeAPI.deleteApartment(apartment.id).then(load).catch(function (err) {
+          console.error('[nyhome-admin] delete apartment', err);
+        });
+      }
+      if (typeof NyhomeUiFeedback !== 'undefined' && NyhomeUiFeedback.confirm) {
+        NyhomeUiFeedback.confirm('Delete this apartment?', {
+          title: 'Delete listing',
+          destructive: true,
+          confirmLabel: 'Delete',
+        }).then(function (ok) {
+          if (ok) doDelete();
+        });
+        return;
+      }
       if (!confirm('Delete this apartment?')) return;
-      return NyhomeAPI.deleteApartment(apartment.id).then(load).catch(function (err) {
-        console.error('[nyhome-admin] delete apartment', err);
-      });
+      doDelete();
     });
 
     card.addEventListener('click', function (event) {

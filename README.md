@@ -41,6 +41,7 @@ new -> evaluating -> shortlisted -> tour_scheduled -> toured -> finalist -> appl
 ```
 
 - **Blacklist / duplicates:** saving an apartment (`/admin/new` form or `/details` Unit Setup) warns if the **building** is on the blacklist (modal: cancel or **Save anyway**). Duplicate **address + unit** (normalized) returns an error unless the only existing row is **`rejected`**. Setting status **`blacklisted`** upserts the building into the blacklist table.
+- **Modals / toast:** `assets/js/nyhomeUiFeedback.js` — most errors and confirms use in-app `<dialog>` (not `window.alert`); **Reject** / **Delete** use a red primary. Pipeline digest **sent** → short **toast** (shortlist + Admin Settings **Send digest**).
 - **`/admin/new` form:** full status `<select>` + **Reject** (no Prev/Next on the form; use `/details` for arrows).
 - **Admin saved list:** one row per listing; **status** dropdown saves the apartment on change.
 - **`/details`:** status `<select>` + arrow buttons move within the first 11 steps (stops before `rejected`, `blacklisted`, `archived`); **Reject** next to the progression; listing link in the **meta** row (not in the title row). Status edits auto-save and refresh the **current** details tab (Unit Setup submit still returns to the Unit tab).
