@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Changed
+- **Next actions (calendar):** listing **spec strip** = horizontal rent/fee **chip** row + scratch column + checklist — **no** apt **Unit** column; **no** visible **Financials** heading (chip group `aria-label` **Rent and fees**). CSS grid 2 cols.
+- **`/details`:** summary **`detailLocationSubtitle`** → `street · #unit · neighborhood` (unit omitted if redundant); **Unit Setup** Location = Address → Apt → Neighborhood; rent/fees fields **without** a separate **Financials** `h3`; meta external link anchor **Listing**; **Scorecard → Unit Snapshot** no longer repeats bed/bath/sq ft line (still in Unit Setup + meta **home** row). Mobile summary subline matches location + status.
+- **Next actions Prospect — Notes & details:** no duplicated address; listing link text **Listing**.
+- **Shortlist pipeline KPI row:** `body.shortlist .summary-grid .summary-value` / `.summary-label` unify tile typography.
+- Shell **`CACHE_VERSION`** / HTML **`?v=`** → **135**.
+
+### Removed
+- Next actions spec strip **Unit** cell.
+
 ## 1.2.0 - 2026-04-28
 
 ### Added
