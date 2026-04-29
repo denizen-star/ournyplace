@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+- **Shortlist `/` load:** **`app.js` `boot`** — no sync **`render(cached)`** from `localStorage`; empty summary KPI row + **`Loading…`** until **`NyhomeAPI.getApartments()`** resolves, then **`render`** (stops stale listing count / card grid flash after DB changes). Offline: unchanged — **`api.js`** `getApartments()` still resolves with last cached payload on fetch failure.
+- Shell **`CACHE_VERSION`** / HTML **`?v=`** → **136**.
+
 ## 1.3.0 - 2026-04-28
 
 ### Added

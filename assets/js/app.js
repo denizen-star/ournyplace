@@ -246,14 +246,11 @@
     initNextActionsPrefs();
     applyMobileNextActionsDefaults();
     initMobileSortCollapse();
-    var cached = NyhomeAPI.getApartmentsCache();
-    if (cached) {
-      try {
-        render(cached);
-      } catch (e) {
-        console.error('[nyhome-shortlist] cache render', e);
-      }
-    } else if (listEl) {
+    /** First paint waits for `/api/apartments`: no synchronous `render(cached)` — avoids stale counts/cards flash. Offline: `getApartments()` resolves with last cached payload from api.js fallback. */
+    if (summaryEl) {
+      summaryEl.innerHTML = '';
+    }
+    if (listEl) {
       listEl.innerHTML = '<div class="empty-state">Loading&hellip;</div>';
     }
     NyhomeAPI.getApartments()
