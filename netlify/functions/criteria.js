@@ -1,5 +1,5 @@
 const { saveCriterion, deleteCriterion, updateCriterion, reorderCriteria } = require('../../lib/apartmentRepository');
-const { json, parseBody, numberOrNull, stringOrNull } = require('../../lib/http');
+const { json, parseBody, numberOrNull, stringOrNull, deleteRequestId } = require('../../lib/http');
 
 exports.handler = async (event) => {
   try {
@@ -31,7 +31,7 @@ exports.handler = async (event) => {
     }
 
     if (event.httpMethod === 'DELETE') {
-      const id = numberOrNull(body.id);
+      const id = deleteRequestId(event, body);
       if (!id) return json(400, { error: 'id is required' });
       await deleteCriterion(id);
       return json(200, { success: true });

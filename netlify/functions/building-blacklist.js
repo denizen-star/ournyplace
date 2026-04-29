@@ -1,4 +1,4 @@
-const { json, parseBody, numberOrNull, stringOrNull } = require('../../lib/http');
+const { json, parseBody, numberOrNull, stringOrNull, deleteRequestId } = require('../../lib/http');
 const { parseListingText } = require('../../lib/listingTextParse');
 const {
   listBuildingBlacklist,
@@ -49,7 +49,7 @@ exports.handler = async (event) => {
     }
 
     if (event.httpMethod === 'DELETE') {
-      const id = numberOrNull(body.id);
+      const id = deleteRequestId(event, body);
       if (!id) return json(400, { error: 'id is required' });
       await deleteBlacklistEntry(id);
       return json(200, { success: true });

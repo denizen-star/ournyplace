@@ -808,6 +808,14 @@
     return Promise.resolve();
   }
 
+  /** Avoid skipping PUT when DB/API serialized weight differs slightly from Number(input.value). */
+  function criterionWeightUnchanged(prevW, inputW) {
+    var a = Number(prevW);
+    var b = Number(inputW);
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
+    return Math.abs(a - b) < 1e-9;
+  }
+
   function saveCriterionRow(row) {
     var id = Number(row.getAttribute('data-criterion-id'));
     if (!id) return Promise.resolve();
@@ -829,7 +837,7 @@
       return Promise.resolve();
     }
     var prev = findCriterionInState(id);
-    if (prev && prev.label === label && String(prev.definition || '') === definition && Number(prev.weight) === weight) {
+    if (prev && prev.label === label && String(prev.definition || '') === definition && criterionWeightUnchanged(prev.weight, weight)) {
       return Promise.resolve();
     }
     return NyhomeAPI.updateCriterion({ id: id, label: label, definition: definition, weight: weight }).then(function () {

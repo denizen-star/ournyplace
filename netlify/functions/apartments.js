@@ -1,6 +1,6 @@
 const { getApartmentPayload, saveApartment, deleteApartment } = require('../../lib/apartmentRepository');
 const { normalizeStatus } = require('../../lib/apartmentStatus');
-const { json, parseBody, toCents, numberOrNull, stringOrNull } = require('../../lib/http');
+const { json, parseBody, toCents, numberOrNull, stringOrNull, deleteRequestId } = require('../../lib/http');
 const { sendListingAddedEmail } = require('../../lib/listingAddedMailer');
 
 exports.handler = async (event) => {
@@ -58,7 +58,7 @@ exports.handler = async (event) => {
     }
 
     if (event.httpMethod === 'DELETE') {
-      const id = numberOrNull(body.id);
+      const id = deleteRequestId(event, body);
       if (!id) return json(400, { error: 'id is required' });
       await deleteApartment(id);
       return json(200, { success: true });

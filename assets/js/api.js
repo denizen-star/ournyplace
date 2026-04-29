@@ -63,7 +63,11 @@ var NyhomeAPI = (function () {
   }
 
   function deleteApartment(id) {
-    return _send('/api/apartments', 'DELETE', { id: id });
+    var nid = Number(id);
+    if (!Number.isFinite(nid) || nid <= 0) {
+      return Promise.reject(new Error('Invalid apartment id'));
+    }
+    return _send('/api/apartments?id=' + encodeURIComponent(String(nid)), 'DELETE', {});
   }
 
   function saveCriterion(payload) {
@@ -79,7 +83,11 @@ var NyhomeAPI = (function () {
   }
 
   function deleteCriterion(id) {
-    return _send('/api/criteria', 'DELETE', { id: id });
+    var nid = Number(id);
+    if (!Number.isFinite(nid) || nid <= 0) {
+      return Promise.reject(new Error('Invalid criterion id'));
+    }
+    return _send('/api/criteria?id=' + encodeURIComponent(String(nid)), 'DELETE', {});
   }
 
   function saveRating(payload) {
@@ -107,7 +115,11 @@ var NyhomeAPI = (function () {
   }
 
   function deleteBuildingBlacklist(id) {
-    return _send('/api/building-blacklist', 'DELETE', { id: id });
+    var nid = Number(id);
+    if (!Number.isFinite(nid) || nid <= 0) {
+      return Promise.reject(new Error('Invalid blacklist id'));
+    }
+    return _send('/api/building-blacklist?id=' + encodeURIComponent(String(nid)), 'DELETE', {});
   }
 
   function sendListingScoresEmail(payload) {

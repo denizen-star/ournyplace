@@ -218,7 +218,7 @@ async function migrate() {
 
   const activeLabels = DEFAULT_CRITERIA.map(([label]) => label);
   await execute(
-    `UPDATE nyp_criteria SET active = FALSE WHERE label NOT IN (${activeLabels.map(() => '?').join(',')})`,
+    `UPDATE nyp_criteria SET active = FALSE, sort_order = 99 WHERE label NOT IN (${activeLabels.map(() => '?').join(',')})`,
     activeLabels
   );
 
