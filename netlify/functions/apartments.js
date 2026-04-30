@@ -48,6 +48,7 @@ exports.handler = async (event) => {
           return n;
         })(),
         imageUrls: Array.isArray(body.imageUrls) ? body.imageUrls.map(stringOrNull).filter(Boolean) : [],
+        touredData: body.touredData != null && typeof body.touredData === 'object' ? body.touredData : null,
         ignoreBlacklist,
       });
       const incomingId = numberOrNull(body.id);
@@ -78,10 +79,19 @@ exports.handler = async (event) => {
       });
     }
     console.error('[apartments] Error:', err.message);
+    if (err.code === 'INVALID_TOURED_DATA') {
+      return json(400, { error: err.message, code: err.code });
+    }
     if (typeof err.message === 'string' && /Unknown column ['`]?listing_star/i.test(err.message)) {
       return json(500, {
         code: 'MISSING_LISTING_STAR_COLUMN',
         error: 'Database is missing listing_star. Run npm run migrate against DATABASE_URL.',
+      });
+    }
+    if (typeof err.message === 'string' && /Unknown column ['`]?toured_data/i.test(err.message)) {
+      return json(500, {
+        code: 'MISSING_TOURED_DATA_COLUMN',
+        error: 'Database is missing toured_data. Run npm run migrate against DATABASE_URL.',
       });
     }
     return json(500, { error: 'Something went wrong' });

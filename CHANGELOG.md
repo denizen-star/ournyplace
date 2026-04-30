@@ -4,7 +4,12 @@
 
 ### Changed
 - **Shortlist `/` load:** **`app.js` `boot`** — no sync **`render(cached)`** from `localStorage`; empty summary KPI row + **`Loading…`** until **`NyhomeAPI.getApartments()`** resolves, then **`render`** (stops stale listing count / card grid flash after DB changes). Offline: unchanged — **`api.js`** `getApartments()` still resolves with last cached payload on fetch failure.
+- **`nyp_criteria` soft-delete:** **`deleteCriterion`** sets **`sort_order = 99`** with **`active = FALSE`**; **`migrate.js`** bulk deactivate (labels not in seed set) sets **`sort_order = 99`** too.
 - Shell **`CACHE_VERSION`** / HTML **`?v=`** → **136**.
+
+### Fixed
+- **DELETE** **`/api/apartments`**, **`/api/criteria`**, **`/api/building-blacklist`:** **`api.js`** sends **`?id=`**; **`lib/http`** **`deleteRequestId(event, body)`** — server reads **`id`** from JSON body or query (some gateways strip DELETE bodies → deletes looked like no-ops).
+- **Admin Criteria** inline edit — weight: **`criterionWeightUnchanged`** epsilon compare so **`PUT`** is not skipped when DB/JSON weight differs slightly from the input number.
 
 ## 1.3.0 - 2026-04-28
 

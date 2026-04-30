@@ -43,6 +43,16 @@
   status = 200
 
 [[redirects]]
+  from = "/details/toured"
+  to = "/details/toured/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/details/toured/"
+  to = "/details/toured/index.html"
+  status = 200
+
+[[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200

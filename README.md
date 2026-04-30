@@ -26,7 +26,7 @@ There is intentionally no auth while this is local-only. Add a password gate bef
 ## What It Does
 
 - Public shortlist at `/`: **View** **Cards** | **Finalist** | **Next actions** (`nyhomeShortlistView`). Row under the title: **View** (left) + **Sort by** (Cards only; on **≤720px** width **Sort** is a collapsible row and **VIEW** is hidden — use fixed **bottom nav** **Cards** | **Next actions**; **Table** from desktop **VIEW** only) + **New listing** → `/admin/new` and **Manage** → `/admin` (plain links, `|`, right). **Filters** FAB → glass **drawer**: pipeline **status** groups (`statusFilterGroups.js`) + **Next actions** block (Tour / App deadline / Move-in — require that date when checked; same keys as `nyhomeNextActionsOmit*`). **Cards:** grid, **five pipeline KPI** tiles (same buckets as drawer), **Sort** incl. **Star** (`nyhomeShortlistSort`), listing **Stars** (click tiers on-card; persisted `listing_star`), **Avg** / Kerv / Peter, up to **3** thumbs under scores; hover → fixed preview. **Finalist:** table; **URL** = external site (before **Avg**); `≤720px` link in row expand. **Next actions:** **List** / **Calendar** + calendar **Summary** / **Details** / **Prospect**; mobile: opening Next actions defaults **Calendar** + **Summary**; prefs in `localStorage`. **Next actions** calendar listing row: horizontal rent/fee chips + scratch column (no apt # column). Card glow: `listing-status-*`. Shell cache: bump `sw.js` + HTML `?v=` together. Photos: `/admin/new` or **`/details` → Images** (up to 3).
-- Details at `/details/?id=…`: Hunter-style summary + tabs: **Scorecard**, **Images**, **Unit Setup**, **Peter** / **Kerv**, Tour, Application, **Activity Log** (includes `nyp_listing_events` after migrate). **≤720px:** accordion + compact summary; optional `?tab=` in URL. **Unit Setup** mirrors **`/admin/new`** listing fields (incl. financials, beds/baths/sq ft, chips). **Header:** **New listing** + **Back to shortlist**. Summary subtitle + meta location: **street · unit · neighborhood** (`detailLocationSubtitle`); external **`Listing`** link in meta when URL set. Scoring: **N/A** + `0..5`, criterion **?** toggles definition; votes update the hex + meta **Avg/Kerv/Peter** in place (no full-page reload); **Images** per-criterion table rows use `data-criterion-id` for the same live cell update.
+- Details at `/details/?id=…`: Hunter-style summary + tabs: **Scorecard**, **Images**, **Unit Setup**, **Peter** / **Kerv**, **Tour**, **Toured**, Application, **Activity Log** (includes `nyp_listing_events` after migrate). **≤720px:** accordion + compact summary; optional `?tab=` in URL. **Unit Setup** mirrors **`/admin/new`** listing fields (incl. financials, beds/baths/sq ft, chips). **Header:** **New listing** + **Back to shortlist**. Summary subtitle + meta location: **street · unit · neighborhood** (`detailLocationSubtitle`); external **`Listing`** link in meta when URL set. Scoring: **N/A** + `0..5`, criterion **?** toggles definition; votes update the hex + meta **Avg/Kerv/Peter** in place (no full-page reload); **Images** per-criterion table rows use `data-criterion-id` for the same live cell update. **Tour:** schedule visit + notes; after save, **Add to Google Calendar** (30 min, shared description with links + scorecard text). **Toured:** read-only **Peter | Kerv** summary of saved checklist rows; **Open toured checklist** goes to **`/details/toured?id=…`** for the editable form (run **`npm run migrate`** so `toured_data` exists). Step-by-step: see **`CLAUDE.md`** section *Tour & Toured checklist — how to use*.
 - **Manager** `/admin`: tabs **Saved apartments** | **Building blacklist** | **Criteria**. **Header** search filters the list on **Saved apartments**; cleared when switching to **Building blacklist** or **Criteria**. **New listing** in header → `/admin/new`. **Saved apartments:** `manager-row` with **Delete** + per-row **status** only (no **Edit** / **Details** links); row click (not controls) → `/details`. Full apartment form + **`?id=`** edit on **`/admin/new`**. **Criteria** / **blacklist**: click-edit, etc.
 - **New listing** `/admin/new`: full apartment form (Location … **Listing photos**) + same **Saved apartments** list; same header search; **View cards** / **Manager**.
 - Manual entry lives at `/admin/new` (sections above); **`?id=`** opens that listing for edit.
@@ -113,7 +113,7 @@ Unmapped lines are preserved under `Other:` in Notes.
 
 ## Scoring
 
-- Criteria live in `nyp_criteria`.
+- Criteria live in `nyp_criteria`. Admin **Delete** = soft-delete (`active = FALSE`, `sort_order = 99`); only active rows load in the UI / scoring.
 - Ratings live in `nyp_ratings` (`score` nullable: **N/A** = `NULL`).
 - Voters: `kerv`, `peter`.
 - **0..5** or **N/A** per line. Averages use only rows with a numeric score (skips N/A and unset).
@@ -125,9 +125,9 @@ Unmapped lines are preserved under `Other:` in Notes.
 Mutating routes are intentionally open for local use. Before deploying publicly, add auth for:
 
 - `/admin` and `/admin/new`
-- `POST/PUT/DELETE /api/apartments`
-- `POST/PUT/DELETE /api/building-blacklist`
-- `POST/PUT/DELETE /api/criteria` (`PUT`: update fields or `{ orderedIds }` reorder)
+- `POST/PUT/DELETE /api/apartments` — **`DELETE`** uses **`?id=`** query param (reliable when proxies strip DELETE bodies)
+- `POST/PUT/DELETE /api/building-blacklist` — same **`DELETE ?id=`**
+- `POST/PUT/DELETE /api/criteria` (`PUT`: update fields or `{ orderedIds }` reorder; **`DELETE ?id=`**)
 - `POST /api/ratings`
 - `POST /api/visits`
 - `POST /api/applications`

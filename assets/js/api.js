@@ -98,6 +98,14 @@ var NyhomeAPI = (function () {
     return _send('/api/visits', 'POST', payload);
   }
 
+  function deleteVisit(apartmentId) {
+    var nid = Number(apartmentId);
+    if (!Number.isFinite(nid) || nid <= 0) {
+      return Promise.reject(new Error('Invalid apartment id'));
+    }
+    return _send('/api/visits?apartmentId=' + encodeURIComponent(String(nid)), 'DELETE', {});
+  }
+
   function saveApplication(payload) {
     return _send('/api/applications', 'POST', payload);
   }
@@ -158,6 +166,7 @@ var NyhomeAPI = (function () {
     deleteCriterion: deleteCriterion,
     saveRating: saveRating,
     saveVisit: saveVisit,
+    deleteVisit: deleteVisit,
     saveApplication: saveApplication,
   };
 })();

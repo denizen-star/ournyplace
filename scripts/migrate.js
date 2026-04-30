@@ -273,6 +273,19 @@ async function migrate() {
     'nyp_apartments.listing_scores_complete_email_sent (auto scores-complete digest)'
   );
 
+  await safeAlter(
+    'ALTER TABLE nyp_visits ADD COLUMN scheduling_notes TEXT DEFAULT NULL',
+    'nyp_visits.scheduling_notes (pre-tour: access info, reminders)'
+  );
+  await safeAlter(
+    'ALTER TABLE nyp_visits ADD COLUMN toured_notes TEXT DEFAULT NULL',
+    'nyp_visits.toured_notes (during-tour observations)'
+  );
+  await safeAlter(
+    'ALTER TABLE nyp_apartments ADD COLUMN toured_data MEDIUMTEXT DEFAULT NULL',
+    'nyp_apartments.toured_data (toured checklist + tags JSON, keyed by partner)'
+  );
+
   console.log('[MIGRATE] Complete.');
 }
 

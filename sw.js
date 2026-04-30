@@ -1,4 +1,4 @@
-var CACHE_VERSION = 136;
+var CACHE_VERSION = 139;
 var CACHE_NAME = 'nyhome-v' + CACHE_VERSION;
 
 var APP_SHELL = [
@@ -12,6 +12,9 @@ var APP_SHELL = [
   '/admin/new/index.html',
   '/details/',
   '/details/index.html',
+  '/details/toured',
+  '/details/toured/',
+  '/details/toured/index.html',
   '/manifest.json',
   '/assets/img/favicon1.png',
   '/assets/css/app.css?v=' + CACHE_VERSION,
@@ -28,6 +31,7 @@ var APP_SHELL = [
   '/assets/js/vibeImages.js?v=' + CACHE_VERSION,
   '/assets/js/admin.js?v=' + CACHE_VERSION,
   '/assets/js/details.js?v=' + CACHE_VERSION,
+  '/assets/js/toured.js?v=' + CACHE_VERSION,
   '/assets/img/new.png',
   '/assets/img/evaluating.png',
   '/assets/img/shortlisted.png',

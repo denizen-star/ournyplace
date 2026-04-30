@@ -39,7 +39,7 @@
 
   function getTabFromUrl() {
     var t = new URLSearchParams(window.location.search).get('tab');
-    var v = { scorecard: 1, images: 1, unit: 1, peter: 1, kerv: 1, tour: 1, application: 1, activity: 1 };
+    var v = { scorecard: 1, images: 1, unit: 1, peter: 1, kerv: 1, tour: 1, toured: 1, application: 1, activity: 1 };
     return t && v[t] ? t : null;
   }
 
@@ -156,6 +156,7 @@
     acc += renderMobileAccordionSection(apartment, 'peter', 'Peter\u2019s scores', 'P', initialTab);
     acc += renderMobileAccordionSection(apartment, 'kerv', 'Kerv\u2019s scores', 'K', initialTab);
     acc += renderMobileAccordionSection(apartment, 'tour', 'Tour', '\u27A4', initialTab);
+    acc += renderMobileAccordionSection(apartment, 'toured', 'Toured', '\u2713', initialTab);
     acc += renderMobileAccordionSection(apartment, 'application', 'Application', '\u2712', initialTab);
     acc += renderMobileAccordionSection(apartment, 'activity', 'Activity log', '\u231A', initialTab);
     return (
@@ -199,6 +200,7 @@
     var us = unitSummary(apartment);
     if (us) pills.push(us);
     if (apartment.move_in_date) pills.push('Move-in ' + apartment.move_in_date);
+    sqftRatesList(apartment).forEach(function (item) { pills.push(item[1] + ' ' + item[0]); });
     var metaHtml = pills.map(function (p) {
       return '<span class="pill">' + escapeHtml(p) + '</span>';
     }).join('');
@@ -410,6 +412,7 @@
     if (activeTab === 'peter') return renderPartnerTab(apartment, 'peter', activeTab);
     if (activeTab === 'kerv') return renderPartnerTab(apartment, 'kerv', activeTab);
     if (activeTab === 'tour') return renderTourTab(apartment, activeTab);
+    if (activeTab === 'toured') return renderTouredTab(apartment, activeTab);
     if (activeTab === 'application') return renderApplicationTab(apartment, activeTab);
     if (activeTab === 'activity') return renderActivityTab(apartment, activeTab);
     return renderScorecardTab(apartment, 'scorecard');
@@ -469,6 +472,7 @@
       '<div class="app-meta">' +
         metaItem('location', detailLocationSubtitle(apartment) || 'Location TBD') +
         metaItem('money', formatMoney(apartment.rent_cents) || 'Rent TBD') +
+        sqftRatesMetaHtml(apartment) +
         metaItem('home', unitSummary(apartment) || 'Unit details TBD') +
         metaItem('calendar', apartment.move_in_date ? 'Move-in ' + apartment.move_in_date : 'Move-in TBD') +
         metaItem('refresh', apartment.updated_at ? 'Updated ' + formatDate(apartment.updated_at) : 'Updated TBD') +
@@ -489,6 +493,7 @@
       ['peter', 'Peter'],
       ['kerv', 'Kerv'],
       ['tour', 'Tour'],
+      ['toured', 'Toured'],
       ['application', 'Application'],
       ['activity', 'Activity Log'],
     ];
@@ -795,28 +800,120 @@
     '</section>';
   }
 
+  /** Plain-text body for Google Calendar: toured link first, then summary + scorecard, then listing + details links. */
+  function buildCalendarEventDetails(apartment, criteria) {
+    var MAX = 7500;
+    var origin = (typeof window !== 'undefined' && window.location) ? window.location.origin : '';
+    var idStr = String(apartment.id);
+    var touredUrl = origin + '/details/toured?id=' + encodeURIComponent(idStr);
+    var lines = [];
+    lines.push('Toured checklist: ' + touredUrl);
+    lines.push('');
+    lines.push('Summary');
+    lines.push(detailLocationSubtitle(apartment) || apartment.title || '');
+    if (apartment.rent_cents) lines.push('Rent: ' + formatMoney(apartment.rent_cents) + '/mo');
+    var us = unitSummary(apartment);
+    if (us) lines.push(us);
+    lines.push('');
+    lines.push('Scorecard');
+    var sc = apartment.scores || {};
+    lines.push('Avg ' + scoreText(sc.combined) + ' · Kerv ' + scoreText(sc.kerv) + ' · Peter ' + scoreText(sc.peter));
+    var critList = criteria || [];
+    var ratings = apartment.ratings || {};
+    critList.forEach(function (c) {
+      var ks = ratings.kerv && ratings.kerv[c.id];
+      var ps = ratings.peter && ratings.peter[c.id];
+      lines.push(
+        c.label + ': Kerv ' + formatVoteForCalendar(ks) + ' · Peter ' + formatVoteForCalendar(ps)
+      );
+    });
+    lines.push('');
+    lines.push('Links');
+    if (apartment.listing_url && String(apartment.listing_url).trim()) {
+      lines.push('Listing: ' + String(apartment.listing_url).trim());
+    }
+    lines.push('nyhome details: ' + origin + '/details/?id=' + encodeURIComponent(idStr));
+    var body = lines.join('\n');
+    if (body.length > MAX) body = body.slice(0, MAX - 30) + '\n…(truncated)';
+    return body;
+  }
+
+  function formatVoteForCalendar(v) {
+    if (v == null || v === '') return 'N/A';
+    return String(v);
+  }
+
+  function buildCalendarUrl(apartment, visitAtValue, criteria) {
+    if (!visitAtValue) return '';
+    try {
+      var start = new Date(visitAtValue);
+      if (isNaN(start.getTime())) return '';
+      var end = new Date(start.getTime() + 30 * 60 * 1000);
+      function pad(n) { return n < 10 ? '0' + n : String(n); }
+      function toGcal(dt) {
+        return dt.getUTCFullYear() + pad(dt.getUTCMonth() + 1) + pad(dt.getUTCDate()) +
+          'T' + pad(dt.getUTCHours()) + pad(dt.getUTCMinutes()) + '00Z';
+      }
+      var details = buildCalendarEventDetails(apartment, criteria || []);
+      return 'https://calendar.google.com/calendar/render?action=TEMPLATE' +
+        '&text=' + encodeURIComponent('Tour: ' + (apartment.title || 'Apartment')) +
+        '&dates=' + toGcal(start) + '/' + toGcal(end) +
+        '&details=' + encodeURIComponent(details) +
+        '&add=leacock.kervin%40gmail.com&add=peterpapapetrou1%40gmail.com';
+    } catch (e) {
+      return '';
+    }
+  }
+
   function renderTourTab(apartment, activeTab) {
     var visit = apartment.next_visit || {};
+    var calUrl = visit.visit_at ? buildCalendarUrl(apartment, toDateTimeLocal(visit.visit_at), state.criteria) : '';
+    var calHtml = calUrl
+      ? '<div class="detail-tour-cal-row"><a class="detail-tour-cal-link" href="' + escapeAttr(calUrl) + '" target="_blank" rel="noreferrer">' +
+        '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 3v2M13 3v2"/></svg>' +
+        'Add to Google Calendar</a></div>'
+      : '';
     return (
       '<section id="tab-tour" class="summary-tab-content' + (activeTab === 'tour' ? ' active' : '') + '">' +
       '<h2>Tour</h2>' +
-      '<p class="muted tab-intro">Scheduled visit time and notes for this listing (saved here and used on the shortlist Next actions calendar).</p>' +
+      '<p class="muted tab-intro">Scheduled visit and notes (used on the shortlist Next actions calendar).</p>' +
       '<form data-visit-form class="content-section detail-tour-form">' +
-      '<div class="section-header"><h3 class="section-title">Visit &amp; tour notes</h3></div>' +
+      '<div class="section-header"><h3 class="section-title">Schedule</h3></div>' +
       '<div class="form-grid detail-tour-form-grid">' +
       '<label>Visit time<input data-visit-at type="datetime-local" value="' +
       escapeAttr(toDateTimeLocal(visit.visit_at)) +
       '"></label>' +
-      '<label class="span-2 tour-notes-field">' +
-      'Tour notes' +
-      '<textarea data-visit-notes rows="12" placeholder="What you saw — access, noise, finishes, concierge, standout pros/cons.">' +
-      escapeHtml(visit.notes || '') +
+      '<label class="span-2 tour-notes-field">Scheduling notes' +
+      '<textarea data-visit-scheduling-notes rows="4" placeholder="Day-of access info, contact, parking, reminders…">' +
+      escapeHtml(visit.scheduling_notes || visit.notes || '') +
+      '</textarea></label>' +
+      '</div>' +
+      '<div class="section-header" style="margin-top:16px"><h3 class="section-title">During-tour notes</h3></div>' +
+      '<div class="form-grid">' +
+      '<label class="span-2 tour-notes-field">Notes' +
+      '<textarea data-visit-toured-notes rows="6" placeholder="What you saw — access, noise, finishes, standout pros/cons…">' +
+      escapeHtml(visit.toured_notes || '') +
       '</textarea></label>' +
       '</div>' +
       '<div class="button-row detail-tour-save-row">' +
       '<button class="primary-btn" type="submit">Save tour</button>' +
       '</div>' +
       '</form>' +
+      calHtml +
+      '</section>'
+    );
+  }
+
+  function renderTouredTab(apartment, activeTab) {
+    var inner =
+      typeof NyhomeToured !== 'undefined' && typeof NyhomeToured.renderTouredReadOnlyHtml === 'function'
+        ? NyhomeToured.renderTouredReadOnlyHtml(apartment)
+        : '<p class="muted">Toured summary unavailable.</p>';
+    return (
+      '<section id="tab-toured" class="summary-tab-content' + (activeTab === 'toured' ? ' active' : '') + '">' +
+      '<h2>Toured</h2>' +
+      '<p class="muted tab-intro">Vote summary (Peter &amp; Kerv). Rows appear when at least one person answered. Edit on the checklist.</p>' +
+      inner +
       '</section>'
     );
   }
@@ -1126,11 +1223,24 @@
     if (!form) return;
     form.addEventListener('submit', function (event) {
       event.preventDefault();
+      var visitAtEl = rootEl.querySelector('[data-visit-at]');
+      var schedulingEl = rootEl.querySelector('[data-visit-scheduling-notes]');
+      var touredEl = rootEl.querySelector('[data-visit-toured-notes]');
+      var visitAtValue = visitAtEl ? visitAtEl.value : '';
       NyhomeAPI.saveVisit({
         apartmentId: state.apartment.id,
-        visitAt: rootEl.querySelector('[data-visit-at]').value,
-        notes: rootEl.querySelector('[data-visit-notes]').value,
-      }).then(function () { load('tour'); });
+        visitAt: visitAtValue,
+        schedulingNotes: schedulingEl ? schedulingEl.value : '',
+        touredNotes: touredEl ? touredEl.value : '',
+      }).then(function () {
+        // Update local state so calendar link renders immediately on reload
+        if (state.apartment && state.apartment.next_visit) {
+          state.apartment.next_visit.visit_at = visitAtValue || null;
+          state.apartment.next_visit.scheduling_notes = schedulingEl ? schedulingEl.value : '';
+          state.apartment.next_visit.toured_notes = touredEl ? touredEl.value : '';
+        }
+        load('tour');
+      });
     });
   }
 
@@ -1476,6 +1586,34 @@
       return '<div class="meta-item meta-item--no-listing" role="status">' + iconSvg('link') + '<span>Listing unavailable</span></div>';
     }
     return '<div class="meta-item">' + iconSvg('link') + '<a href="' + escapeAttr(url) + '" target="_blank" rel="noreferrer">Listing</a></div>';
+  }
+
+  function sqftRate(cents, sqft) {
+    if (!cents || !sqft || sqft <= 0) return null;
+    return (Number(cents) / 100 / Number(sqft)).toFixed(2);
+  }
+
+  function sqftRatesMetaHtml(apartment) {
+    var sqft = apartment.square_feet;
+    if (!sqft) return '';
+    var gross = sqftRate(apartment.rent_cents, sqft);
+    var net = sqftRate(apartment.net_effective_cents, sqft);
+    var parts = [];
+    if (gross) parts.push('$' + gross + '/sqft gross');
+    if (net) parts.push('$' + net + '/sqft net eff.');
+    if (!parts.length) return '';
+    return metaItem('money', parts.join(' · '));
+  }
+
+  function sqftRatesList(apartment) {
+    var sqft = apartment.square_feet;
+    if (!sqft) return [];
+    var items = [];
+    var gross = sqftRate(apartment.rent_cents, sqft);
+    var net = sqftRate(apartment.net_effective_cents, sqft);
+    if (gross) items.push(['Gross $/sqft', '$' + gross]);
+    if (net) items.push(['Net eff. $/sqft', '$' + net]);
+    return items;
   }
 
   function iconSvg(name) {

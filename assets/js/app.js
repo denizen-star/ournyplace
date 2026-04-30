@@ -745,13 +745,15 @@
         '</pre></div>'
       );
     }
-    var tourNotes =
-      ev.kind === 'tour' && apartment.next_visit && apartment.next_visit.notes && String(apartment.next_visit.notes).trim();
+    var tourNotesRaw = ev.kind === 'tour' && apartment.next_visit
+      ? (apartment.next_visit.scheduling_notes || apartment.next_visit.notes || '')
+      : '';
+    var tourNotes = String(tourNotesRaw).trim();
     if (tourNotes) {
       parts.push(
         '<div class="shortlist-na-detail-block"><span class="shortlist-na-detail-k">Tour notes</span>' +
         '<pre class="shortlist-na-notes-pre">' +
-        escapeHtml(String(apartment.next_visit.notes)) +
+        escapeHtml(tourNotes) +
         '</pre></div>'
       );
     }

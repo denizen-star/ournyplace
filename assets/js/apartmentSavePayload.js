@@ -63,6 +63,7 @@
         var n = Number(ls);
         return n >= 1 && n <= 3 ? n : null;
       })(),
+      touredData: o.touredData !== undefined ? o.touredData : (apartment.toured_data || null),
     };
     if (o.ignoreBlacklist === true) payload.ignoreBlacklist = true;
     return payload;
