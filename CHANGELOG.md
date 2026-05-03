@@ -2,14 +2,25 @@
 
 ## Unreleased
 
+## 1.4.0 - 2026-04-29
+
+### Added
+- **`/instructions`** — operator HTML (`instructions/index.html`); **`netlify.toml`** redirects **`/instructions`** / **`/instructions/`**; **`sw.js`** precache entry.
+- **Toured checklist:** **`/details/toured?id=`** (`details/toured/index.html`, **`assets/js/toured.js`**): Peter/Kerv selector, tristate + chips + per-row notes + tags; **`Save`** → **`PUT /api/apartments`** with **`touredData`** → **`nyp_apartments.toured_data`** (MEDIUMTEXT; **`migrate.js`** ALTER).
+- **`/details` → Toured tab:** read-only **Prompt | Peter | Kerv** table (**`NyhomeToured.renderTouredReadOnlyHtml`**); rows only if ≥1 partner answered; **Open toured checklist** → **`/details/toured`**; loads **`toured.js`** in **`details/index.html`**.
+- **Tour tab:** **Scheduling notes** + **During-tour notes**; **`POST /api/visits`** **upserts** one **`nyp_visits`** row per apartment (was insert-only); **`DELETE /api/visits?apartmentId=`** clears visit (**`api.js`** **`deleteVisit`**).
+- **Add to Google Calendar** (after visit saved): ~30 min event; guests leacock.kervin + peterpapapetrou1; description = toured URL, summary, scorecard (Avg·Kerv·Peter + per-criterion), listing URL, details URL (**`details.js`** **`buildCalendarEventDetails`**).
+- **`npm start`** — same as **`npm run dev`** (**`package.json`**).
+
 ### Changed
 - **Shortlist `/` load:** **`app.js` `boot`** — no sync **`render(cached)`** from `localStorage`; empty summary KPI row + **`Loading…`** until **`NyhomeAPI.getApartments()`** resolves, then **`render`** (stops stale listing count / card grid flash after DB changes). Offline: unchanged — **`api.js`** `getApartments()` still resolves with last cached payload on fetch failure.
 - **`nyp_criteria` soft-delete:** **`deleteCriterion`** sets **`sort_order = 99`** with **`active = FALSE`**; **`migrate.js`** bulk deactivate (labels not in seed set) sets **`sort_order = 99`** too.
-- Shell **`CACHE_VERSION`** / HTML **`?v=`** → **136**.
+- Shell **`CACHE_VERSION`** / key HTML **`?v=`** (shortlist + details + toured + instructions) → **140**.
 
 ### Fixed
 - **DELETE** **`/api/apartments`**, **`/api/criteria`**, **`/api/building-blacklist`:** **`api.js`** sends **`?id=`**; **`lib/http`** **`deleteRequestId(event, body)`** — server reads **`id`** from JSON body or query (some gateways strip DELETE bodies → deletes looked like no-ops).
 - **Admin Criteria** inline edit — weight: **`criterionWeightUnchanged`** epsilon compare so **`PUT`** is not skipped when DB/JSON weight differs slightly from the input number.
+- **Toured checklist save:** **`apartments`** handler + repo stringify guard — **`MISSING_TOURED_DATA_COLUMN`** / **`INVALID_TOURED_DATA`** when DB or payload bad (migrate adds **`toured_data`**).
 
 ## 1.3.0 - 2026-04-28
 

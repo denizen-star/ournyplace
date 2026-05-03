@@ -1,6 +1,12 @@
 # Feature Implementation Plan: Tour scheduling, Toured checklist, calendar link
 
-**Overall Progress:** `0%`
+**Overall Progress:** `~55%` (core tour + toured + docs shipped; polish items remain)
+
+## Implementation status (verified in repo)
+
+**Done:** `nyp_visits` upsert + `scheduling_notes` / `toured_notes`; **`DELETE /api/visits`**: `?apartmentId=`; **`/details/toured`** + **`toured_data`** + **`PUT` errors** (`MISSING_TOURED_DATA_COLUMN`, `INVALID_TOURED_DATA`); **Tour** calendar body (**`buildCalendarEventDetails`**); **`/details` Toured tab** read-only two-column summary + link to form; **`/instructions`** HTML; **`toured.js`** tags = text input + **Add** (not full typeahead combobox yet).
+
+**Open / differ from plan:** Rich typeahead tag UX; optional visit **clear** button in UI (API supports **DELETE**); digest “tour notes empty” may still reference legacy fields—audit **`lib/pipelineDigest.js`** when convenient.
 
 ## TLDR
 

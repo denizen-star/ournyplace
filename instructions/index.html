@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1f2937">
+  <title>How to use Tour &amp; Toured | nyhome</title>
+  <link rel="icon" href="/assets/img/favicon1.png" type="image/png">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap">
+  <link rel="stylesheet" href="/assets/css/app.css?v=140">
+  <style>
+    .instructions-page main.page-shell {
+      max-width: 42rem;
+    }
+    .instructions-doc {
+      line-height: 1.55;
+    }
+    .instructions-doc .section-intro {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 1.5rem;
+    }
+    .instructions-doc h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin: 1.75rem 0 0.6rem;
+      color: var(--accent-dark);
+    }
+    .instructions-doc ol.steps {
+      margin: 0;
+      padding-left: 1.25rem;
+    }
+    .instructions-doc ol.steps > li {
+      margin-bottom: 1rem;
+    }
+    .instructions-doc ol.steps > li strong {
+      display: inline-block;
+      margin-bottom: 0.35rem;
+    }
+    .instructions-doc ul.detail-list {
+      margin: 0.35rem 0 0;
+      padding-left: 1.1rem;
+    }
+    .instructions-doc code.path {
+      font-size: 0.88em;
+      padding: 0.1em 0.35em;
+      border-radius: 4px;
+      background: var(--glass-frost-strong);
+      border: 1px solid var(--line);
+    }
+    .instructions-foot {
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--line);
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body class="details-page instructions-page">
+  <header class="app-header">
+    <div>
+      <p class="eyebrow">nyhome</p>
+      <h1>Instructions: Tour &amp; Toured</h1>
+    </div>
+    <div class="app-header-actions">
+      <a class="link-button" href="/admin">Manage</a>
+      <span class="app-header-actions-sep" aria-hidden="true">|</span>
+      <a class="link-button" href="/">Shortlist</a>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <article class="content-section instructions-doc">
+      <p class="section-intro">
+        Peter and Kerv use <strong>Tour</strong> to schedule a visit and <strong>Toured</strong> to capture what you noticed on the walk-through. Scoring (0–5) stays on the <strong>Peter</strong> and <strong>Kerv</strong> tabs; this flow is separate.
+      </p>
+
+      <h2>1. Schedule the visit</h2>
+      <ol class="steps" start="1">
+        <li>
+          <strong>Open apartment details:</strong>
+          From the shortlist, open any listing (<code class="path">/details/?id=&lt;id&gt;</code>).
+        </li>
+        <li>
+          <strong>Tour tab:</strong> Set <strong>Visit time</strong> (datetime), <strong>Scheduling notes</strong> (access, parking, who to meet), and <strong>During-tour notes</strong> if you want free-form jotting there.
+        </li>
+        <li>
+          <strong>Save tour.</strong> The shortlist <strong>Next actions</strong> calendar uses this visit time as the tour anchor.
+        </li>
+      </ol>
+
+      <h2>2. Add to Google Calendar (optional)</h2>
+      <ol class="steps" start="1">
+        <li>
+          After a valid visit time is <strong>saved</strong>, the <strong>Add to Google Calendar</strong> link appears on the Tour tab.
+        </li>
+        <li>
+          Opens a prefilled Google event (~30 minutes) with guests <strong>leacock.kervin@gmail.com</strong> and <strong>peterpapapetrou1@gmail.com</strong>. The description includes:
+          <ul class="detail-list">
+            <li>Link to the <strong>toured checklist</strong> page for this listing</li>
+            <li><strong>Summary</strong> (location line, rent, beds/baths/sq ft)</li>
+            <li><strong>Scorecard</strong> (Avg · Kerv · Peter % and per-criterion 0–5 / N/A)</li>
+            <li>External <strong>listing URL</strong> when set</li>
+            <li><strong>nyhome details</strong> link (<code class="path">/details/?id=…</code>)</li>
+          </ul>
+        </li>
+      </ol>
+
+      <h2>3. Fill the toured checklist</h2>
+      <ol class="steps" start="1">
+        <li>
+          <strong>Open the form:</strong>
+          Go to <code class="path">/details/toured?id=&lt;id&gt;</code> or use details <strong>Toured</strong> tab &rarr; <strong>Open toured checklist</strong>.
+        </li>
+        <li>
+          <strong>Peter vs Kerv:</strong> Tap the partner at the top. Each person has their own answers; nothing overwrites between partners.
+        </li>
+        <li>
+          For each prompt, use <strong>Yes</strong>, <strong>No</strong>, or <strong>N/A</strong>. Some rows offer <strong>chips</strong> (noise level, stove type, etc.). Use <strong>+</strong> for optional notes per row.
+        </li>
+        <li>
+          At the bottom, add free-form <strong>tags</strong> (comma of ideas works; use <strong>Add</strong>).
+        </li>
+        <li>
+          <strong>Save</strong>. Data is stored on the listing as JSON (<code class="path">toured_data</code>).
+        </li>
+      </ol>
+
+      <h2>4. Read-only summary on details</h2>
+      <ol class="steps" start="1">
+        <li>
+          On <code class="path">/details/?id=…</code>, open the <strong>Toured</strong> tab.
+        </li>
+        <li>
+          You see a table: prompt in the left column, <strong>Peter</strong> and <strong>Kerv</strong> in the next columns. Rows appear only when <strong>at least one person</strong> answered that prompt. Tags show in two columns when present.
+        </li>
+        <li>
+          After saving changes on <code class="path">/details/toured?id=…</code>, reload or revisit details so the summary reflects the latest data (browser cache may show an older snapshot briefly).
+        </li>
+      </ol>
+
+      <h2>Database setup (one-time per environment)</h2>
+      <p>
+        If checklist <strong>Save</strong> fails with a message about a missing database column, run against the same database as your app:
+      </p>
+      <pre class="content-section" style="overflow:auto;font-size:0.85rem;padding:12px;margin:8px 0 0;"><code>npm run migrate</code></pre>
+
+      <footer class="instructions-foot">
+        nyhome is a private hunting tool with no authentication. Do not expose it publicly without a gate. Technical reference: <strong>CLAUDE.md</strong> (repository root).
+      </footer>
+    </article>
+  </main>
+</body>
+</html>

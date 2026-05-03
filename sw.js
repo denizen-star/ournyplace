@@ -1,4 +1,4 @@
-var CACHE_VERSION = 139;
+var CACHE_VERSION = 140;
 var CACHE_NAME = 'nyhome-v' + CACHE_VERSION;
 
 var APP_SHELL = [
@@ -15,6 +15,9 @@ var APP_SHELL = [
   '/details/toured',
   '/details/toured/',
   '/details/toured/index.html',
+  '/instructions',
+  '/instructions/',
+  '/instructions/index.html',
   '/manifest.json',
   '/assets/img/favicon1.png',
   '/assets/css/app.css?v=' + CACHE_VERSION,
