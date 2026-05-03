@@ -56,6 +56,11 @@ var NyhomeAPI = (function () {
     });
   }
 
+  /** Full row for one id (includes data:image URLs). Bulk GET strips inline images to stay under Netlify response limits. */
+  function getApartment(id) {
+    return _get('/api/apartments?id=' + encodeURIComponent(String(id)));
+  }
+
   function saveApartment(payload) {
     var id = Number(payload && payload.id);
     var method = Number.isFinite(id) && id > 0 ? 'PUT' : 'POST';
@@ -151,6 +156,7 @@ var NyhomeAPI = (function () {
     getApartmentsCache: getApartmentsCache,
     setApartmentsCache: setApartmentsCache,
     getApartments: getApartments,
+    getApartment: getApartment,
     saveApartment: saveApartment,
     deleteApartment: deleteApartment,
     getBuildingBlacklist: getBuildingBlacklist,

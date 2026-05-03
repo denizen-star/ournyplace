@@ -109,17 +109,30 @@
 
         if (!apartment) {
           rootEl.innerHTML = '<div class="empty-state">Apartment not found.</div>';
-          return;
+          return null;
         }
 
-        state.apartment = apartment;
         state.criteria = data.criteria || [];
         state.neighborhoods = data.neighborhoods || [];
+        state.apartment = apartment;
+        return NyhomeAPI.getApartment(id);
+      })
+      .then(function (detail) {
+        if (detail == null) return;
+        if (detail.apartment) {
+          state.apartment = detail.apartment;
+          if (detail.criteria && detail.criteria.length) state.criteria = detail.criteria;
+          if (detail.neighborhoods && detail.neighborhoods.length) state.neighborhoods = detail.neighborhoods;
+        }
         var tab = activeTab != null ? activeTab : (getTabFromUrl() || 'scorecard');
+        syncDetailVibeSlotsFromApartment(state.apartment);
         render(tab);
       })
       .catch(function () {
         if (state.apartment) {
+          var tabFallback = activeTab != null ? activeTab : (getTabFromUrl() || 'scorecard');
+          syncDetailVibeSlotsFromApartment(state.apartment);
+          render(tabFallback);
           return;
         }
         rootEl.innerHTML = '<div class="empty-state">Could not load apartment details yet.</div>';

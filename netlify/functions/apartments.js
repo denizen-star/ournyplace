@@ -1,4 +1,4 @@
-const { getApartmentPayload, saveApartment, deleteApartment } = require('../../lib/apartmentRepository');
+const { getApartmentPayload, getApartmentById, saveApartment, deleteApartment } = require('../../lib/apartmentRepository');
 const { normalizeStatus } = require('../../lib/apartmentStatus');
 const { json, parseBody, toCents, numberOrNull, stringOrNull, deleteRequestId } = require('../../lib/http');
 const { sendListingAddedEmail } = require('../../lib/listingAddedMailer');
@@ -6,6 +6,17 @@ const { sendListingAddedEmail } = require('../../lib/listingAddedMailer');
 exports.handler = async (event) => {
   try {
     if (event.httpMethod === 'GET') {
+      const qs = event.queryStringParameters || {};
+      const rawId = qs.id;
+      if (rawId != null && String(rawId).trim() !== '') {
+        const detail = await getApartmentById(rawId);
+        if (!detail) return json(404, { error: 'Apartment not found' });
+        return json(200, {
+          criteria: detail.criteria,
+          neighborhoods: detail.neighborhoods,
+          apartment: detail.apartment,
+        });
+      }
       return json(200, await getApartmentPayload());
     }
 
