@@ -1,4 +1,4 @@
-var CACHE_VERSION = 141;
+var CACHE_VERSION = 142;
 var CACHE_NAME = 'nyhome-v' + CACHE_VERSION;
 
 var APP_SHELL = [
@@ -84,6 +84,29 @@ self.addEventListener('fetch', function (event) {
     event.respondWith(fetch(event.request).catch(function () {
       return caches.match(event.request);
     }));
+    return;
+  }
+
+  // HTML navigations: try network first so /admin (etc.) never stay stuck on an old shell from precache.
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then(function (res) {
+          return res;
+        })
+        .catch(function () {
+          return caches.match(event.request).then(function (cached) {
+            if (cached) return cached;
+            var p = url.pathname.replace(/\/+$/, '') || '/';
+            if (p === '/admin') return caches.match('/admin/index.html') || caches.match('/admin/');
+            if (p === '/admin/new') return caches.match('/admin/new/index.html') || caches.match('/admin/new/');
+            if (p === '/details/toured') return caches.match('/details/toured/index.html') || caches.match('/details/toured/');
+            if (p === '/instructions') return caches.match('/instructions/index.html') || caches.match('/instructions/');
+            if (p === '/' || p === '/index.html') return caches.match('/index.html') || caches.match('/');
+            return caches.match('/index.html');
+          });
+        })
+    );
     return;
   }
 
