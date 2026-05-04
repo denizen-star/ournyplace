@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Added
+- **`GET /api/apartments?id=`** — one listing with full `image_url` values (incl. `data:image/...`), plus `criteria` and `neighborhoods`. **`NyhomeAPI.getApartment(id)`** in **`api.js`**; **`/details`** `load()` calls it after **`getApartments()`** so Images / vibe slots stay correct while the bulk list stays small.
+
+### Changed
+- **`lib/db.js`** — PlanetScale **`Client`** (each **`execute`** uses a fresh connection); **`netlify.toml`** **`NODE_VERSION = "20"`** for function runtime.
+- **`.env.example`** — SMTP/from/to placeholders use **`example.invalid`** so example text does not match Netlify **secrets scanning** values.
+- **`sw.js`** — Document navigations (**`mode === 'navigate'`**): **network first**, then cache / offline fallbacks for `/`, `/admin`, `/admin/new`, `/details/toured`, `/instructions`. **`CACHE_VERSION`** + HTML **`?v=`** → **142**.
+- **`netlify.toml` headers** — **`Cache-Control: no-cache`** for **`/admin`**, **`/admin/`**, **`/admin/new`**, **`/admin/new/`** (not only **`/admin/*`**).
+- **`admin/index.html`** + **`admin/new/index.html`** — register **`/sw.js`** on prod (same pattern as shortlist **`index.html`**) so admin-only visits pick up worker updates.
+
+### Fixed
+- **Netlify function response size (~6 MB)** — bulk **`GET /api/apartments`** JSON could exceed the cap when many listings stored **base64** photos in **`nyp_apartment_images.image_url`** (502 / **`Function.ResponseSizeTooLarge`**). **`getApartmentPayload`** now nulls **`data:`** URLs on image rows for the list only; full blobs come from **`GET ?id=`** on details.
+
 ## 1.4.0 - 2026-04-29
 
 ### Added
