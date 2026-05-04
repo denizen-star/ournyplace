@@ -1,6 +1,6 @@
 {
   "name": "nyhome",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "private": true,
   "description": "Private local PWA for choosing a NYC apartment together",
   "scripts": {

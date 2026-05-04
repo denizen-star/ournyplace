@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.4.1 - 2026-05-03
+
 ### Added
 - **`GET /api/apartments?id=`** — one listing with full `image_url` values (incl. `data:image/...`), plus `criteria` and `neighborhoods`. **`NyhomeAPI.getApartment(id)`** in **`api.js`**; **`/details`** `load()` calls it after **`getApartments()`** so Images / vibe slots stay correct while the bulk list stays small.
 
