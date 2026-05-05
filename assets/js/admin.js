@@ -940,25 +940,7 @@
   }
 
   function apartmentSearchHaystack(apartment) {
-    var parts = [
-      apartment.title,
-      apartment.neighborhood,
-      apartment.address,
-      apartment.apt_number,
-      formatStatusLabel(apartment.status),
-    ];
-    (apartment.unit_features || []).forEach(function (slug) {
-      if (!slug) return;
-      parts.push(slug, formatListingChipLabel(slug));
-    });
-    (apartment.amenities || []).forEach(function (slug) {
-      if (!slug) return;
-      parts.push(slug, formatListingChipLabel(slug));
-    });
-    return parts
-      .filter(function (p) { return p != null && String(p).trim() !== ''; })
-      .map(function (p) { return String(p).toLowerCase(); })
-      .join(' ');
+    return NyhomeApartmentSearch.haystackForApartment(apartment, formatStatusLabel, formatListingChipLabel);
   }
 
   function getAdminApartmentSearchQuery() {

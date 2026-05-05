@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## 1.5.0 - 2026-05-05
+
+### Added
+- **Shortlist `/` hero search** — field, clear, typeahead under the input; substring filter in **`applyFilters`** so **Cards**, **Table**, and **Next actions** share the same query with the **Filters** drawer. **`assets/js/apartmentSearchHaystack.js`** — **`NyhomeApartmentSearch.haystackForApartment`**; admin saved-listings header search delegates to the same helper.
+
+### Changed
+- **`sw.js`** **`CACHE_VERSION`** + HTML **`?v=`** → **144** (precache **`apartmentSearchHaystack.js`**).
+- **`assets/css/app.css`** — shortlist header search (desktop + **≤720px**); title row **`align-items: flex-end`** so the field lines up with the heading; suggestions **`position: absolute`** under the input (full input width).
+
+### Internal
+- **`CLAUDE.md`**, **`instructions/index.html`**, **`docs/PLAN-shortlist-hero-search-tracking.md`** — shortlist search + shared module.
+
 ## 1.4.1 - 2026-05-03
 
 ### Added

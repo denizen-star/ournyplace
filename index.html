@@ -10,13 +10,43 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400&display=swap">
-  <link rel="stylesheet" href="/assets/css/app.css?v=142">
+  <link rel="stylesheet" href="/assets/css/app.css?v=144">
 </head>
 <body class="shortlist">
   <header class="app-header app-header--shortlist">
     <div class="app-header__main">
-      <p class="eyebrow">nyhome</p>
-      <h1>Apartment shortlist</h1>
+      <div class="shortlist-header-top">
+        <div class="shortlist-header-title-col">
+          <p class="eyebrow">nyhome</p>
+          <h1>Apartment shortlist</h1>
+        </div>
+        <div class="shortlist-header-search" role="search">
+          <div class="shortlist-header-search-field">
+            <span class="shortlist-header-search-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
+            </span>
+            <input
+              type="search"
+              id="shortlist-apartment-search"
+              class="shortlist-header-search-input"
+              aria-label="Search shortlist listings"
+              aria-autocomplete="list"
+              aria-controls="shortlist-apartment-search-suggestions"
+              aria-expanded="false"
+              autocomplete="off"
+              enterkeyhint="search"
+            />
+            <button type="button" id="shortlist-apartment-search-clear" class="shortlist-header-search-clear" aria-label="Clear search" title="Clear" hidden>×</button>
+          </div>
+          <div
+            id="shortlist-apartment-search-suggestions"
+            class="shortlist-header-search-suggestions"
+            role="listbox"
+            aria-label="Matching listings"
+            hidden
+          ></div>
+        </div>
+      </div>
       <div class="shortlist-tagline-row">
         <div class="shortlist-view" id="shortlist-view" role="tablist" aria-label="Shortlist view">
           <span class="shortlist-view-label" id="shortlist-view-label">View</span>
@@ -103,15 +133,16 @@
     </div>
   </dialog>
 
-  <script src="/assets/js/apartmentStatus.js?v=142"></script>
-  <script src="/assets/js/statusFilterGroups.js?v=142"></script>
-  <script src="/assets/js/listingStar.js?v=142"></script>
-  <script src="/assets/js/shortlistSort.js?v=142"></script>
-  <script src="/assets/js/apartmentSavePayload.js?v=142"></script>
-  <script src="/assets/js/nyhomeUiFeedback.js?v=142"></script>
-  <script src="/assets/js/saveApartmentWorkflow.js?v=142"></script>
-  <script src="/assets/js/api.js?v=142"></script>
-  <script src="/assets/js/app.js?v=142"></script>
+  <script src="/assets/js/apartmentStatus.js?v=144"></script>
+  <script src="/assets/js/statusFilterGroups.js?v=144"></script>
+  <script src="/assets/js/listingStar.js?v=144"></script>
+  <script src="/assets/js/shortlistSort.js?v=144"></script>
+  <script src="/assets/js/apartmentSearchHaystack.js?v=144"></script>
+  <script src="/assets/js/apartmentSavePayload.js?v=144"></script>
+  <script src="/assets/js/nyhomeUiFeedback.js?v=144"></script>
+  <script src="/assets/js/saveApartmentWorkflow.js?v=144"></script>
+  <script src="/assets/js/api.js?v=144"></script>
+  <script src="/assets/js/app.js?v=144"></script>
   <script>
     (function () {
       var h = location.hostname;

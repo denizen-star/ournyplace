@@ -246,6 +246,7 @@
     initNextActionsPrefs();
     applyMobileNextActionsDefaults();
     initMobileSortCollapse();
+    bindShortlistHeroSearch();
     /** First paint waits for `/api/apartments`: no synchronous `render(cached)` — avoids stale counts/cards flash. Offline: `getApartments()` resolves with last cached payload from api.js fallback. */
     if (summaryEl) {
       summaryEl.innerHTML = '';
@@ -2175,6 +2176,158 @@
     }
   }
 
+  /** Matches admin hero search breadth; shared haystack builder in apartmentSearchHaystack.js */
+  var SHORTLIST_SEARCH_SUGGEST_LIMIT = 12;
+  var shortlistSearchSuggestBlurTimeout = null;
+
+  function shortlistApartmentSearchHaystack(apartment) {
+    return NyhomeApartmentSearch.haystackForApartment(apartment, formatStatusLabel, formatListingChipLabel);
+  }
+
+  function getShortlistSearchQuery() {
+    var el = document.getElementById('shortlist-apartment-search');
+    if (!el) return '';
+    return String(el.value || '').trim().toLowerCase();
+  }
+
+  function apartmentMatchesShortlistSearch(a) {
+    var q = getShortlistSearchQuery();
+    if (!q) return true;
+    return shortlistApartmentSearchHaystack(a).indexOf(q) !== -1;
+  }
+
+  function syncShortlistSearchClearVisibility() {
+    var input = document.getElementById('shortlist-apartment-search');
+    var clear = document.getElementById('shortlist-apartment-search-clear');
+    if (!input || !clear) return;
+    var has = String(input.value || '').trim().length > 0;
+    clear.hidden = !has;
+    clear.setAttribute('aria-hidden', has ? 'false' : 'true');
+  }
+
+  function setShortlistSearchListboxExpanded(isOpen) {
+    var el = document.getElementById('shortlist-apartment-search');
+    if (el) {
+      el.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    }
+  }
+
+  function hideShortlistSearchSuggestions() {
+    var box = document.getElementById('shortlist-apartment-search-suggestions');
+    if (box) {
+      box.hidden = true;
+      box.innerHTML = '';
+    }
+    setShortlistSearchListboxExpanded(false);
+  }
+
+  function renderShortlistSearchSuggestions() {
+    var box = document.getElementById('shortlist-apartment-search-suggestions');
+    if (!box) return;
+    var q = getShortlistSearchQuery();
+    if (!q) {
+      hideShortlistSearchSuggestions();
+      return;
+    }
+    if (!allApartments.length) {
+      hideShortlistSearchSuggestions();
+      return;
+    }
+    var matches = allApartments.filter(function (a) {
+      return shortlistApartmentSearchHaystack(a).indexOf(q) !== -1;
+    });
+    var list = matches.slice(0, SHORTLIST_SEARCH_SUGGEST_LIMIT);
+    if (list.length) {
+      box.innerHTML = list.map(function (a) {
+        var sub = [a.neighborhood, a.address].filter(Boolean).join(' · ');
+        var titleText = (a.title != null && String(a.title).trim() !== '' ? String(a.title) : 'Untitled apartment');
+        return (
+          '<button type="button" class="shortlist-header-search-suggestion" role="option" data-apartment-id="' +
+          String(escapeAttr(String(a.id))) +
+          '">' +
+          '<span class="shortlist-header-search-suggestion-title">' +
+          escapeHtml(titleText) +
+          '</span>' +
+          (sub ? '<span class="shortlist-header-search-suggestion-sub">' + escapeHtml(sub) + '</span>' : '') +
+          '</button>'
+        );
+      }).join('');
+    } else {
+      box.innerHTML =
+        '<div class="shortlist-header-search-suggestions-empty" role="status">No names match your search</div>';
+    }
+    box.hidden = false;
+    setShortlistSearchListboxExpanded(true);
+  }
+
+  function bindShortlistHeroSearch() {
+    var input = document.getElementById('shortlist-apartment-search');
+    var clear = document.getElementById('shortlist-apartment-search-clear');
+    var box = document.getElementById('shortlist-apartment-search-suggestions');
+    if (!input) return;
+    if (box) {
+      box.addEventListener('mousedown', function (e) {
+        var btn = e.target.closest('.shortlist-header-search-suggestion');
+        if (!btn) return;
+        e.preventDefault();
+        var id = Number(btn.getAttribute('data-apartment-id'));
+        var a = allApartments.find(function (x) {
+          return Number(x.id) === id;
+        });
+        if (!a) return;
+        input.value = a.title != null && String(a.title).trim() !== '' ? String(a.title) : '';
+        syncShortlistSearchClearVisibility();
+        if (allApartments.length) applyFilters();
+        hideShortlistSearchSuggestions();
+        input.focus();
+      });
+    }
+    function clearShortlistBlurTimer() {
+      if (shortlistSearchSuggestBlurTimeout) {
+        clearTimeout(shortlistSearchSuggestBlurTimeout);
+        shortlistSearchSuggestBlurTimeout = null;
+      }
+    }
+    function scheduleHideShortlistSuggestions() {
+      clearShortlistBlurTimer();
+      shortlistSearchSuggestBlurTimeout = setTimeout(hideShortlistSearchSuggestions, 200);
+    }
+    input.addEventListener('input', function () {
+      clearShortlistBlurTimer();
+      syncShortlistSearchClearVisibility();
+      if (allApartments.length) applyFilters();
+      renderShortlistSearchSuggestions();
+    });
+    input.addEventListener('focus', function () {
+      clearShortlistBlurTimer();
+      renderShortlistSearchSuggestions();
+    });
+    input.addEventListener('blur', function (e) {
+      var t = e.relatedTarget;
+      if (box && t && box.contains(t)) {
+        return;
+      }
+      clearShortlistBlurTimer();
+      scheduleHideShortlistSuggestions();
+    });
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        hideShortlistSearchSuggestions();
+      }
+    });
+    if (clear) {
+      clear.addEventListener('click', function () {
+        input.value = '';
+        syncShortlistSearchClearVisibility();
+        if (allApartments.length) applyFilters();
+        hideShortlistSearchSuggestions();
+        input.focus();
+      });
+    }
+    syncShortlistSearchClearVisibility();
+    hideShortlistSearchSuggestions();
+  }
+
   function applyFilters() {
     var visible;
     if (activeFilters.size === 0) {
@@ -2197,6 +2350,8 @@
     if (viewMode === 'next-actions') {
       visible = visible.filter(passesNextActionsOmitFilters);
     }
+
+    visible = visible.filter(apartmentMatchesShortlistSearch);
 
     listEl.classList.toggle('card-list--finalist', viewMode === 'finalist');
     listEl.classList.toggle('card-list--next-actions', viewMode === 'next-actions');
