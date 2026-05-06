@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 1.6.0 - 2026-05-06
+
+### Added
+- **Rejection (“bummer”) email** — **`POST`/`PUT` `/api/apartments`**: when status **enters** **`rejected`** (`previousStatus !== 'rejected'`), **`sendRejectionEmail`** → **`NYHOME_EMAIL_TO`** (same SMTP as digest). HTML **`lib/rejectionEmail.js`** (subject `{title} bummer`; shortlist + details links; listing **notes** + visit **scheduling_notes** / **toured_notes** + compact **toured_data** summary — keep **`TOURED_SECTIONS`** in sync with **`assets/js/toured.js`** **SECTIONS**). **Create** with **`rejected`** → bummer only (no listing-added email).
+
+### Internal
+- **`lib/apartmentRepository.js`** — **`saveApartment`** return value (**`previousStatus`** / **`newStatus`**) for handler; **`lib/listingAddedMailer.js`** — **`sendRejectionEmail`**; **`.env.example`**, **`CLAUDE.md`** (**`saveApartment`** return doc), **`README.md`** (SMTP recipients blurb).
+
 ## 1.5.0 - 2026-05-05
 
 ### Added

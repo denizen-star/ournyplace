@@ -23,6 +23,8 @@ APP_NAME=nyhome
 
 Copy **`.env.example`** → **`.env.local`** for local dev. Placeholders use **`example.invalid`** addresses so committed text does not match **Netlify secrets** you set in the dashboard (build fails if a “secret” env value appears in repo files). On Netlify, set **`DATABASE_URL`** (and SMTP / **`NYHOME_*`**) for **Functions** scope, not build-only.
 
+With SMTP + **`NYHOME_EMAIL_TO`** set, **`NYHOME_EMAIL_TO`** receives (per **`.env.example`**): pipeline digest send, new-listing create mail, scoring-complete mail, and **`rejected`**-transition **bummer** mail.
+
 There is intentionally no auth while this is local-only. Add a password gate before public deployment.
 
 ## What It Does
