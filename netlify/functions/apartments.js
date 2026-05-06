@@ -1,7 +1,7 @@
 const { getApartmentPayload, getApartmentById, saveApartment, deleteApartment } = require('../../lib/apartmentRepository');
 const { normalizeStatus } = require('../../lib/apartmentStatus');
 const { json, parseBody, toCents, numberOrNull, stringOrNull, deleteRequestId } = require('../../lib/http');
-const { sendListingAddedEmail } = require('../../lib/listingAddedMailer');
+const { sendListingAddedEmail, sendRejectionEmail } = require('../../lib/listingAddedMailer');
 
 exports.handler = async (event) => {
   try {
@@ -29,7 +29,7 @@ exports.handler = async (event) => {
 
       const ignoreBlacklist = Boolean(body.ignoreBlacklist);
 
-      const id = await saveApartment({
+      const saveResult = await saveApartment({
         id: numberOrNull(body.id),
         address,
         aptNumber: stringOrNull(body.aptNumber),
@@ -62,8 +62,18 @@ exports.handler = async (event) => {
         touredData: body.touredData != null && typeof body.touredData === 'object' ? body.touredData : null,
         ignoreBlacklist,
       });
+      const id = saveResult.id;
       const incomingId = numberOrNull(body.id);
-      if (event.httpMethod === 'POST' && (!incomingId || incomingId <= 0)) {
+      const enteredRejected =
+        saveResult.newStatus === 'rejected' && saveResult.previousStatus !== 'rejected';
+      if (enteredRejected) {
+        sendRejectionEmail(id).catch((e) => console.error('[apartments] rejection email', e));
+      }
+      if (
+        event.httpMethod === 'POST' &&
+        (!incomingId || incomingId <= 0) &&
+        saveResult.newStatus !== 'rejected'
+      ) {
         sendListingAddedEmail(id).catch((e) => console.error('[apartments] listing-added email', e));
       }
       return json(200, { success: true, id });
