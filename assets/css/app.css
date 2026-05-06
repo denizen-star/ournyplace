@@ -2505,6 +2505,48 @@ body.shortlist .link-button--no-listing {
   justify-self: stretch;
   gap: var(--detail-vote-score-gap) !important;
   grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  isolation: isolate;
+}
+
+/*
+  Mobile details = same condition as details.js isDetailsMobile(): #detail-root gets
+  .nyhome-details-mobile-layout. Label row, then full-width N/A..5 (never one crowded line).
+*/
+body.details-page #detail-root.nyhome-details-mobile-layout .detail-images-tab-layout {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+body.details-page #detail-root.nyhome-details-mobile-layout .detail-images-tab-layout .detail-images-gallery {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 100%;
+}
+
+body.details-page #detail-root.nyhome-details-mobile-layout .detail-vote-line {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 10px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+body.details-page #detail-root.nyhome-details-mobile-layout .detail-vote-left {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+body.details-page #detail-root.nyhome-details-mobile-layout .detail-vote-label {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  line-height: 1.35;
+}
+
+body.details-page #detail-root.nyhome-details-mobile-layout .detail-vote-scores {
+  width: 100% !important;
+  min-width: 0 !important;
 }
 
 /* In table layout the list frame carries the 1px partner accent; rows use neutral dividers only */

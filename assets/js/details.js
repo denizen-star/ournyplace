@@ -106,6 +106,7 @@
   function load(activeTab) {
     var id = new URLSearchParams(window.location.search).get('id');
     if (!id) {
+      rootEl.classList.remove('nyhome-details-mobile-layout');
       rootEl.innerHTML = '<div class="empty-state">No apartment selected.</div>';
       return;
     }
@@ -136,6 +137,7 @@
         });
 
         if (!apartment) {
+          rootEl.classList.remove('nyhome-details-mobile-layout');
           rootEl.innerHTML = '<div class="empty-state">Apartment not found.</div>';
           return null;
         }
@@ -168,6 +170,7 @@
           render(tabFallback);
           return;
         }
+        rootEl.classList.remove('nyhome-details-mobile-layout');
         rootEl.innerHTML = '<div class="empty-state">Could not load apartment details yet.</div>';
       });
   }
@@ -178,10 +181,12 @@
     var tab = activeTab != null ? activeTab : (getTabFromUrl() || 'scorecard');
     syncDetailVibeSlotsFromApartment(apartment);
     if (isDetailsMobile()) {
+      rootEl.classList.add('nyhome-details-mobile-layout');
       rootEl.innerHTML = renderMobileDetailPage(apartment, tab);
       bindMobileDetailPage();
       return;
     }
+    rootEl.classList.remove('nyhome-details-mobile-layout');
     rootEl.innerHTML =
       renderSummaryHeader(apartment) +
       '<div class="summary-tabs-container">' +
