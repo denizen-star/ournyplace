@@ -75,6 +75,7 @@
     bindBlacklistForm();
     bindBlacklistPasteHelper();
     bindPipelineDigestSettings();
+    bindCompactVotingSettings();
     load();
   }
 
@@ -206,8 +207,57 @@
           fetchAndRenderAnalytics();
         } else if (tab === 'activity-log' && !state.adminActivityFetched) {
           fetchAndRenderActivity();
+        } else if (tab === 'settings') {
+          refreshCompactVotingFromServer();
         }
       });
+    });
+  }
+
+  function refreshCompactVotingFromServer() {
+    var el = document.getElementById('nyhome-compact-voting');
+    var statusEl = document.getElementById('nyhome-compact-voting-status');
+    if (!el) return;
+    NyhomeAPI.getAppSettings()
+      .then(function (d) {
+        el.checked = d && d.compactVoting === true;
+      })
+      .catch(function (err) {
+        console.error('[nyhome-admin] getAppSettings', err);
+        if (statusEl) {
+          statusEl.textContent = 'Could not load compact scoring setting. Check API / Netlify Functions.';
+        }
+      });
+  }
+
+  function bindCompactVotingSettings() {
+    var el = document.getElementById('nyhome-compact-voting');
+    var statusEl = document.getElementById('nyhome-compact-voting-status');
+    if (!el) return;
+    el.addEventListener('change', function () {
+      var on = el.checked;
+      el.disabled = true;
+      if (statusEl) statusEl.textContent = 'Saving…';
+      NyhomeAPI.saveAppSettings({ compactVoting: on })
+        .then(function () {
+          if (statusEl) {
+            statusEl.textContent = on
+              ? 'Compact scoring on: Avg and emails use each partner’s primary six only.'
+              : 'Full scorecard: all criteria count toward Avg and completeness.';
+          }
+          return NyhomeAPI.getApartments();
+        })
+        .then(function () {
+          load();
+        })
+        .catch(function (err) {
+          console.error('[nyhome-admin] compact voting', err);
+          if (statusEl) statusEl.textContent = err.message || 'Could not save setting.';
+          refreshCompactVotingFromServer();
+        })
+        .then(function () {
+          el.disabled = false;
+        });
     });
   }
 

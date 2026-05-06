@@ -43,6 +43,35 @@ var NyhomeAPI = (function () {
     } catch (e) {}
   }
 
+  /**
+   * Patch one listing row inside `nyhome-apartments-cache` (ratings, scores, scores-complete flag).
+   * Keeps bulk list + shortlist in sync after `/details` refetch or a successful vote POST.
+   */
+  function mergeApartmentIntoCache(apartment) {
+    if (!apartment || apartment.id == null) return;
+    try {
+      var raw = localStorage.getItem(APARTMENTS_CACHE_KEY);
+      if (!raw) return;
+      var data = JSON.parse(raw);
+      var list = data.apartments || [];
+      var idStr = String(apartment.id);
+      for (var i = 0; i < list.length; i++) {
+        if (String(list[i].id) !== idStr) continue;
+        if (apartment.ratings != null) {
+          list[i].ratings = JSON.parse(JSON.stringify(apartment.ratings));
+        }
+        if (apartment.scores != null) {
+          list[i].scores = JSON.parse(JSON.stringify(apartment.scores));
+        }
+        if (Object.prototype.hasOwnProperty.call(apartment, 'listing_scores_complete_email_sent')) {
+          list[i].listing_scores_complete_email_sent = apartment.listing_scores_complete_email_sent;
+        }
+        localStorage.setItem(APARTMENTS_CACHE_KEY, JSON.stringify(data));
+        return;
+      }
+    } catch (e) {}
+  }
+
   function getApartments() {
     return _get('/api/apartments').then(function (data) {
       try { localStorage.setItem(APARTMENTS_CACHE_KEY, JSON.stringify(data)); } catch (e) {}
@@ -52,7 +81,7 @@ var NyhomeAPI = (function () {
         var cached = localStorage.getItem(APARTMENTS_CACHE_KEY);
         if (cached) return JSON.parse(cached);
       } catch (e) {}
-      return { apartments: [], criteria: [] };
+      return { apartments: [], criteria: [], compactVoting: false };
     });
   }
 
@@ -152,9 +181,18 @@ var NyhomeAPI = (function () {
     return _get(url);
   }
 
+  function getAppSettings() {
+    return _get('/api/app-settings');
+  }
+
+  function saveAppSettings(payload) {
+    return _send('/api/app-settings', 'PUT', payload || {});
+  }
+
   return {
     getApartmentsCache: getApartmentsCache,
     setApartmentsCache: setApartmentsCache,
+    mergeApartmentIntoCache: mergeApartmentIntoCache,
     getApartments: getApartments,
     getApartment: getApartment,
     saveApartment: saveApartment,
@@ -166,6 +204,8 @@ var NyhomeAPI = (function () {
     sendPipelineDigestEmail: sendPipelineDigestEmail,
     sendListingScoresEmail: sendListingScoresEmail,
     getAdminAnalytics: getAdminAnalytics,
+    getAppSettings: getAppSettings,
+    saveAppSettings: saveAppSettings,
     saveCriterion: saveCriterion,
     updateCriterion: updateCriterion,
     reorderCriteria: reorderCriteria,

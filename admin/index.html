@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400&display=swap">
-  <link rel="stylesheet" href="/assets/css/app.css?v=144">
+  <link rel="stylesheet" href="/assets/css/app.css?v=147">
 </head>
 <body>
   <header class="app-header app-header--admin">
@@ -138,6 +138,17 @@
           <button type="button" class="primary-btn" id="nyhome-send-pipeline-digest">Send digest now</button>
         </div>
         <p id="nyhome-digest-status" class="form-hint" role="status" aria-live="polite"></p>
+      </section>
+      <section class="content-section admin-form-card">
+        <div class="section-header">
+          <h2 class="section-title">Scoring</h2>
+        </div>
+        <p class="form-hint muted">Compact mode shows each partner’s <strong>primary six</strong> on <code>/details</code>; other criteria stay in a folded “optional” block. Averages, shortlist scores, and the scoring-complete email only use primary rows (per partner).</p>
+        <label class="nyhome-compact-voting-label">
+          <input type="checkbox" id="nyhome-compact-voting" />
+          Compact scoring (primary six per partner)
+        </label>
+        <p id="nyhome-compact-voting-status" class="form-hint" role="status" aria-live="polite"></p>
       </section>
     </section>
 
@@ -551,18 +562,18 @@
     </div>
   </dialog>
 
-  <script src="/assets/js/apartmentStatus.js?v=144"></script>
-  <script src="/assets/js/listingTextParse.js?v=144"></script>
-  <script src="/assets/js/listingStar.js?v=144"></script>
-  <script src="/assets/js/shortlistSort.js?v=144"></script>
-  <script src="/assets/js/apartmentSearchHaystack.js?v=144"></script>
-  <script src="/assets/js/apartmentSavePayload.js?v=144"></script>
-  <script src="/assets/js/nyhomeUiFeedback.js?v=144"></script>
-  <script src="/assets/js/saveApartmentWorkflow.js?v=144"></script>
-  <script src="/assets/js/api.js?v=144"></script>
-  <script src="/assets/js/vibeImages.js?v=144"></script>
+  <script src="/assets/js/apartmentStatus.js?v=147"></script>
+  <script src="/assets/js/listingTextParse.js?v=147"></script>
+  <script src="/assets/js/listingStar.js?v=147"></script>
+  <script src="/assets/js/shortlistSort.js?v=147"></script>
+  <script src="/assets/js/apartmentSearchHaystack.js?v=147"></script>
+  <script src="/assets/js/apartmentSavePayload.js?v=147"></script>
+  <script src="/assets/js/nyhomeUiFeedback.js?v=147"></script>
+  <script src="/assets/js/saveApartmentWorkflow.js?v=147"></script>
+  <script src="/assets/js/api.js?v=147"></script>
+  <script src="/assets/js/vibeImages.js?v=147"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <script src="/assets/js/admin.js?v=144"></script>
+  <script src="/assets/js/admin.js?v=147"></script>
   <script>
     (function () {
       var h = location.hostname;

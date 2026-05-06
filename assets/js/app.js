@@ -81,6 +81,66 @@
   /** If non-empty, only listings whose trimmed neighborhood is in the set. */
   var hoodFilter = new Set();
   var allApartments = [];
+  /** `id` (string) → `{ rank, total, beatPct, avg }` for combined (Avg) vs all scored rows in the loaded apartment list. */
+  var combinedPortfolioStats = Object.create(null);
+
+  function buildCombinedPortfolioStats(apartments) {
+    var map = Object.create(null);
+    var rows = [];
+    (apartments || []).forEach(function (a) {
+      if (a.id == null) return;
+      var v = a.scores && a.scores.combined;
+      var n = Number(v);
+      if (v == null || isNaN(n)) return;
+      rows.push({ id: String(a.id), avg: n });
+    });
+    var total = rows.length;
+    if (!total) return map;
+    rows.sort(function (x, y) {
+      return y.avg - x.avg;
+    });
+    var i = 0;
+    while (i < total) {
+      var avgBand = rows[i].avg;
+      var j = i;
+      while (j < total && rows[j].avg === avgBand) j++;
+      var rank = i + 1;
+      var k;
+      for (k = i; k < j; k++) {
+        var beatCount = 0;
+        var t;
+        for (t = 0; t < total; t++) {
+          if (rows[t].avg < rows[k].avg) beatCount++;
+        }
+        var beatPct = total > 1 ? Math.round((100 * beatCount) / (total - 1)) : 100;
+        map[rows[k].id] = { rank: rank, total: total, beatPct: beatPct, avg: rows[k].avg };
+      }
+      i = j;
+    }
+    return map;
+  }
+
+  function combinedAvgTitleText(value, apartmentId) {
+    var id = apartmentId != null ? String(apartmentId) : '';
+    var st = id ? combinedPortfolioStats[id] : null;
+    var hasVal = value != null && !isNaN(Number(value));
+    var t = hasVal ? 'Combined (Avg) score ' + Math.round(Number(value)) + '%.' : 'No combined score.';
+    if (st && st.total > 1) {
+      t += ' Rank #' + st.rank + ' of ' + st.total + ' scored listings; ahead of ' + st.beatPct + '% of the others.';
+    } else if (st && st.total === 1) {
+      t += ' Only scored listing in the loaded set.';
+    }
+    return t;
+  }
+
+  /** Plaintext line for Average (combined) chip, banner, and table vs raw “N%”. */
+  function combinedAvgPortfolioLine(value, apartmentId) {
+    if (value == null || isNaN(Number(value))) return '—';
+    var id = apartmentId != null ? String(apartmentId) : '';
+    var st = id ? combinedPortfolioStats[id] : null;
+    if (!st || st.total <= 1) return Math.round(Number(value)) + '%';
+    return 'Beats ' + st.beatPct + '%';
+  }
   var sortMode = 'workflow';
   var viewMode = 'cards';
   var finalistFlyoutEl = null;
@@ -609,17 +669,21 @@
   }
 
   /** Inline on calendar banner after status: Avg | Kerv | Peter (pipe-separated). */
-  function nextActionsBannerScoresInlineHtml(scores) {
+  function nextActionsBannerScoresInlineHtml(scores, apartmentId) {
     var s = scores || {};
     function pct(key) {
       var v = s[key];
       if (v == null || isNaN(Number(v))) return placeholderDash();
       return Math.round(Number(v)) + '%';
     }
+    var avgLine = escapeHtml(combinedAvgPortfolioLine(s.combined, apartmentId));
+    var avgTitle = escapeAttr(combinedAvgTitleText(s.combined, apartmentId));
     return (
       '<span class="shortlist-na-banner-scores" aria-label="Listing scores">' +
-      '<span class="shortlist-na-banner-score shortlist-na-banner-score--avg">Avg: <span class="shortlist-na-banner-score-val">' +
-      escapeHtml(pct('combined')) +
+      '<span class="shortlist-na-banner-score shortlist-na-banner-score--avg">Avg: <span class="shortlist-na-banner-score-val" title="' +
+      avgTitle +
+      '">' +
+      avgLine +
       '</span></span>' +
       '<span class="shortlist-na-meta-sep" aria-hidden="true">|</span>' +
       '<span class="shortlist-na-banner-score shortlist-na-banner-score--kerv">Kerv: <span class="shortlist-na-banner-score-val">' +
@@ -1489,7 +1553,11 @@
       '</div>' +
       '<div class="finalist-mobile-expanded-scores">' +
       '<div class="finalist-mobile-score finalist-mobile-score--avg"><span class="finalist-mobile-score-label">Avg</span>' +
-      '<span class="finalist-mobile-score-val">' + escapeHtml(pct(s.combined)) + '</span></div>' +
+      '<span class="finalist-mobile-score-val" title="' +
+      escapeAttr(combinedAvgTitleText(s.combined, apartment.id)) +
+      '">' +
+      escapeHtml(combinedAvgPortfolioLine(s.combined, apartment.id)) +
+      '</span></div>' +
       '<div class="finalist-mobile-score finalist-mobile-score--kerv"><span class="finalist-mobile-score-label">Kerv</span>' +
       '<span class="finalist-mobile-score-val">' + escapeHtml(pct(s.kerv)) + '</span></div>' +
       '<div class="finalist-mobile-score finalist-mobile-score--peter"><span class="finalist-mobile-score-label">Peter</span>' +
@@ -1823,10 +1891,61 @@
     var pct = formatScorePctForLine(value);
     var empty = value == null || isNaN(Number(value));
     var cls = 'shortlist-finalist-c shortlist-finalist-c--score shortlist-finalist-c--right';
-    var colAttr = scoreKey === 'combined' ? '' : ' data-finalist-col="' + escapeAttr(scoreKey) + '"';
+    var colAttr = ' data-finalist-col="' + escapeAttr(scoreKey) + '"';
     var inner = '<span class="shortlist-finalist-pct shortlist-finalist-pct--' + escapeAttr(scoreKey) +
       (empty ? ' shortlist-finalist-pct--empty' : '') + '">' + escapeHtml(pct) + '</span>';
     return '<span class="' + cls + '"' + colAttr + '>' + inner + '</span>';
+  }
+
+  /** Table cell for combined (Avg): portfolio “Beats N%” when enough listings exist. */
+  function finalistCombinedSpan(apartment) {
+    var value = apartment.scores && apartment.scores.combined;
+    var id = apartment.id;
+    var cls = 'shortlist-finalist-c shortlist-finalist-c--score shortlist-finalist-c--right';
+    var empty = value == null || isNaN(Number(value));
+    if (empty) {
+      return (
+        '<span class="' +
+        cls +
+        '"><span class="shortlist-finalist-pct shortlist-finalist-pct--combined shortlist-finalist-pct--empty">' +
+        escapeHtml(formatScorePctForLine(null)) +
+        '</span></span>'
+      );
+    }
+    var idStr = id != null ? String(id) : '';
+    var st = idStr ? combinedPortfolioStats[idStr] : null;
+    var title = escapeAttr(combinedAvgTitleText(value, id));
+    if (st && st.total > 1) {
+      return (
+        '<span class="' +
+        cls +
+        '" title="' +
+        title +
+        '"><span class="shortlist-finalist-portfolio-stack">' +
+        '<span class="shortlist-finalist-pct-main">Beats ' +
+        st.beatPct +
+        '%</span>' +
+        '<span class="shortlist-finalist-pct-sub">#' +
+        st.rank +
+        '/' +
+        st.total +
+        '</span></span></span>'
+      );
+    }
+    var pct = Math.round(Number(value)) + '%';
+    var sub = st && st.total === 1 ? '<span class="shortlist-finalist-pct-sub">solo</span>' : '';
+    return (
+      '<span class="' +
+      cls +
+      '" title="' +
+      title +
+      '"><span class="shortlist-finalist-portfolio-stack">' +
+      '<span class="shortlist-finalist-pct-main">' +
+      escapeHtml(pct) +
+      '</span>' +
+      sub +
+      '</span></span>'
+    );
   }
 
   /** One grid cell: external site. Not inside the row-to-details link(s). Column sits before Avg. */
@@ -1886,7 +2005,7 @@
     var status = NyhomeStatus.normalizeStatus(apartment.status || 'new');
     var label = formatStatusLabel(status);
     return (
-      finalistScoreSpan('combined', s.combined) +
+      finalistCombinedSpan(apartment) +
       finalistScoreSpan('kerv', s.kerv) +
       finalistScoreSpan('peter', s.peter) +
       '<span class="shortlist-finalist-c shortlist-finalist-c--status" data-finalist-col="status">' +
@@ -1897,6 +2016,7 @@
 
   function render(data) {
     allApartments = data.apartments || [];
+    combinedPortfolioStats = buildCombinedPortfolioStats(allApartments);
     pruneHoodFilter();
     renderSummary(allApartments);
     renderFilterBar(allApartments);
@@ -2390,7 +2510,7 @@
       '<div class="shortlist-finalist-c shortlist-finalist-c--h shortlist-finalist-c--right shortlist-finalist-c--h-move" data-finalist-col="move" title="Total move-in amount">Move-in</div>' +
       '<div class="shortlist-finalist-c shortlist-finalist-c--h" data-finalist-col="bed">Beds / baths</div>' +
       '<div class="shortlist-finalist-c shortlist-finalist-c--h shortlist-finalist-c--h-ext" data-finalist-col="ext">URL</div>' +
-      '<div class="shortlist-finalist-c shortlist-finalist-c--h shortlist-finalist-c--right">Avg</div>' +
+      '<div class="shortlist-finalist-c shortlist-finalist-c--h shortlist-finalist-c--right" title="Combined (Avg) vs all scored listings in your data">Avg</div>' +
       '<div class="shortlist-finalist-c shortlist-finalist-c--h shortlist-finalist-c--right" data-finalist-col="kerv">Kerv</div>' +
       '<div class="shortlist-finalist-c shortlist-finalist-c--h shortlist-finalist-c--right" data-finalist-col="peter">Peter</div>' +
       '<div class="shortlist-finalist-c shortlist-finalist-c--h" data-finalist-col="status">Status</div>';
@@ -2569,7 +2689,7 @@
       escapeHtml(statusLabel) +
       '</span>' +
       naCalendarMetaSep() +
-      nextActionsBannerScoresInlineHtml(apartment.scores) +
+      nextActionsBannerScoresInlineHtml(apartment.scores, apartment.id) +
       naCalendarMetaSep() +
       '<span class="shortlist-na-banner-actions">' +
       nextActionsAdvanceRejectHtml(apartment, { sepBeforeReject: true }) +
@@ -2829,7 +2949,7 @@
             '">' +
             escapeHtml(statusLabel) +
             '</span>' +
-            scoreChip(apartment.scores && apartment.scores.combined) +
+            scoreChip(apartment) +
           '</div>' +
         '</div>' +
         '<div class="card-status-container">' +
@@ -2843,12 +2963,44 @@
     return article;
   }
 
-  function scoreChip(value) {
-    if (value == null) {
+  function scoreChip(apartment) {
+    var value = apartment.scores && apartment.scores.combined;
+    var id = apartment.id;
+    if (value == null || isNaN(Number(value))) {
       return '<span class="pill score-chip score-chip--empty">Score -</span>';
     }
-
-    return '<span class="pill score-chip score-chip--combined">' + Math.round(value) + '%</span>';
+    var title = escapeAttr(combinedAvgTitleText(value, id));
+    var idStr = id != null ? String(id) : '';
+    var st = idStr ? combinedPortfolioStats[idStr] : null;
+    if (st && st.total > 1) {
+      return (
+        '<span class="pill score-chip score-chip--combined" title="' +
+        title +
+        '"><span class="score-chip-portfolio-wrap">' +
+        '<span class="score-chip-portfolio-main">Beats ' +
+        st.beatPct +
+        '%</span>' +
+        '<span class="score-chip-portfolio-sub">#' +
+        st.rank +
+        '/' +
+        st.total +
+        '</span></span></span>'
+      );
+    }
+    var pct = Math.round(Number(value)) + '%';
+    var inner =
+      st && st.total === 1
+        ? '<span class="score-chip-portfolio-main">' +
+          escapeHtml(pct) +
+          '</span><span class="score-chip-portfolio-sub">solo</span>'
+        : '<span class="score-chip-portfolio-main">' + escapeHtml(pct) + '</span>';
+    return (
+      '<span class="pill score-chip score-chip--combined" title="' +
+      title +
+      '"><span class="score-chip-portfolio-wrap">' +
+      inner +
+      '</span></span>'
+    );
   }
 
   function formatStatusLabel(status) {

@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+## 1.7.0 - 2026-05-06
+
+### Added
+- **Compact scoring** — Admin **Settings** checkbox; **`nyp_app_settings.compact_voting`**; **`GET`/`PUT /api/app-settings`**. **`lib/criteriaCompact.js`** + **`assets/js/criteriaCompact.js`** (keep label lists in sync). When on: **Peter**/**Kerv** on **`/details`** show **primary six** first, rest in folded optional block; server **Avg**, shortlist **`scores`**, **`isBothPartnersVotingComplete`**, **`POST /api/listing-scores-email`** use primaries only.
+- **Shortlist portfolio context** — Combined **Avg** on Cards, Finalist row, Next actions banner: **Beats N%** (+ rank tooltip) vs other scored listings when **≥2** in loaded set (`buildCombinedPortfolioStats` in **`app.js`**).
+
+### Changed
+- **`POST /api/ratings`** — After save, reload apartment; **`200`** usually includes **`ratings`** + **`scores`** for **`/details`** + **`NyhomeAPI.mergeApartmentIntoCache`** (stale header/cache after votes).
+- **`sw.js`** **`CACHE_VERSION`** + HTML **`?v=`** → **147** (**`details`/`admin`** shells, **`api.js`**/**`app.js`**, CSS).
+
+### Fixed
+- **Voting UX trust** — Details summary aligns to server **`scores`** from ratings response + cache overlay after **`GET ?id=`**.
+
+### Internal
+- **`npm run migrate`** — **`nyp_app_settings`**; **`CLAUDE.md`**, **`README.md`**, **`instructions/index.html`**.
+
 ## 1.6.0 - 2026-05-06
 
 ### Added

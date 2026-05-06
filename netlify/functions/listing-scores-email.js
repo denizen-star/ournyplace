@@ -26,7 +26,7 @@ exports.handler = async (event) => {
     return json(400, {
       error:
         result.reason === 'incomplete'
-          ? 'Both partners must score every criterion (no N/A) before sending.'
+          ? 'Both partners must score every required criterion (no N/A) before sending.'
           : 'Email not configured (set NYHOME_SMTP_* and NYHOME_EMAIL_TO) or send failed.',
       code: result.reason === 'incomplete' ? 'INCOMPLETE_SCORES' : 'EMAIL_SKIPPED',
     });

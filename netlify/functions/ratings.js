@@ -44,11 +44,17 @@ exports.handler = async (event) => {
     });
 
     const out = { success: true };
-    if (voteChanged) {
-      try {
-        const data = await getApartmentById(apartmentId);
-        if (data) {
-          const complete = isBothPartnersVotingComplete(data.criteria, data.apartment.ratings);
+    try {
+      const data = await getApartmentById(apartmentId);
+      if (data) {
+        out.ratings = data.apartment.ratings;
+        out.scores = data.apartment.scores;
+        if (voteChanged) {
+          const complete = isBothPartnersVotingComplete(
+            data.criteria,
+            data.apartment.ratings,
+            Boolean(data.compactVoting)
+          );
           if (!complete) {
             await setListingScoresCompleteEmailSent(apartmentId, false);
           } else {
@@ -60,9 +66,9 @@ exports.handler = async (event) => {
             }
           }
         }
-      } catch (e) {
-        console.error('[ratings] scores-complete email', e);
       }
+    } catch (e) {
+      console.error('[ratings] refresh apartment after vote', e);
     }
     return json(200, out);
   } catch (err) {

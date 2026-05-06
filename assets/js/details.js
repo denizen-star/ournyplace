@@ -1,6 +1,13 @@
 (function () {
   var rootEl = document.getElementById('detail-root');
-  var state = { apartment: null, criteria: [], neighborhoods: [], detailVibeSlots: ['', '', ''], detailVibeActiveSlot: 0 };
+  var state = {
+    apartment: null,
+    criteria: [],
+    neighborhoods: [],
+    compactVoting: false,
+    detailVibeSlots: ['', '', ''],
+    detailVibeActiveSlot: 0,
+  };
 
   document.addEventListener('DOMContentLoaded', boot);
 
@@ -32,6 +39,26 @@
 
   /** `04-details.html` Nav Option B — accordion (≤720px, matches shortlist mobile shell). */
   var MOBILE_DETAIL_MAX = 720;
+  var compactModuleMissingLogged = false;
+
+  /** True when server compact mode should fold the scoring UI (`criteriaCompact.js` must be loaded). */
+  function detailScoringUxCompact() {
+    if (!state.compactVoting) return false;
+    if (
+      typeof NyhomeCriteriaCompact !== 'undefined' &&
+      NyhomeCriteriaCompact &&
+      typeof NyhomeCriteriaCompact.criteriaForPartnerScoring === 'function'
+    ) {
+      return true;
+    }
+    if (!compactModuleMissingLogged) {
+      compactModuleMissingLogged = true;
+      console.error(
+        '[nyhome-details] compactVoting is on but NyhomeCriteriaCompact is missing. Load criteriaCompact.js. Showing full lists; Avg comes from POST /api/ratings responses.'
+      );
+    }
+    return false;
+  }
 
   function isDetailsMobile() {
     return typeof window.matchMedia === 'function' && window.matchMedia('(max-width: ' + MOBILE_DETAIL_MAX + 'px)').matches;
@@ -94,6 +121,7 @@
           state.apartment = fromCache;
           state.criteria = cached.criteria || [];
           state.neighborhoods = cached.neighborhoods || [];
+          if (cached.compactVoting !== undefined) state.compactVoting = cached.compactVoting === true;
           render(tabForRender);
         }
       } catch (e) {
@@ -112,6 +140,7 @@
           return null;
         }
 
+        state.compactVoting = data.compactVoting === true;
         state.criteria = data.criteria || [];
         state.neighborhoods = data.neighborhoods || [];
         state.apartment = apartment;
@@ -123,6 +152,10 @@
           state.apartment = detail.apartment;
           if (detail.criteria && detail.criteria.length) state.criteria = detail.criteria;
           if (detail.neighborhoods && detail.neighborhoods.length) state.neighborhoods = detail.neighborhoods;
+          if (detail.compactVoting !== undefined) state.compactVoting = detail.compactVoting === true;
+        }
+        if (state.apartment && typeof NyhomeAPI.mergeApartmentIntoCache === 'function') {
+          NyhomeAPI.mergeApartmentIntoCache(state.apartment);
         }
         var tab = activeTab != null ? activeTab : (getTabFromUrl() || 'scorecard');
         syncDetailVibeSlotsFromApartment(state.apartment);
@@ -709,25 +742,80 @@
     '</section>';
   }
 
+  function votingScoreTableRowsHtml(apartment, critList) {
+    var r = apartment.ratings || {};
+    var rp = r.peter || {};
+    var rk = r.kerv || {};
+    return (critList || [])
+      .map(function (c) {
+        return (
+          '<tr data-criterion-id="' +
+          escapeAttr(String(c.id)) +
+          '"><th scope="row">' +
+          escapeHtml(c.label) +
+          '</th><td>' +
+          votingScoreCell(rp[c.id]) +
+          '</td><td>' +
+          votingScoreCell(rk[c.id]) +
+          '</td></tr>'
+        );
+      })
+      .join('');
+  }
+
   function renderVotingScoreTable(apartment) {
     if (!state.criteria.length) {
       return '<div class="detail-voting-table-wrap content-section"><p class="muted">Add criteria in Admin to start scoring.</p></div>';
     }
-    var r = apartment.ratings || {};
-    var rp = r.peter || {};
-    var rk = r.kerv || {};
-    var rows = state.criteria.map(function (c) {
-      return '<tr data-criterion-id="' + escapeAttr(String(c.id)) + '"><th scope="row">' + escapeHtml(c.label) + '</th><td>' + votingScoreCell(rp[c.id]) + '</td><td>' + votingScoreCell(rk[c.id]) + '</td></tr>';
-    }).join('');
-    return '<div class="detail-voting-table-wrap content-section">' +
-      '<div class="section-header"><h3 class="section-title">Per-criterion scores</h3></div>' +
-      '<div class="detail-voting-table-scroll">' +
+    var thead =
+      '<thead><tr><th scope="col">Criterion</th><th scope="col">Peter</th><th scope="col">Kerv</th></tr></thead>';
+    var compact = detailScoringUxCompact();
+    var hint = compact
+      ? '<p class="form-hint muted detail-vote-compact-hint">Compact mode: Avg uses each partner’s primary criteria only. Optional rows are folded below.</p>'
+      : '';
+    if (!compact) {
+      var rowsAll = votingScoreTableRowsHtml(apartment, state.criteria);
+      return (
+        '<div class="detail-voting-table-wrap content-section">' +
+        '<div class="section-header"><h3 class="section-title">Per-criterion scores</h3></div>' +
+        hint +
+        '<div class="detail-voting-table-scroll">' +
         '<table class="detail-voting-score-table">' +
-          '<thead><tr><th scope="col">Criterion</th><th scope="col">Peter</th><th scope="col">Kerv</th></tr></thead>' +
-          '<tbody>' + rows + '</tbody>' +
-        '</table>' +
-      '</div>' +
-    '</div>';
+        thead +
+        '<tbody>' +
+        rowsAll +
+        '</tbody></table></div></div>'
+      );
+    }
+    var primary = [];
+    var optional = [];
+    state.criteria.forEach(function (c) {
+      if (NyhomeCriteriaCompact.isPrimaryForAnyPartner(c)) primary.push(c);
+      else optional.push(c);
+    });
+    var rowsP = votingScoreTableRowsHtml(apartment, primary);
+    var optSection =
+      optional.length > 0
+        ? '<details class="detail-vote-optional-details"><summary class="detail-vote-optional-summary">More criteria (optional, not in Avg)</summary><div class="detail-voting-table-scroll">' +
+          '<table class="detail-voting-score-table">' +
+          thead +
+          '<tbody>' +
+          votingScoreTableRowsHtml(apartment, optional) +
+          '</tbody></table></div></details>'
+        : '';
+    return (
+      '<div class="detail-voting-table-wrap content-section">' +
+      '<div class="section-header"><h3 class="section-title">Per-criterion scores</h3></div>' +
+      hint +
+      '<div class="detail-voting-table-scroll">' +
+      '<table class="detail-voting-score-table">' +
+      thead +
+      '<tbody>' +
+      rowsP +
+      '</tbody></table></div>' +
+      optSection +
+      '</div>'
+    );
   }
 
   function votingScoreCell(v) {
@@ -1070,10 +1158,14 @@
 
   function calculateDetailScores(criteria, ratings) {
     var result = {};
+    var scoringCompact = detailScoringUxCompact();
     SCORE_PARTNERS.forEach(function (partner) {
       var weighted = 0;
       var includedWeight = 0;
-      (criteria || []).forEach(function (criterion) {
+      var critList = scoringCompact
+        ? NyhomeCriteriaCompact.criteriaForPartnerScoring(criteria, partner, true)
+        : criteria || [];
+      critList.forEach(function (criterion) {
         var raw = (ratings[partner] || {})[criterion.id];
         if (raw == null) return;
         var score = Number(raw);
@@ -1127,28 +1219,21 @@
     td.innerHTML = votingScoreCell(rawVal);
   }
 
-  function persistApartmentVoteToLocalCache(apartment) {
-    try {
-      var raw = localStorage.getItem('nyhome-apartments-cache');
-      if (!raw) return;
-      var data = JSON.parse(raw);
-      var list = data.apartments || [];
-      for (var i = 0; i < list.length; i++) {
-        if (String(list[i].id) === String(apartment.id)) {
-          list[i].ratings = JSON.parse(JSON.stringify(apartment.ratings || {}));
-          list[i].scores = JSON.parse(JSON.stringify(apartment.scores || {}));
-          localStorage.setItem('nyhome-apartments-cache', JSON.stringify(data));
-          return;
-        }
-      }
-    } catch (e) {}
-  }
-
-  function finalizeRatingSave(partnerKey, criterionId, score) {
-    applyVoteToApartmentState(state.apartment, partnerKey, criterionId, score);
+  function finalizeRatingSave(partnerKey, criterionId, score, res) {
+    if (res && res.ratings != null && res.scores != null && state.apartment) {
+      state.apartment.ratings = JSON.parse(JSON.stringify(res.ratings));
+      state.apartment.scores = JSON.parse(JSON.stringify(res.scores));
+    } else {
+      applyVoteToApartmentState(state.apartment, partnerKey, criterionId, score);
+    }
+    if (res && res.scoresCompleteEmailSent && state.apartment) {
+      state.apartment.listing_scores_complete_email_sent = 1;
+    }
     patchHeaderScoreGridFromState();
     patchVotingScoreTableCell(criterionId, partnerKey, score);
-    persistApartmentVoteToLocalCache(state.apartment);
+    if (typeof NyhomeAPI.mergeApartmentIntoCache === 'function') {
+      NyhomeAPI.mergeApartmentIntoCache(state.apartment);
+    }
   }
 
   function bindVoting() {
@@ -1187,10 +1272,7 @@
         pending[pendingKey] = true;
         NyhomeAPI.saveRating(payload)
           .then(function (res) {
-            finalizeRatingSave(partnerKey, criterionId, scoreVal);
-            if (res && res.scoresCompleteEmailSent && state.apartment) {
-              state.apartment.listing_scores_complete_email_sent = 1;
-            }
+            finalizeRatingSave(partnerKey, criterionId, scoreVal, res);
           })
           .catch(function (err) {
             console.error('[nyhome-details] save rating', err);
@@ -1290,13 +1372,56 @@
     if (!state.criteria.length) {
       return '<div class="empty-state">Add criteria in Admin to start scoring.</div>';
     }
-    return '<section class="content-section detail-vote-content">' +
+    var compact = detailScoringUxCompact();
+    var hint = compact
+      ? '<p class="form-hint muted detail-vote-compact-hint">Primary six for ' +
+        (partnerKey === 'peter' ? 'Peter' : 'Kerv') +
+        '. Optional criteria are folded; they do not affect Avg or scoring-complete email.</p>'
+      : '';
+    if (!compact) {
+      return (
+        '<section class="content-section detail-vote-content">' +
+        hint +
+        '<div class="compact-list detail-vote-list">' +
+        state.criteria
+          .map(function (criterion) {
+            return renderPartnerVoteRow(apartment, partnerKey, criterion);
+          })
+          .join('') +
+        '</div></section>'
+      );
+    }
+    var primary = [];
+    var optional = [];
+    state.criteria.forEach(function (criterion) {
+      if (NyhomeCriteriaCompact.isPrimaryCriterionForPartner(criterion, partnerKey)) primary.push(criterion);
+      else optional.push(criterion);
+    });
+    var primaryHtml = primary
+      .map(function (criterion) {
+        return renderPartnerVoteRow(apartment, partnerKey, criterion);
+      })
+      .join('');
+    var optHtml = optional
+      .map(function (criterion) {
+        return renderPartnerVoteRow(apartment, partnerKey, criterion);
+      })
+      .join('');
+    var detailsBlock =
+      optional.length > 0
+        ? '<details class="detail-vote-optional-details"><summary class="detail-vote-optional-summary">More criteria (optional)</summary><div class="compact-list detail-vote-list detail-vote-list--optional">' +
+          optHtml +
+          '</div></details>'
+        : '';
+    return (
+      '<section class="content-section detail-vote-content">' +
+      hint +
       '<div class="compact-list detail-vote-list">' +
-        state.criteria.map(function (criterion) {
-          return renderPartnerVoteRow(apartment, partnerKey, criterion);
-        }).join('') +
+      primaryHtml +
       '</div>' +
-    '</section>';
+      detailsBlock +
+      '</section>'
+    );
   }
 
   function renderPartnerVoteRow(apartment, partnerKey, criterion) {

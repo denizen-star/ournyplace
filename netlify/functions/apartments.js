@@ -15,6 +15,7 @@ exports.handler = async (event) => {
           criteria: detail.criteria,
           neighborhoods: detail.neighborhoods,
           apartment: detail.apartment,
+          compactVoting: Boolean(detail.compactVoting),
         });
       }
       return json(200, await getApartmentPayload());

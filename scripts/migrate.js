@@ -286,6 +286,20 @@ async function migrate() {
     'nyp_apartments.toured_data (toured checklist + tags JSON, keyed by partner)'
   );
 
+  await execute(`
+    CREATE TABLE IF NOT EXISTS nyp_app_settings (
+      setting_key VARCHAR(64) NOT NULL,
+      setting_value VARCHAR(255) NOT NULL,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (setting_key)
+    )
+  `);
+  await execute(`
+    INSERT INTO nyp_app_settings (setting_key, setting_value) VALUES ('compact_voting', '0')
+    ON DUPLICATE KEY UPDATE setting_key = VALUES(setting_key)
+  `);
+  console.log('[MIGRATE] OK: nyp_app_settings');
+
   console.log('[MIGRATE] Complete.');
 }
 
