@@ -273,7 +273,17 @@
       escapeHtml(apartment.title || 'Untitled apartment') +
       '</h2></div>' +
       '<p class="mobile-summary-sub">' +
-      escapeHtml([detailLocationSubtitle(apartment), statusLabel].filter(Boolean).join(' · ')) +
+      '<span class="mobile-summary-loc-wrap">' +
+      '<span class="mobile-summary-loc">' +
+      escapeHtml(detailLocationSubtitle(apartment) || '—') +
+      '</span>' +
+      (typeof NyhomeGoogleMaps !== 'undefined' ? NyhomeGoogleMaps.linkHtml(apartment, escapeAttr) : '') +
+      '</span>' +
+      (statusLabel
+        ? '<span class="mobile-summary-sub-sep muted"> · </span><span class="mobile-summary-status">' +
+          escapeHtml(statusLabel) +
+          '</span>'
+        : '') +
       '</p></div>' +
       '<span class="status-pill ' +
       NyhomeStatus.statusClass(status) +
@@ -517,7 +527,12 @@
         starHdr +
         '<div class="apartment-title-text-block">' +
           '<h2 class="apartment-title">' + escapeHtml(apartment.title || 'Untitled apartment') + '</h2>' +
-          '<div class="apartment-location muted">' + escapeHtml(detailLocationSubtitle(apartment) || '—') + '</div>' +
+          '<div class="apartment-location muted apartment-location--with-maps">' +
+          '<span class="apartment-location-text">' +
+          escapeHtml(detailLocationSubtitle(apartment) || '—') +
+          '</span>' +
+          (typeof NyhomeGoogleMaps !== 'undefined' ? NyhomeGoogleMaps.linkHtml(apartment, escapeAttr) : '') +
+          '</div>' +
         '</div></div>' +
       '</div>' +
       '<div class="app-meta">' +
@@ -1773,19 +1788,9 @@
 
   /** Street · unit (#) · neighborhood for summary subtitle and meta row. */
   function detailLocationSubtitle(apartment) {
-    var addr = apartment.address && String(apartment.address).trim();
-    var unitRaw = apartment.apt_number && String(apartment.apt_number).trim();
-    var hood = apartment.neighborhood && String(apartment.neighborhood).trim();
-    var parts = [];
-    if (addr) parts.push(addr);
-    if (unitRaw) {
-      var uCore = unitRaw.replace(/^#/, '');
-      if (uCore && (!addr || addr.indexOf(uCore) === -1)) {
-        parts.push(unitRaw.indexOf('#') === 0 ? unitRaw : '#' + uCore);
-      }
-    }
-    if (hood) parts.push(hood);
-    return parts.join(' · ');
+    return typeof NyhomeGoogleMaps !== 'undefined'
+      ? NyhomeGoogleMaps.locationLine(apartment)
+      : '';
   }
 
   function unitSummary(apartment) {

@@ -728,6 +728,67 @@ button.listing-star--btn:focus-visible {
   line-height: 1.5;
 }
 
+.apartment-location--with-maps,
+.apartment-location--hood {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+body.shortlist .apartment-location--hood {
+  justify-content: flex-start;
+}
+
+.apartment-location-hood-text {
+  min-width: 0;
+}
+
+.nyhome-maps-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  line-height: 1;
+  vertical-align: middle;
+  cursor: pointer;
+  opacity: 0.82;
+}
+
+.nyhome-maps-link:hover {
+  opacity: 1;
+}
+
+.nyhome-maps-link--disabled {
+  cursor: not-allowed;
+  opacity: 0.32;
+  pointer-events: none;
+}
+
+.nyhome-maps-icon {
+  display: block;
+}
+
+.mobile-summary-loc-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.mobile-summary-loc {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .pill {
   display: inline-flex;
   align-items: center;
@@ -7844,6 +7905,23 @@ body.shortlist .empty-state {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .details-page .mobile-summary-sub {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 0;
+    min-width: 0;
+  }
+
+  .details-page .mobile-summary-loc-wrap {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .details-page .mobile-summary-status {
+    flex-shrink: 0;
   }
 
   /* Score cells + e-mail summary (4th column) */

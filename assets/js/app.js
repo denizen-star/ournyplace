@@ -2921,12 +2921,15 @@
     var article = document.createElement('article');
     var status = NyhomeStatus.normalizeStatus(apartment.status || 'new');
     var statusLabel = formatStatusLabel(status);
-    var hoodOnly =
-      apartment.neighborhood && String(apartment.neighborhood).trim()
-        ? '<div class="apartment-location muted">' +
-          escapeHtml(String(apartment.neighborhood).trim()) +
-          '</div>'
-        : '';
+    var hoodTrim = apartment.neighborhood && String(apartment.neighborhood).trim();
+    var hoodOnly = hoodTrim
+      ? '<div class="apartment-location muted apartment-location--hood">' +
+        '<span class="apartment-location-hood-text">' +
+        escapeHtml(hoodTrim) +
+        '</span>' +
+        (typeof NyhomeGoogleMaps !== 'undefined' ? NyhomeGoogleMaps.linkHtml(apartment, escapeAttr) : '') +
+        '</div>'
+      : '';
     var starBtn =
       typeof NyhomeListingStar !== 'undefined' ? NyhomeListingStar.buttonHtml(apartment) : '';
     article.className = 'apartment-card listing-status-' + status.replace(/_/g, '-');

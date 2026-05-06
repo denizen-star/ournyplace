@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## 1.8.0 - 2026-05-06
+
+### Added
+- **Google Maps pin** — **`assets/js/googleMapsLink.js`** (`NyhomeGoogleMaps`): encoded **search** URL (no API key); query = same **street · unit · neighborhood** line as the details subtitle. **Shortlist** Cards: pin beside **neighborhood** when set. **`/details`** summary (desktop + **≤720px** mobile): pin beside location line. **Disabled** (muted, inert) without **street address**; **opens** in new tab (**`target=_blank`**, **`rel=noreferrer`**) when enabled.
+
+### Fixed
+- **Details mobile (partner tabs)** — voting label stacks above scores; **`nyhome-details-mobile-layout`** applied to **`#detail-root`** when accordion layout matches **`isDetailsMobile()`**; **`detail-vote-line`** two-line flex; Images/partner gallery column layout.
+
+### Changed
+- **`sw.js`** **`CACHE_VERSION`** + HTML **`?v=`** → **151** (precache **`googleMapsLink.js`**; all shells bumped).
+
+### Internal
+- **`CLAUDE.md`**, **`README.md`**, **`instructions/index.html`**.
+
 ## 1.7.0 - 2026-05-06
 
 ### Added
