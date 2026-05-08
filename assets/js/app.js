@@ -70,6 +70,9 @@
   var CAL_TOUR_MS = 30 * 60 * 1000;
   var CAL_DEBRIEF_MS = 30 * 60 * 1000;
   var CAL_SLOT_MS = 30 * 60 * 1000;
+  /** Calendar hides events older than this many ms before page open. Captured once on script load. */
+  var NA_CALENDAR_STALE_MS = 3 * 24 * 60 * 60 * 1000;
+  var NA_CALENDAR_OPENED_AT_MS = Date.now();
   /** Summary calendar: vertical timeline height scale (px per minute). */
   var NA_TIMELINE_PX_PER_MIN = 3.05;
   var NA_TIMELINE_MIN_HEIGHT = 132;
@@ -866,49 +869,46 @@
   /**
    * Tours: 30 min travel (before visit_at) → 30 min tour (visit_at) → 30 min debrief.
    * visit_at = tour start. Other events: 30 min travel → 30 min block at sortTs → 30 min debrief; gaps = open 30 min slots.
+   * Conflicting back-to-back events drop the previous debrief and the current travel so they render adjacent.
    */
   function buildCalendarDayRows(sortedEvents) {
     var rows = [];
-    var prevEnd = null;
+    var prevBlockEnd = null;
+    var prevDebriefIdx = null;
     sortedEvents.forEach(function (ev) {
-      if (ev.kind === 'tour') {
-        var T = ev.sortTs;
-        var travelStart = T - CAL_TRAVEL_MS;
-        var blockEnd = tourBlockEndAfterStart(T);
-        if (prevEnd != null && travelStart > prevEnd) {
-          rows.push({ type: 'break' });
-          rows.push.apply(rows, freeSlotsBetweenMs(prevEnd, travelStart));
+      var startMs = ev.sortTs;
+      var travelStart = startMs - CAL_TRAVEL_MS;
+      var eventEnd = ev.kind === 'tour' ? startMs + CAL_TOUR_MS : startMs + CAL_SLOT_MS;
+      var blockEnd = eventEnd + CAL_DEBRIEF_MS;
+      var conflict = prevBlockEnd != null && travelStart < prevBlockEnd;
+      if (conflict) {
+        if (prevDebriefIdx != null) {
+          rows.splice(prevDebriefIdx, 1);
+          prevDebriefIdx = null;
         }
-        rows.push({ type: 'travel', startMs: travelStart, endMs: T });
+      } else {
+        if (prevBlockEnd != null && travelStart > prevBlockEnd) {
+          rows.push({ type: 'break' });
+          rows.push.apply(rows, freeSlotsBetweenMs(prevBlockEnd, travelStart));
+        }
+        rows.push({ type: 'travel', startMs: travelStart, endMs: startMs });
+      }
+      if (ev.kind === 'tour') {
         rows.push({
           type: 'event',
           ev: ev,
-          tourTime: { startMs: T, endMs: T + CAL_TOUR_MS },
+          tourTime: { startMs: startMs, endMs: eventEnd },
         });
-        rows.push({
-          type: 'debrief',
-          startMs: T + CAL_TOUR_MS,
-          endMs: T + CAL_TOUR_MS + CAL_DEBRIEF_MS,
-        });
-        prevEnd = blockEnd;
       } else {
-        var D = ev.sortTs;
-        var travelStart2 = D - CAL_TRAVEL_MS;
-        var eventEnd = D + CAL_SLOT_MS;
-        var blockEnd2 = eventEnd + CAL_DEBRIEF_MS;
-        if (prevEnd != null && travelStart2 > prevEnd) {
-          rows.push({ type: 'break' });
-          rows.push.apply(rows, freeSlotsBetweenMs(prevEnd, travelStart2));
-        }
-        rows.push({ type: 'travel', startMs: travelStart2, endMs: D });
         rows.push({ type: 'event', ev: ev });
-        rows.push({
-          type: 'debrief',
-          startMs: eventEnd,
-          endMs: blockEnd2,
-        });
-        prevEnd = blockEnd2;
       }
+      prevDebriefIdx = rows.length;
+      rows.push({
+        type: 'debrief',
+        startMs: eventEnd,
+        endMs: blockEnd,
+      });
+      prevBlockEnd = blockEnd;
     });
     return rows;
   }
@@ -924,39 +924,34 @@
 
   /**
    * Segments for Summary calendar timeline: first event → last event, 30 min open gaps, purple travel/debrief, core slices for tour/deadline/move-in.
+   * Conflicting back-to-back events drop the previous debrief and the current travel so they render adjacent.
    */
   function buildDayTimelinePlan(sortedEvents) {
     var segments = [];
     var prevEnd = null;
+    var prevDebriefIdx = null;
     sortedEvents.forEach(function (ev) {
-      if (ev.kind === 'tour') {
-        var T = ev.sortTs;
-        var travelStart = T - CAL_TRAVEL_MS;
-        var blockEnd = tourBlockEndAfterStart(T);
+      var startMs = ev.sortTs;
+      var travelStart = startMs - CAL_TRAVEL_MS;
+      var coreEnd = ev.kind === 'tour' ? startMs + CAL_TOUR_MS : startMs + CAL_SLOT_MS;
+      var blockEnd = coreEnd + CAL_DEBRIEF_MS;
+      var conflict = prevEnd != null && travelStart < prevEnd;
+      if (conflict) {
+        if (prevDebriefIdx != null) {
+          segments.splice(prevDebriefIdx, 1);
+          prevDebriefIdx = null;
+        }
+      } else {
         if (prevEnd != null && travelStart > prevEnd) {
           pushTimelineOpenSlots(prevEnd, travelStart, segments);
         }
-        segments.push({ kind: 'travel', startMs: travelStart, endMs: T, ev: ev });
-        segments.push({ kind: 'tour', startMs: T, endMs: T + CAL_TOUR_MS, ev: ev });
-        segments.push({ kind: 'debrief', startMs: T + CAL_TOUR_MS, endMs: blockEnd, ev: ev });
-        prevEnd = blockEnd;
-      } else {
-        var D = ev.sortTs;
-        var travelStart2 = D - CAL_TRAVEL_MS;
-        var eventEnd = D + CAL_SLOT_MS;
-        var blockEnd2 = eventEnd + CAL_DEBRIEF_MS;
-        if (prevEnd != null && travelStart2 > prevEnd) {
-          pushTimelineOpenSlots(prevEnd, travelStart2, segments);
-        }
-        segments.push({ kind: 'travel', startMs: travelStart2, endMs: D, ev: ev });
-        if (ev.kind === 'deadline') {
-          segments.push({ kind: 'deadline', startMs: D, endMs: eventEnd, ev: ev });
-        } else {
-          segments.push({ kind: 'movein', startMs: D, endMs: eventEnd, ev: ev });
-        }
-        segments.push({ kind: 'debrief', startMs: eventEnd, endMs: blockEnd2, ev: ev });
-        prevEnd = blockEnd2;
+        segments.push({ kind: 'travel', startMs: travelStart, endMs: startMs, ev: ev });
       }
+      var coreKind = ev.kind === 'tour' ? 'tour' : ev.kind === 'deadline' ? 'deadline' : 'movein';
+      segments.push({ kind: coreKind, startMs: startMs, endMs: coreEnd, ev: ev });
+      prevDebriefIdx = segments.length;
+      segments.push({ kind: 'debrief', startMs: coreEnd, endMs: blockEnd, ev: ev });
+      prevEnd = blockEnd;
     });
     if (!segments.length) return null;
     return {
@@ -1324,24 +1319,26 @@
 
   function collectNextActionEvents(apartments) {
     var out = [];
+    var staleCutoff = NA_CALENDAR_OPENED_AT_MS - NA_CALENDAR_STALE_MS;
     apartments.forEach(function (apt) {
+      if (NyhomeStatus.normalizeStatus(apt && apt.status) === 'rejected') return;
       if (apt.next_visit && apt.next_visit.visit_at) {
         var ts = Date.parse(apt.next_visit.visit_at);
-        if (!Number.isNaN(ts)) {
+        if (!Number.isNaN(ts) && ts >= staleCutoff) {
           var dk = dayKeyFromMs(ts);
           if (dk) out.push({ apt: apt, kind: 'tour', sortTs: ts, dayKey: dk });
         }
       }
       if (apt.application && apt.application.deadline_at) {
         var ts2 = Date.parse(apt.application.deadline_at);
-        if (!Number.isNaN(ts2)) {
+        if (!Number.isNaN(ts2) && ts2 >= staleCutoff) {
           var dk2 = dayKeyFromMs(ts2);
           if (dk2) out.push({ apt: apt, kind: 'deadline', sortTs: ts2, dayKey: dk2 });
         }
       }
       if (hasMoveInDate(apt)) {
         var ts3 = parseMoveInNoonMs(apt.move_in_date);
-        if (!Number.isNaN(ts3)) {
+        if (!Number.isNaN(ts3) && ts3 >= staleCutoff) {
           var dk3 = dayKeyFromMs(ts3);
           if (dk3) out.push({ apt: apt, kind: 'movein', sortTs: ts3, dayKey: dk3 });
         }
