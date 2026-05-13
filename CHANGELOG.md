@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## 1.9.0 - 2026-05-12
+
+### Added
+- **Pipeline digest email** — **`lib/pipelineDigest.js`**: **Today & tomorrow** two-column calendar (Eastern) after intro — tours, app deadlines, move-ins; skips rejected/blacklisted/archived; **Details** links when public base URL set. Pill **Ca**; responsive stack rule for narrow clients.
+
+### Fixed
+- **Next actions calendar** — **`assets/js/app.js`**: hide **rejected** listings; drop tour/deadline/move-in events older than **3 days** from calendar + print TOC (**List** view unchanged). **Back-to-back conflicts:** overlapping travel windows collapse extra debrief/travel padding.
+
+### Changed
+- **`sw.js`** **`CACHE_VERSION`** + HTML **`?v=`** → **152** (shortlist + admin + details + toured + instructions shells).
+
+### Internal
+- **`CLAUDE.md`**, **`docs/PIPELINE-DIGEST-EMAIL-PLAN.md`**.
+
 ## 1.8.0 - 2026-05-06
 
 ### Added

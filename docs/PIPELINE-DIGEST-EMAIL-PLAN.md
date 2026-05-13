@@ -4,7 +4,7 @@
 
 ## TLDR
 
-One-click **pipeline digest** via `POST /api/pipeline-digest-email` (SMTP + `nodemailer`). HTML: hero, **Today** (rollup counts + status-move histogram from full-day `nyp_listing_events` query — no per-apartment 50 cap; **no** row-by-row activity table in mail), Pulse KPI table, needs attention, Top 10 (`<ol>` — browser numbers only), week bullets, signed listings. **Pastel pill** section labels (email-safe; no SVG). **Meta** JSON: `activeCount`, `attentionCount`, `topCount`, `loggedActionsToday`, `statusEventsToday`, `voteEventsToday`, `kervVotesToday`, `peterVotesToday`, `kervListingsToday`, `peterListingsToday`. Public `/details` links: Admin Settings `nyhomePublicBaseUrl` + POST `publicBaseUrl` + env `NYHOME_PUBLIC_URL`. Triggers: shortlist + Admin → Settings. **Client:** digest send OK → `NyhomeUiFeedback.showToast`; errors → in-app alert.
+One-click **pipeline digest** via `POST /api/pipeline-digest-email` (SMTP + `nodemailer`). HTML: hero, intro, **Today & tomorrow** two-column Eastern calendar (tour `visit_at`, app `deadline_at`, `move_in_date`; skip rejected/blacklisted/archived), **Today** activity (rollup counts + status-move histogram from full-day `nyp_listing_events` query — no per-apartment 50 cap; **no** row-by-row activity table in mail), Pulse KPI table, needs attention, Top 10 (`<ol>` — browser numbers only), week bullets, signed listings. **Pastel pill** section labels incl. Ca/Td (email-safe; no SVG). **Meta** JSON: `activeCount`, `attentionCount`, `topCount`, `loggedActionsToday`, `statusEventsToday`, `voteEventsToday`, `kervVotesToday`, `peterVotesToday`, `kervListingsToday`, `peterListingsToday`. Public `/details` links: Admin Settings `nyhomePublicBaseUrl` + POST `publicBaseUrl` + env `NYHOME_PUBLIC_URL`. Triggers: shortlist + Admin → Settings. **Client:** digest send OK → `NyhomeUiFeedback.showToast`; errors → in-app alert.
 
 ## Critical Decisions
 
@@ -13,7 +13,7 @@ One-click **pipeline digest** via `POST /api/pipeline-digest-email` (SMTP + `nod
 - **Top 10 pool & sort:** Exclude `rejected`, `blacklisted`, `archived`, `signed`. Order: **`listing_star` desc** → **status workflow index desc** → **`scores.combined` desc (nulls last)** → `updated_at`.
 - **Active count** (Pulse): excludes same terminals **and** `signed`.
 - **Needs attention:** `DEFAULT_ATTENTION` in `lib/pipelineDigest.js` (deadlines, tours, stale statuses, etc.).
-- **Today window:** `lib/etDayBounds.js` `boundsForInstantInTz(now, 'America/New_York')`; `lib/apartmentRepository.js` `fetchListingEventsBetweenCreatedAt`.
+- **Today window:** `lib/etDayBounds.js` `boundsForInstantInTz(now, 'America/New_York')`; `lib/apartmentRepository.js` `fetchListingEventsBetweenCreatedAt` (digest “Today” rollup). **Calendar strip:** same bounds + `ymdInTz(endExclusiveMs)` for tomorrow; listing-sourced events only (not a separate query).
 - **Auth:** None — see `CLAUDE.md` if endpoint is exposed.
 
 ## Tasks
