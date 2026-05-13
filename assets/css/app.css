@@ -4350,6 +4350,19 @@ body.shortlist .shortlist-na-calendar {
 
 body.shortlist .shortlist-na-day {
   margin-top: 0;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+}
+
+body.shortlist .shortlist-na-day:first-of-type {
+  margin-top: 0;
+}
+
+body.shortlist .shortlist-na-day-details {
+  margin: 0;
   padding: 10px 12px 12px;
   border: 1px solid #dadce0;
   border-radius: 8px;
@@ -4357,24 +4370,131 @@ body.shortlist .shortlist-na-day {
   box-shadow: 0 1px 2px rgba(60, 64, 67, 0.08);
 }
 
-body.shortlist .shortlist-na-day:first-of-type {
-  margin-top: 0;
-}
-
-body.shortlist .shortlist-na-day-heading {
+body.shortlist .shortlist-na-day-summary {
   margin: 0 0 8px;
-  padding-bottom: 6px;
+  padding: 0 0 8px;
   border-bottom: 1px solid #e8eaed;
   font-size: 0.9rem;
   font-weight: 400;
   color: #3c4043;
   letter-spacing: -0.01em;
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 14px;
+}
+
+body.shortlist .shortlist-na-day-summary::-webkit-details-marker {
+  display: none;
+}
+
+body.shortlist .shortlist-na-day-heading-text {
+  font-weight: 500;
+  color: #0f172a;
+}
+
+body.shortlist .shortlist-na-day-kpis {
+  font-size: 0.8rem;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+body.shortlist .shortlist-na-day-details:not([open]) > .shortlist-na-day-summary {
+  margin-bottom: 0;
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 body.shortlist .shortlist-na-day-events {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+body.shortlist .shortlist-na-card-head-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 10px;
+  min-width: 0;
+  margin-bottom: 4px;
+}
+
+body.shortlist .shortlist-na-card-toggle {
+  flex: 1 1 14rem;
+  min-width: 0;
+  margin: 0;
+  padding: 4px 8px 4px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: rgba(248, 250, 252, 0.9);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  box-sizing: border-box;
+}
+
+body.shortlist .shortlist-na-card-toggle:hover {
+  border-color: #e2e8f0;
+  background: #f1f5f9;
+}
+
+body.shortlist .shortlist-na-card-toggle:focus-visible {
+  outline: 2px solid var(--accent-dark, #6366f1);
+  outline-offset: 2px;
+}
+
+body.shortlist .shortlist-na-card-toggle-inner {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+body.shortlist .shortlist-na-card-toggle-chevron {
+  flex-shrink: 0;
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-top: 0.35rem;
+  border-right: 2px solid #64748b;
+  border-bottom: 2px solid #64748b;
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+}
+
+body.shortlist .shortlist-na-event-block:not(.shortlist-na-event-block--collapsed) .shortlist-na-card-toggle-chevron {
+  transform: rotate(45deg);
+  margin-top: 0.2rem;
+}
+
+body.shortlist .shortlist-na-card-head-row .shortlist-na-banner-actions {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+}
+
+body.shortlist .shortlist-na-banner-agenda {
+  flex-shrink: 1;
+  white-space: normal;
+  font-size: 0.78rem;
+  line-height: 1.3;
+  color: #64748b;
+}
+
+body.shortlist .shortlist-na-event-body {
+  padding-top: 4px;
+}
+
+body.shortlist .shortlist-na-event-body .shortlist-na-address-line {
+  display: inline-block;
+  margin-bottom: 6px;
 }
 
 /* Next actions → Calendar → Summary: first-to-last-event vertical timeline (see app.js buildDayTimelinePlan). */
@@ -4596,6 +4716,22 @@ body.shortlist .shortlist-na-tl-card-slot .shortlist-na-banner-score-val {
   font-weight: 400;
 }
 
+body.shortlist .shortlist-na-tl-card-slot .shortlist-na-card-head-row {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
+body.shortlist .shortlist-na-tl-card-slot .shortlist-na-card-toggle {
+  flex: 1 1 8rem;
+  padding: 2px 6px;
+}
+
+body.shortlist .shortlist-na-tl-card-slot .shortlist-na-banner-agenda {
+  font-size: 0.74rem;
+}
+
 body.shortlist .shortlist-na-tl-card-slot .shortlist-na-banner-actions .secondary-btn.shortlist-next-actions-advance,
 body.shortlist .shortlist-na-tl-card-slot .shortlist-na-banner-actions .shortlist-next-actions-reject {
   font-size: 0.86rem;
@@ -4641,7 +4777,7 @@ body.shortlist .shortlist-na-line.shortlist-na-line--event-banner {
 
 body.shortlist .shortlist-na-event-head {
   min-width: 0;
-  margin-bottom: 4px;
+  margin-bottom: 0;
 }
 
 body.shortlist .shortlist-na-banner-line {
@@ -4943,7 +5079,7 @@ body.shortlist .shortlist-na-density-summary .shortlist-na-banner-line {
   flex-wrap: wrap;
 }
 
-body.shortlist .shortlist-na-density-summary .shortlist-na-event-head .shortlist-na-address-line {
+body.shortlist .shortlist-na-density-summary .shortlist-na-event-body .shortlist-na-address-line {
   margin-top: 6px;
 }
 
@@ -5816,9 +5952,38 @@ body.shortlist .shortlist-next-actions-intro {
 
   body.shortlist .shortlist-na-day {
     box-shadow: none !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+
+  body.shortlist .shortlist-na-day-details {
+    box-shadow: none !important;
     background: #fff !important;
     border: 1px solid #cbd5e1 !important;
     padding: 12px 14px !important;
+  }
+
+  body.shortlist .shortlist-na-day-details .shortlist-na-day-events {
+    display: flex !important;
+  }
+
+  body.shortlist .shortlist-na-day-details:not([open]) .shortlist-na-day-events {
+    display: flex !important;
+  }
+
+  body.shortlist .shortlist-na-event-body[hidden] {
+    display: block !important;
+  }
+
+  body.shortlist .shortlist-na-card-toggle {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+
+  body.shortlist .shortlist-na-card-toggle-chevron {
+    display: none !important;
   }
 
   body.shortlist .shortlist-na-event-block.shortlist-next-actions-row,

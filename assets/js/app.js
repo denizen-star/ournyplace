@@ -867,6 +867,90 @@
   }
 
   /**
+   * Per-event agenda windows (travel→debrief or compressed when back-to-back), for KPI copy on day headers and cards.
+   * Mirrors conflict / debrief-drop rules in buildCalendarDayRows.
+   */
+  function computeAgendaWindows(sortedEvents) {
+    var windows = [];
+    var prevEffectiveEnd = null;
+    var prevDebriefIdx = null;
+    sortedEvents.forEach(function (ev) {
+      var startMs = ev.sortTs;
+      var travelStart = startMs - CAL_TRAVEL_MS;
+      var eventEnd = ev.kind === 'tour' ? startMs + CAL_TOUR_MS : startMs + CAL_SLOT_MS;
+      var blockEnd = eventEnd + CAL_DEBRIEF_MS;
+      var conflict = prevEffectiveEnd != null && travelStart < prevEffectiveEnd;
+      if (conflict && prevDebriefIdx != null) {
+        windows[prevDebriefIdx].blockEnd = windows[prevDebriefIdx].coreEnd;
+        prevDebriefIdx = null;
+      }
+      var blockStart = conflict ? startMs : travelStart;
+      windows.push({
+        ev: ev,
+        blockStart: blockStart,
+        coreStart: startMs,
+        coreEnd: eventEnd,
+        blockEnd: blockEnd,
+      });
+      prevDebriefIdx = windows.length - 1;
+      prevEffectiveEnd = blockEnd;
+    });
+    return windows;
+  }
+
+  /** Whole minutes, compact (e.g. 45m, 1h 30m). */
+  function formatDurationMinutes(ms) {
+    var m = Math.round(ms / 60000);
+    if (m < 1) return '<1m';
+    if (m < 60) return m + 'm';
+    var h = Math.floor(m / 60);
+    var r = m % 60;
+    return r ? h + 'h ' + r + 'm' : h + 'h';
+  }
+
+  function formatEventCardAgendaLine(windows, i) {
+    if (!windows || i < 0 || !windows[i]) return '';
+    var w = windows[i];
+    var bookedMs = w.blockEnd - w.blockStart;
+    var parts = [formatDurationMinutes(bookedMs) + ' booked'];
+    if (i < windows.length - 1) {
+      var openMs = windows[i + 1].blockStart - w.blockEnd;
+      if (openMs >= 60000) {
+        parts.push(formatDurationMinutes(openMs) + ' open');
+      } else if (openMs > 0) {
+        parts.push('tight to next');
+      } else {
+        parts.push('back-to-back');
+      }
+    }
+    return parts.join(' · ');
+  }
+
+  function formatDayAgendaKpis(windows) {
+    if (!windows || !windows.length) return '';
+    var booked = 0;
+    var openBetween = 0;
+    windows.forEach(function (w) {
+      booked += w.blockEnd - w.blockStart;
+    });
+    for (var i = 0; i < windows.length - 1; i++) {
+      var g = windows[i + 1].blockStart - windows[i].blockEnd;
+      if (g > 0) openBetween += g;
+    }
+    var n = windows.length;
+    var bits =
+      n +
+      (n === 1 ? ' item' : ' items') +
+      ' · ' +
+      formatDurationMinutes(booked) +
+      ' booked';
+    if (openBetween > 0) {
+      bits += ' · ' + formatDurationMinutes(openBetween) + ' open between';
+    }
+    return bits;
+  }
+
+  /**
    * Tours: 30 min travel (before visit_at) → 30 min tour (visit_at) → 30 min debrief.
    * visit_at = tour start. Other events: 30 min travel → 30 min block at sortTs → 30 min debrief; gaps = open 30 min slots.
    * Conflicting back-to-back events drop the previous debrief and the current travel so they render adjacent.
@@ -1043,8 +1127,9 @@
       );
     });
 
+    var dayWindows = computeAgendaWindows(sortedList);
     var cardChunks = [];
-    sortedList.forEach(function (ev) {
+    sortedList.forEach(function (ev, idx) {
       var topMs;
       var hMs;
       var tourTimeForBlock = null;
@@ -1059,7 +1144,7 @@
       }
       var topPctC = pct(topMs);
       var slotHpx = Math.max(52, (hMs / durMs) * trackH);
-      var blockHtml = renderNextActionsEventBlock(ev, tourTimeForBlock);
+      var blockHtml = renderNextActionsEventBlock(ev, tourTimeForBlock, formatEventCardAgendaLine(dayWindows, idx));
       cardChunks.push(
         '<div class="shortlist-na-tl-card-slot" style="top:' +
         topPctC +
@@ -2607,13 +2692,20 @@
         return a.sortTs - b.sortTs;
       });
       var uid = 'na-day-' + dk.replace(/[^0-9a-z-]/gi, '');
+      var dayWindows = computeAgendaWindows(list);
+      var dayKpis = formatDayAgendaKpis(dayWindows);
       var rows = buildCalendarDayRows(list);
+      var eventIndex = 0;
       var body =
         naCalendarDensity === 'summary'
           ? renderNextActionsCalendarDaySummaryHtml(dk, list)
           : rows
               .map(function (row) {
-                if (row.type === 'event') return renderNextActionsEventBlock(row.ev, row.tourTime || null);
+                if (row.type === 'event') {
+                  var line = formatEventCardAgendaLine(dayWindows, eventIndex);
+                  eventIndex += 1;
+                  return renderNextActionsEventBlock(row.ev, row.tourTime || null, line);
+                }
                 if (row.type === 'travel') return renderCalendarTravelRow(row);
                 if (row.type === 'debrief') return renderCalendarDebriefRow(row);
                 if (row.type === 'free') return renderCalendarFreeSlotRow(row);
@@ -2626,24 +2718,38 @@
         '<section class="shortlist-na-day" aria-labelledby="' +
         escapeAttr(uid) +
         '">' +
-        '<h3 class="shortlist-na-day-heading" id="' +
+        '<details class="shortlist-na-day-details" open>' +
+        '<summary class="shortlist-na-day-summary" id="' +
         escapeAttr(uid) +
         '">' +
+        '<span class="shortlist-na-day-heading-text">' +
         escapeHtml(formatCalendarDayHeading(dk)) +
-        '</h3>' +
+        '</span>' +
+        (dayKpis
+          ? '<span class="shortlist-na-day-kpis muted">' + escapeHtml(dayKpis) + '</span>'
+          : '') +
+        '</summary>' +
         '<div class="shortlist-na-day-events">' +
         body +
         '</div>' +
+        '</details>' +
         '</section>';
     });
     html += '</div>';
     return html;
   }
 
-  function renderNextActionsEventBlock(ev, tourTimeRange) {
+  function renderNextActionsEventBlock(ev, tourTimeRange, cardAgendaLine) {
     var apartment = ev.apt;
     var id = apartment.id;
     var href = id != null ? '/details/?id=' + encodeURIComponent(id) : '#';
+    var cardBodyId =
+      'na-ev-' +
+      String(id) +
+      '-' +
+      ev.kind +
+      '-' +
+      String(Math.floor(ev.sortTs));
     var status = NyhomeStatus.normalizeStatus(apartment.status || 'new');
     var statusLabel = formatStatusLabel(status);
     var kindClass = 'shortlist-na-etype--' + ev.kind;
@@ -2659,8 +2765,33 @@
     var notesPanelId = 'shortlist-na-notes-' + String(id) + '-' + ev.kind;
     var starNaCal =
       typeof NyhomeListingStar !== 'undefined' ? NyhomeListingStar.displayHtmlIfStarred(apartment) : '';
+    var agendaLine = cardAgendaLine && String(cardAgendaLine).trim() ? String(cardAgendaLine).trim() : '';
+    var bannerRowMain =
+      starNaCal +
+      '<span class="shortlist-na-banner-kind">' +
+      escapeHtml(kindLabel) +
+      '</span>' +
+      naCalendarMetaSep() +
+      '<span class="shortlist-na-banner-time">' +
+      escapeHtml(timeLine) +
+      '</span>' +
+      (agendaLine
+        ? naCalendarMetaSep() + '<span class="shortlist-na-banner-agenda muted">' + escapeHtml(agendaLine) + '</span>'
+        : '') +
+      naCalendarMetaSep() +
+      '<span class="status-pill ' +
+      NyhomeStatus.statusClass(status) +
+      ' shortlist-next-actions-pill">' +
+      escapeHtml(statusLabel) +
+      '</span>' +
+      naCalendarMetaSep() +
+      nextActionsBannerScoresInlineHtml(apartment.scores, apartment.id);
+    var bannerActions =
+      '<span class="shortlist-na-banner-actions">' +
+      nextActionsAdvanceRejectHtml(apartment, { sepBeforeReject: true }) +
+      '</span>';
     return (
-      '<article class="shortlist-next-actions-row shortlist-na-event-block ' +
+      '<article class="shortlist-next-actions-row shortlist-na-event-block shortlist-na-event-block--collapsed ' +
       kindClass +
       ' listing-status-' +
       status.replace(/_/g, '-') +
@@ -2670,34 +2801,31 @@
       '<div class="shortlist-na-line shortlist-na-line--event-banner">' +
       '<div class="shortlist-na-what">' +
       '<div class="shortlist-na-event-head">' +
-      '<div class="shortlist-na-banner-line">' +
-      starNaCal +
-      '<span class="shortlist-na-banner-kind">' +
-      escapeHtml(kindLabel) +
+      '<div class="shortlist-na-card-head-row">' +
+      '<button type="button" class="shortlist-na-card-toggle" data-na-card-toggle aria-expanded="false" aria-controls="' +
+      escapeAttr(cardBodyId) +
+      '" id="' +
+      escapeAttr(cardBodyId + '-btn') +
+      '">' +
+      '<span class="shortlist-na-card-toggle-chevron" aria-hidden="true"></span>' +
+      '<span class="shortlist-na-card-toggle-inner">' +
+      '<span class="shortlist-na-banner-line">' +
+      bannerRowMain +
       '</span>' +
-      naCalendarMetaSep() +
-      '<span class="shortlist-na-banner-time">' +
-      escapeHtml(timeLine) +
       '</span>' +
-      naCalendarMetaSep() +
-      '<span class="status-pill ' +
-      NyhomeStatus.statusClass(status) +
-      ' shortlist-next-actions-pill">' +
-      escapeHtml(statusLabel) +
-      '</span>' +
-      naCalendarMetaSep() +
-      nextActionsBannerScoresInlineHtml(apartment.scores, apartment.id) +
-      naCalendarMetaSep() +
-      '<span class="shortlist-na-banner-actions">' +
-      nextActionsAdvanceRejectHtml(apartment, { sepBeforeReject: true }) +
-      '</span>' +
+      '</button>' +
+      bannerActions +
       '</div>' +
+      '<div class="shortlist-na-event-body" id="' +
+      escapeAttr(cardBodyId) +
+      '" role="region" aria-labelledby="' +
+      escapeAttr(cardBodyId + '-btn') +
+      '" hidden>' +
       '<a class="shortlist-na-address-line" href="' +
       escapeAttr(href) +
       '">' +
       escapeHtml(subtitleLine) +
       '</a>' +
-      '</div>' +
       nextActionsListingSpecStrip(apartment) +
       (naCalendarDensity === 'prospect' ? renderNotesDetailsCollapsible(apartment, ev, notesPanelId) : '') +
       (naLayoutMode === 'calendar' && naCalendarDensity === 'details' && ev.kind === 'tour'
@@ -2705,6 +2833,8 @@
           escapeAttr(String(id)) +
           '">Tour worksheet</button>'
         : '') +
+      '</div>' +
+      '</div>' +
       '</div></div></article>'
     );
   }
@@ -2834,6 +2964,25 @@
 
   function wireNextActionsListInteractions() {
     if (!listEl) return;
+    listEl.querySelectorAll('[data-na-card-toggle]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        var pid = btn.getAttribute('aria-controls');
+        var panel = pid ? document.getElementById(pid) : null;
+        if (!panel || !listEl.contains(panel)) return;
+        var art = btn.closest('.shortlist-na-event-block');
+        var open = btn.getAttribute('aria-expanded') === 'true';
+        if (open) {
+          panel.setAttribute('hidden', '');
+          btn.setAttribute('aria-expanded', 'false');
+          if (art) art.classList.add('shortlist-na-event-block--collapsed');
+        } else {
+          panel.removeAttribute('hidden');
+          btn.setAttribute('aria-expanded', 'true');
+          if (art) art.classList.remove('shortlist-na-event-block--collapsed');
+        }
+      });
+    });
     listEl.querySelectorAll('[data-def-toggle]').forEach(function (button) {
       button.addEventListener('click', function (e) {
         e.preventDefault();
