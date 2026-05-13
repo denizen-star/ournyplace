@@ -4413,6 +4413,22 @@ body.shortlist .shortlist-na-day-events {
   gap: 6px;
 }
 
+body.shortlist .shortlist-na-calendar-divider {
+  display: block;
+  border: none;
+  height: 1px;
+  margin: 14px 0;
+  background: linear-gradient(to right, transparent, #cbd5e1 12%, #cbd5e1 88%, transparent);
+}
+
+body.shortlist .shortlist-na-toc-past-divider {
+  display: block;
+  border: none;
+  height: 1px;
+  margin: 20px 0 14px;
+  background: #e2e8f0;
+}
+
 body.shortlist .shortlist-na-card-head-row {
   display: flex;
   flex-wrap: wrap;
@@ -4948,6 +4964,10 @@ body.shortlist .shortlist-na-etype--tour .shortlist-na-when {
 
 body.shortlist .shortlist-na-etype--deadline .shortlist-na-when {
   border-left-color: #d946ef;
+}
+
+body.shortlist .shortlist-na-etype--app_submit .shortlist-na-when {
+  border-left-color: #f59e0b;
 }
 
 body.shortlist .shortlist-na-etype--movein .shortlist-na-when {
@@ -5563,6 +5583,11 @@ body.shortlist .shortlist-na-event-block.shortlist-next-actions-row:hover {
     padding-left: 9px;
   }
 
+  body.shortlist .shortlist-next-actions-wrap[class*='shortlist-na-density'] .shortlist-na-event-block.shortlist-na-etype--app_submit {
+    border-left: 3px solid #f59e0b;
+    padding-left: 9px;
+  }
+
   body.shortlist .shortlist-next-actions-wrap[class*='shortlist-na-density'] .shortlist-na-event-block.shortlist-na-etype--movein {
     border-left: 3px solid #14b8a6;
     padding-left: 9px;
@@ -5610,6 +5635,7 @@ body.shortlist .shortlist-na-event-block.shortlist-next-actions-row:hover {
 
   body.shortlist .shortlist-na-etype--tour .shortlist-na-when,
   body.shortlist .shortlist-na-etype--deadline .shortlist-na-when,
+  body.shortlist .shortlist-na-etype--app_submit .shortlist-na-when,
   body.shortlist .shortlist-na-etype--movein .shortlist-na-when {
     border-left: 0;
   }
@@ -5629,6 +5655,10 @@ body.shortlist .shortlist-na-event-block.shortlist-next-actions-row:hover {
 
   body.shortlist .shortlist-next-actions-wrap[data-na-density="summary"] .shortlist-na-etype--deadline .shortlist-na-when {
     border-left-color: #d946ef;
+  }
+
+  body.shortlist .shortlist-next-actions-wrap[data-na-density="summary"] .shortlist-na-etype--app_submit .shortlist-na-when {
+    border-left-color: #f59e0b;
   }
 
   body.shortlist .shortlist-next-actions-wrap[data-na-density="summary"] .shortlist-na-etype--movein .shortlist-na-when {
@@ -5844,6 +5874,12 @@ body.shortlist .shortlist-next-actions-intro {
     background: #fae8ff;
     border-color: #e879f9;
     color: #86198f;
+  }
+
+  body.shortlist .shortlist-na-toc-badge--app-submit {
+    background: #fffbeb;
+    border-color: #fbbf24;
+    color: #b45309;
   }
 
   body.shortlist .shortlist-na-toc-badge--movein {

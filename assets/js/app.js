@@ -614,12 +614,13 @@
     return NyhomeShortlistSort.sortForFinalist(list);
   }
 
-  /** Listing appears in Next actions if it has a tour, application deadline, and/or move-in date. */
+  /** Listing appears in Next actions if it has a tour, application deadline, move-in date, and/or finalist submit-app step. */
   function qualifiesNextActions(apartment) {
     if (!apartment) return false;
     if (apartment.next_visit) return true;
     if (apartment.application && apartment.application.deadline_at) return true;
     if (hasMoveInDate(apartment)) return true;
+    if (!Number.isNaN(finalistApplicationDueAtMs(apartment))) return true;
     return false;
   }
 
@@ -940,7 +941,7 @@
     var n = windows.length;
     var bits =
       n +
-      (n === 1 ? ' item' : ' items') +
+      (n === 1 ? ' Booking' : ' Bookings') +
       ' · ' +
       formatDurationMinutes(booked) +
       ' booked';
@@ -1031,7 +1032,14 @@
         }
         segments.push({ kind: 'travel', startMs: travelStart, endMs: startMs, ev: ev });
       }
-      var coreKind = ev.kind === 'tour' ? 'tour' : ev.kind === 'deadline' ? 'deadline' : 'movein';
+      var coreKind =
+        ev.kind === 'tour'
+          ? 'tour'
+          : ev.kind === 'deadline'
+            ? 'deadline'
+            : ev.kind === 'app_submit'
+              ? 'app_submit'
+              : 'movein';
       segments.push({ kind: coreKind, startMs: startMs, endMs: coreEnd, ev: ev });
       prevDebriefIdx = segments.length;
       segments.push({ kind: 'debrief', startMs: coreEnd, endMs: blockEnd, ev: ev });
@@ -1275,73 +1283,86 @@
       if (!byDay[k]) byDay[k] = [];
       byDay[k].push(ev);
     });
-    var dayKeys = Object.keys(byDay).sort();
+    var dayKeyList = partitionNextActionDayKeys(Object.keys(byDay));
     var chunks = [];
     var rowNum = 0;
-    dayKeys.forEach(function (dk) {
-      var list = byDay[dk].slice().sort(function (a, b) {
-        return a.sortTs - b.sortTs;
-      });
-      chunks.push(
-        '<section class="shortlist-na-toc-day-block">' +
-        '<h3 class="shortlist-na-toc-day-heading">' +
-        escapeHtml(formatCalendarDayHeading(dk)) +
-        '</h3>' +
-        '<table class="shortlist-na-toc-table">' +
-        '<thead><tr>' +
-        '<th class="shortlist-na-toc-th shortlist-na-toc-th--num" scope="col">#</th>' +
-        '<th class="shortlist-na-toc-th shortlist-na-toc-th--time" scope="col">When</th>' +
-        '<th class="shortlist-na-toc-th shortlist-na-toc-th--type" scope="col">Type</th>' +
-        '<th class="shortlist-na-toc-th shortlist-na-toc-th--listing" scope="col">Listing</th>' +
-        '</tr></thead><tbody>'
-      );
-      list.forEach(function (ev) {
-        rowNum += 1;
-        var apt = ev.apt;
-        var title = String(apt.title || 'Untitled apartment').trim();
-        var hood = (apt.neighborhood && String(apt.neighborhood).trim()) || '';
-        var kindLabel =
-          ev.kind === 'tour' ? 'Tour' : ev.kind === 'deadline' ? 'App deadline' : 'Move-in';
-        var kindClass =
-          ev.kind === 'tour' ? 'tour' : ev.kind === 'deadline' ? 'deadline' : 'movein';
-        var timeStr;
-        if (ev.kind === 'tour') {
-          var T = ev.sortTs;
-          timeStr = formatCalendarSlotRange(T - CAL_TRAVEL_MS, tourBlockEndAfterStart(T));
-        } else {
-          timeStr = formatEventTimeOrAllDay(ev);
-        }
-        var starToc =
-          typeof NyhomeListingStar !== 'undefined' ? NyhomeListingStar.displayHtmlIfStarred(apt) : '';
+    function pushDayTocSections(keys) {
+      keys.forEach(function (dk) {
+        var list = byDay[dk].slice().sort(function (a, b) {
+          return a.sortTs - b.sortTs;
+        });
         chunks.push(
-          '<tr class="shortlist-na-toc-tr">' +
-          '<td class="shortlist-na-toc-td shortlist-na-toc-td--num">' +
-          escapeHtml(String(rowNum)) +
-          '</td>' +
-          '<td class="shortlist-na-toc-td shortlist-na-toc-td--time">' +
-          escapeHtml(timeStr) +
-          '</td>' +
-          '<td class="shortlist-na-toc-td shortlist-na-toc-td--type">' +
-          '<span class="shortlist-na-toc-badge shortlist-na-toc-badge--' +
-          escapeAttr(kindClass) +
-          '">' +
-          escapeHtml(kindLabel) +
-          '</span></td>' +
-          '<td class="shortlist-na-toc-td shortlist-na-toc-td--listing">' +
-          '<span class="shortlist-na-toc-titlecell">' +
-          starToc +
-          '<span class="shortlist-na-toc-listingname">' +
-          escapeHtml(title) +
-          '</span>' +
-          '</span>' +
-          (hood
-            ? '<span class="shortlist-na-toc-hoodcell">' + escapeHtml(hood) + '</span>'
-            : '') +
-          '</td></tr>'
+          '<section class="shortlist-na-toc-day-block">' +
+          '<h3 class="shortlist-na-toc-day-heading">' +
+          escapeHtml(formatCalendarDayHeading(dk)) +
+          '</h3>' +
+          '<table class="shortlist-na-toc-table">' +
+          '<thead><tr>' +
+          '<th class="shortlist-na-toc-th shortlist-na-toc-th--num" scope="col">#</th>' +
+          '<th class="shortlist-na-toc-th shortlist-na-toc-th--time" scope="col">When</th>' +
+          '<th class="shortlist-na-toc-th shortlist-na-toc-th--type" scope="col">Type</th>' +
+          '<th class="shortlist-na-toc-th shortlist-na-toc-th--listing" scope="col">Listing</th>' +
+          '</tr></thead><tbody>'
         );
+        list.forEach(function (ev) {
+          rowNum += 1;
+          var apt = ev.apt;
+          var title = String(apt.title || 'Untitled apartment').trim();
+          var hood = (apt.neighborhood && String(apt.neighborhood).trim()) || '';
+          var kindLabel =
+            ev.kind === 'tour'
+              ? 'Tour'
+              : ev.kind === 'deadline'
+                ? 'App deadline'
+                : ev.kind === 'app_submit'
+                  ? 'Submit application'
+                  : 'Move-in';
+          var kindClass =
+            ev.kind === 'tour' ? 'tour' : ev.kind === 'deadline' ? 'deadline' : ev.kind === 'app_submit' ? 'app-submit' : 'movein';
+          var timeStr;
+          if (ev.kind === 'tour') {
+            var T = ev.sortTs;
+            timeStr = formatCalendarSlotRange(T - CAL_TRAVEL_MS, tourBlockEndAfterStart(T));
+          } else {
+            timeStr = formatEventTimeOrAllDay(ev);
+          }
+          var starToc =
+            typeof NyhomeListingStar !== 'undefined' ? NyhomeListingStar.displayHtmlIfStarred(apt) : '';
+          chunks.push(
+            '<tr class="shortlist-na-toc-tr">' +
+            '<td class="shortlist-na-toc-td shortlist-na-toc-td--num">' +
+            escapeHtml(String(rowNum)) +
+            '</td>' +
+            '<td class="shortlist-na-toc-td shortlist-na-toc-td--time">' +
+            escapeHtml(timeStr) +
+            '</td>' +
+            '<td class="shortlist-na-toc-td shortlist-na-toc-td--type">' +
+            '<span class="shortlist-na-toc-badge shortlist-na-toc-badge--' +
+            escapeAttr(kindClass) +
+            '">' +
+            escapeHtml(kindLabel) +
+            '</span></td>' +
+            '<td class="shortlist-na-toc-td shortlist-na-toc-td--listing">' +
+            '<span class="shortlist-na-toc-titlecell">' +
+            starToc +
+            '<span class="shortlist-na-toc-listingname">' +
+            escapeHtml(title) +
+            '</span>' +
+            '</span>' +
+            (hood
+              ? '<span class="shortlist-na-toc-hoodcell">' + escapeHtml(hood) + '</span>'
+              : '') +
+            '</td></tr>'
+          );
+        });
+        chunks.push('</tbody></table></section>');
       });
-      chunks.push('</tbody></table></section>');
-    });
+    }
+    pushDayTocSections(dayKeyList.future);
+    if (dayKeyList.needDivider) {
+      chunks.push('<hr class="shortlist-na-toc-past-divider" aria-hidden="true" />');
+    }
+    pushDayTocSections(dayKeyList.past);
     return (
       '<nav class="shortlist-na-print-toc" aria-label="Itinerary overview">' +
       '<header class="shortlist-na-print-toc-header">' +
@@ -1381,6 +1402,49 @@
     return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
   }
 
+  /** Today/future first (ascending), then `<hr>` in caller; past days descending (yesterday → older locally). */
+  function partitionNextActionDayKeys(allKeys) {
+    if (!allKeys || !allKeys.length) {
+      return { future: [], past: [], needDivider: false };
+    }
+    var todayKey = dayKeyFromMs(Date.now());
+    if (!todayKey) {
+      return { future: allKeys.slice().sort(), past: [], needDivider: false };
+    }
+    var future = allKeys.filter(function (k) {
+      return k >= todayKey;
+    }).sort();
+    var past = allKeys
+      .filter(function (k) {
+        return k < todayKey;
+      })
+      .sort()
+      .reverse();
+    return { future: future, past: past, needDivider: future.length > 0 && past.length > 0 };
+  }
+
+  var FINALIST_SUBMIT_APP_MS = 24 * 60 * 60 * 1000;
+
+  /** Most recent transition into finalist (`listing_events`, newest first). */
+  function msLastEnteredFinalist(apt) {
+    var evs = (apt && apt.listing_events) || [];
+    for (var i = 0; i < evs.length; i++) {
+      var e = evs[i];
+      if (e.event_type === 'status' && NyhomeStatus.normalizeStatus(e.to_status) === 'finalist') {
+        var t = Date.parse(e.created_at);
+        if (!Number.isNaN(t)) return t;
+      }
+    }
+    return NaN;
+  }
+
+  function finalistApplicationDueAtMs(apt) {
+    if (NyhomeStatus.normalizeStatus(apt && apt.status) !== 'finalist') return NaN;
+    var entered = msLastEnteredFinalist(apt);
+    if (Number.isNaN(entered)) return NaN;
+    return entered + FINALIST_SUBMIT_APP_MS;
+  }
+
   function parseMoveInNoonMs(isoDate) {
     var s = String(isoDate || '').trim();
     if (!s) return NaN;
@@ -1396,6 +1460,12 @@
 
   function formatEventTimeOrAllDay(ev) {
     if (ev.kind === 'movein') return 'All day';
+    if (ev.kind === 'app_submit') {
+      if (Number.isNaN(ev.sortTs)) return '';
+      var d = new Date(ev.sortTs);
+      if (Number.isNaN(d.getTime())) return '';
+      return d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' });
+    }
     if (Number.isNaN(ev.sortTs)) return '';
     var d = new Date(ev.sortTs);
     if (Number.isNaN(d.getTime())) return '';
@@ -1427,6 +1497,11 @@
           var dk3 = dayKeyFromMs(ts3);
           if (dk3) out.push({ apt: apt, kind: 'movein', sortTs: ts3, dayKey: dk3 });
         }
+      }
+      var dueSubmit = finalistApplicationDueAtMs(apt);
+      if (!Number.isNaN(dueSubmit) && dueSubmit >= staleCutoff) {
+        var dk4 = dayKeyFromMs(dueSubmit);
+        if (dk4) out.push({ apt: apt, kind: 'app_submit', sortTs: dueSubmit, dayKey: dk4 });
       }
     });
     return out;
@@ -2684,10 +2759,10 @@
       if (!byDay[k]) byDay[k] = [];
       byDay[k].push(ev);
     });
-    var dayKeys = Object.keys(byDay).sort();
+    var dayKeyList = partitionNextActionDayKeys(Object.keys(byDay));
     var html =
       '<div class="shortlist-na-calendar" role="region" aria-label="Next actions by day">';
-      dayKeys.forEach(function (dk) {
+    function renderOneDay(dk) {
       var list = byDay[dk].slice().sort(function (a, b) {
         return a.sortTs - b.sortTs;
       });
@@ -2714,11 +2789,11 @@
                 return '';
               })
               .join('');
-      html +=
+      return (
         '<section class="shortlist-na-day" aria-labelledby="' +
         escapeAttr(uid) +
         '">' +
-        '<details class="shortlist-na-day-details" open>' +
+        '<details class="shortlist-na-day-details">' +
         '<summary class="shortlist-na-day-summary" id="' +
         escapeAttr(uid) +
         '">' +
@@ -2733,7 +2808,17 @@
         body +
         '</div>' +
         '</details>' +
-        '</section>';
+        '</section>'
+      );
+    }
+    dayKeyList.future.forEach(function (dk) {
+      html += renderOneDay(dk);
+    });
+    if (dayKeyList.needDivider) {
+      html += '<hr class="shortlist-na-calendar-divider" aria-hidden="true" />';
+    }
+    dayKeyList.past.forEach(function (dk) {
+      html += renderOneDay(dk);
     });
     html += '</div>';
     return html;
@@ -2754,7 +2839,13 @@
     var statusLabel = formatStatusLabel(status);
     var kindClass = 'shortlist-na-etype--' + ev.kind;
     var kindLabel =
-      ev.kind === 'tour' ? 'Tour' : ev.kind === 'deadline' ? 'App deadline' : 'Move-in';
+      ev.kind === 'tour'
+        ? 'Tour'
+        : ev.kind === 'deadline'
+          ? 'App deadline'
+          : ev.kind === 'app_submit'
+            ? 'Submit application'
+            : 'Move-in';
     var timeLine =
       tourTimeRange && tourTimeRange.startMs != null && tourTimeRange.endMs != null
         ? formatCalendarSlotRange(tourTimeRange.startMs, tourTimeRange.endMs)
@@ -2848,7 +2939,7 @@
         '<div class="shortlist-next-actions-wrap">' +
         toolbar +
         printTitle +
-        '<div class="empty-state">No next actions match. Add a tour, app deadline, or move-in — or widen the "only include" filters.</div>' +
+        '<div class="empty-state">No next actions match. Add a tour, app deadline, move-in, or reach finalist (submit application step) — or widen the "only include" filters.</div>' +
         '</div>';
       wireNextActionsChrome();
       return;
@@ -2872,7 +2963,7 @@
         '<div class="shortlist-next-actions-wrap" role="region" aria-label="Next actions">' +
         toolbar +
         printTitle +
-        '<p class="shortlist-next-actions-intro muted">Open a row for full details. Use Calendar to see visits by day.</p>' +
+        '<p class="shortlist-next-actions-intro muted">Open a row for full details. Use Calendar to see visits and steps by day.</p>' +
         '<div class="shortlist-next-actions-list">' +
         sorted.map(function (apartment) {
           return renderNextActionsRow(apartment);
@@ -2932,6 +3023,10 @@
     }
     if (hasMoveInDate(apartment)) {
       metaBits.push('Move-in ' + String(apartment.move_in_date).trim());
+    }
+    var submitDue = finalistApplicationDueAtMs(apartment);
+    if (!Number.isNaN(submitDue)) {
+      metaBits.push('Submit application ' + formatShortDateTime(submitDue));
     }
     var metaInline = metaBits.length
       ? '<span class="shortlist-next-actions-sep muted">·</span><span class="shortlist-next-actions-dates muted">' +
