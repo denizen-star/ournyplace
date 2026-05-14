@@ -964,6 +964,16 @@
     return String(v);
   }
 
+  /** Street · unit · neighborhood when `address` is set — for Google Calendar Location (same as Maps line). */
+  function calendarInviteLocationLine(apartment) {
+    var addr = apartment && apartment.address && String(apartment.address).trim();
+    if (!addr) return '';
+    if (typeof NyhomeGoogleMaps !== 'undefined' && NyhomeGoogleMaps.locationLine) {
+      return NyhomeGoogleMaps.locationLine(apartment);
+    }
+    return detailLocationSubtitle(apartment) || addr;
+  }
+
   function buildCalendarUrl(apartment, visitAtValue, criteria) {
     if (!visitAtValue) return '';
     try {
@@ -976,10 +986,12 @@
           'T' + pad(dt.getUTCHours()) + pad(dt.getUTCMinutes()) + '00Z';
       }
       var details = buildCalendarEventDetails(apartment, criteria || []);
+      var loc = calendarInviteLocationLine(apartment);
       return 'https://calendar.google.com/calendar/render?action=TEMPLATE' +
         '&text=' + encodeURIComponent('Tour: ' + (apartment.title || 'Apartment')) +
         '&dates=' + toGcal(start) + '/' + toGcal(end) +
         '&details=' + encodeURIComponent(details) +
+        (loc ? '&location=' + encodeURIComponent(loc) : '') +
         '&add=leacock.kervin%40gmail.com&add=peterpapapetrou1%40gmail.com';
     } catch (e) {
       return '';
